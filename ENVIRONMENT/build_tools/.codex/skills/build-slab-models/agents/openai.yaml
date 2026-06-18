@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Slab Models"
+  short_description: "Generate DFT-ready clean slab models"
+  default_prompt: "Use $build-slab-models to create a DFT-ready Pt(111) slab with compact lateral size and fixed bottom layers."

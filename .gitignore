@@ -1,5 +1,6 @@
-ENVIRONMENT/
 examples/
+!ENVIRONMENT/**/examples/
+!ENVIRONMENT/**/examples/**
 
 # OS
 .DS_Store
@@ -68,3 +69,8 @@ temp/
 # Misc
 *.bak
 *.tmp
+
+# Nested local environment artifacts
+ENVIRONMENT/**/.git/
+ENVIRONMENT/**/.venv/
+ENVIRONMENT/**/__pycache__/

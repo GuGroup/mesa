@@ -1,0 +1,52 @@
+# Minimal VASP job spec for vasp-job (run directly on the HPC login node).
+#   vasp-job prepare input.yml   # write input files only, no qsub
+#   vasp-job submit  input.yml   # write input files and submit with qsub
+#
+# vasp-job does NOT fill defaults: vasp.parameters is written explicitly and
+# passed to vasp-ase as-is. The agent assembles it from the skill's
+# .codex/skills/vasp-job/defaults.yaml  (common + task.<task> + overrides).
+# Run `vasp-job schema` for the accepted top-level fields.
+
+schema_version: 1
+job_name: si_bulk_001
+task: bulk                 # label recorded in metadata (bulk|slab|freq|static)
+
+# Optional project group. Files go under {root}/{project}/jobs/{job_uid}
+# (or {root}/jobs/{job_uid} when null).
+project: null
+
+structure:
+  format: poscar
+  path: POSCAR              # relative to this input.yml file
+
+# vasp.parameters keys are lowercase vasp-ase keywords (not uppercase INCAR tags).
+vasp:
+  parameters:
+    # common (from defaults.yaml)
+    gga: RP
+    prec: Normal
+    encut: 400
+    ediff: 1.0e-4
+    nelm: 1000
+    ismear: 0              # Si is a semiconductor → Gaussian smearing (default 1 is for metals)
+    sigma: 0.05
+    ispin: 1
+    ivdw: 12
+    isym: 0
+    ncore: 8
+    lreal: Auto
+    lcharg: false
+    lwave: false
+    kspacing: 0.30
+    kgamma: true
+    # task.bulk
+    ibrion: 2
+    isif: 3
+    nsw: 1000
+    ediffg: -5.0e-2
+    potim: 0.1
+    algo: Fast
+
+queue:
+  preset: auto             # 48/64 from qq availability, gam/std from gamma-only
+

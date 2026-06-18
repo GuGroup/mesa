@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.claude/
+__pycache__/
+*.py[cod]
+
+# Generated structure/inspection outputs from local skill smoke tests.
+RuO2_110_inspections/
+RuO2_110_terminations/
+RuO2_110_terminations_larger/

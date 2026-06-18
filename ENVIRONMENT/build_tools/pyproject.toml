@@ -1,0 +1,41 @@
+[project]
+name = "slabuilder"
+version = "0.1.0"
+description = "Slab + adsorbate structure construction engine for the build_tools skills (trimmed vendored slabuilder)"
+requires-python = "==3.11.*"
+dependencies = [
+    # Core chemistry
+    "pymatgen>=2024.0.0",
+    "ase>=3.23.0",
+    "mp-api>=0.43.0",
+    "rdkit>=2022.9.5",
+    # VCS dependencies used by slab/site generation backends.
+    "surfaxe @ git+https://github.com/SMTG-UCL/surfaxe.git@10d801d3f39a989245c3ef35ffb6ff5aa86309db",
+    "catkit @ git+https://github.com/kangmg/CatKit.git@56971a2baebf7845769581bb1ab08d15b5cc53bd",
+    "acat @ git+https://gitlab.com/asm-dtu/acat.git",
+    "autoadsorbate @ git+https://github.com/basf/autoadsorbate.git",
+    # Utils
+    "numpy>=1.26.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+# OPSIN chemical-name resolution: lets you pass an IUPAC/common adsorbate name
+# instead of a formula or SMILES. Also needs Java on PATH at runtime.
+opsin = [
+    "py2opsin>=1.2.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["slabuilder"]

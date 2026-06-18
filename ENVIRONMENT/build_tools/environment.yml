@@ -1,0 +1,22 @@
+# Shared mamba/conda env (`modeling`) for all .codex skills.
+#
+# slabuilder is vendored into this repo (./slabuilder), trimmed to just the
+# modules the skills use, so installing this project editable provides the
+# engine + its dependencies. No external slab_build checkout is needed.
+#
+#   mamba env create -f environment.yml           # first time
+#   mamba env update -f environment.yml --prune   # after edits
+#
+# Dependency versions are declared in pyproject.toml (single source of truth).
+# Optional extras: pip install -e ".[opsin]" (chemical-name resolution via
+# OPSIN, also needs Java on PATH), ".[dev]" (tests).
+name: modeling
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -e .

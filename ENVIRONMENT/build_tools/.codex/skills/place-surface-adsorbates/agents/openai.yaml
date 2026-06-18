@@ -1,0 +1,4 @@
+interface:
+  display_name: "Place Surface Adsorbates"
+  short_description: "Identify sites and place adsorbates"
+  default_prompt: "Use $place-surface-adsorbates to place top adsorption candidates for CO on a saved Pt(111) slab."

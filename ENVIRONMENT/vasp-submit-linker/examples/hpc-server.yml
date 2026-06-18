@@ -1,0 +1,47 @@
+trusted_roots:
+  - ~/runner/vasp_run
+
+default_project_root: ~/runner/vasp_run
+# Job directory name = job_uid. Default is a hyphen-free uuid token.
+job_uid_length: 10              # hex characters, no '-'
+job_dir_pattern: "{uuid}"
+# Want a readable prefix instead? e.g. job_dir_pattern: "{name}_{uuid}"
+
+# Direct POTCAR library root. The CLI maps this to VASP_PP_PATH only while
+# calling vasp-ase, so users do not need to export it in their shell.
+vasp_pp_path: /home/shared/programs/vasp/vasp_pp/newpot_PBE
+# Optional. Use "64" for directories like potpaw_PBE.64.
+vasp_pp_version: null
+
+# Optional extra environment variables for vasp-ase.
+vasp_ase_env: {}
+
+# NOTE: VASP/INCAR defaults (functional, encut, ismear, per-task ibrion/isif, ...)
+# are NOT configured here. They live with the agent skill at
+#   .codex/skills/vasp-job/defaults.yaml
+# The agent assembles vasp.parameters from that file and writes them explicitly
+# into the job spec; vasp-job passes them through to vasp-ase as-is.
+
+default_queue:
+  scheduler: sge
+  preset: auto
+
+# qq-style node availability command. A leading ~ is expanded; a bare name
+# (e.g. "qq") is resolved on PATH.
+queue_status_command: ~/runners/qq-wrapper
+auto_preset:
+  prefer: [64, 48]
+  node_core_ranges:
+    48:
+      - [1, 30]
+    64:
+      - [31, 40]
+
+# Root for resolving the relative submit_templates paths below (a leading ~ is
+# expanded). Must contain templates/sge/*.sh.
+template_root: ~/runner/vasp-submit-linker
+submit_templates:
+  preset48gam: templates/sge/preset48gam.sh
+  preset48std: templates/sge/preset48std.sh
+  preset64gam: templates/sge/preset64gam.sh
+  preset64std: templates/sge/preset64std.sh
