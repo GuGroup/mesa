@@ -1,0 +1,62 @@
+ENVIRONMENT/
+examples/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Build / dist
+build/
+dist/
+out/
+.next/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Test / coverage
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Data / local files
+*.sqlite3
+*.db
+data/
+tmp/
+temp/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Misc
+*.bak
+*.tmp
