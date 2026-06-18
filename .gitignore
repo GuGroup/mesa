@@ -18,9 +18,17 @@ Thumbs.db
 __pycache__/
 
 *.py[cod]
+*$py.class
 .venv/
 venv/
 env/
+.eggs/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
 .ipynb_checkpoints/
 
 # Node
