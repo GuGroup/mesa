@@ -1,0 +1,133 @@
+{
+  "status": "success",
+  "task_id": "TASK2",
+  "skill": "reaction_energy_evaluation",
+  "data": {
+    "reaction_type": "HER",
+    "step_column": "step",
+    "steps": [
+      "H+",
+      "*H",
+      "*+1/2H2"
+    ],
+    "catalysts": [
+      "NiCoO2",
+      "CoO",
+      "NiO"
+    ],
+    "ranking": [
+      {
+        "catalyst": "CoO",
+        "metric": "abs_dG_H*",
+        "score": 0.858184431,
+        "delta_g_h_ev": 0.858184431
+      },
+      {
+        "catalyst": "NiO",
+        "metric": "abs_dG_H*",
+        "score": 1.006094431,
+        "delta_g_h_ev": 1.006094431
+      },
+      {
+        "catalyst": "NiCoO2",
+        "metric": "abs_dG_H*",
+        "score": 1.155004431,
+        "delta_g_h_ev": 1.155004431
+      }
+    ],
+    "results": {
+      "NiCoO2": {
+        "mode": "HER",
+        "descriptor": "dG_H*",
+        "delta_g_h_ev": 1.155004431,
+        "score": 1.155004431,
+        "interpretation": "closer_to_zero_is_better",
+        "transitions": [
+          {
+            "label": "H+ -> *H",
+            "start": "H+",
+            "end": "*H",
+            "delta_g": 1.155004431
+          },
+          {
+            "label": "*H -> *+1/2H2",
+            "start": "*H",
+            "end": "*+1/2H2",
+            "delta_g": -1.155004431
+          }
+        ]
+      },
+      "CoO": {
+        "mode": "HER",
+        "descriptor": "dG_H*",
+        "delta_g_h_ev": 0.858184431,
+        "score": 0.858184431,
+        "interpretation": "closer_to_zero_is_better",
+        "transitions": [
+          {
+            "label": "H+ -> *H",
+            "start": "H+",
+            "end": "*H",
+            "delta_g": 0.858184431
+          },
+          {
+            "label": "*H -> *+1/2H2",
+            "start": "*H",
+            "end": "*+1/2H2",
+            "delta_g": -0.858184431
+          }
+        ]
+      },
+      "NiO": {
+        "mode": "HER",
+        "descriptor": "dG_H*",
+        "delta_g_h_ev": 1.006094431,
+        "score": 1.006094431,
+        "interpretation": "closer_to_zero_is_better",
+        "transitions": [
+          {
+            "label": "H+ -> *H",
+            "start": "H+",
+            "end": "*H",
+            "delta_g": 1.006094431
+          },
+          {
+            "label": "*H -> *+1/2H2",
+            "start": "*H",
+            "end": "*+1/2H2",
+            "delta_g": -1.006094431
+          }
+        ]
+      }
+    },
+    "experiment_comparison": {},
+    "warnings": [],
+    "markdown_report": "# HER Reaction Energy Evaluation\n\nStep column: `step`\n\n## Catalyst Ranking\n\n| Rank | Catalyst | dG_H* (eV) | abs(dG_H*) |\n|---:|---|---:|---:|\n| 1 | CoO | 0.858 | 0.858 |\n| 2 | NiO | 1.006 | 1.006 |\n| 3 | NiCoO2 | 1.155 | 1.155 |\n\n## Best Catalyst\n\n`CoO` is best by HER descriptor because `dG_H*` is closest to 0 eV.\n"
+  },
+  "artifacts": [],
+  "messages": [
+    "Evaluated 3 catalyst(s) for HER; best catalyst: CoO."
+  ],
+  "errors": [],
+  "provenance": {
+    "inputs": [
+      {
+        "type": "csv_path",
+        "path": "/home/undergraduate_user/codex/mesa/HER.csv"
+      },
+      {
+        "type": "input_data",
+        "keys": [
+          "csv_path",
+          "reaction_type"
+        ]
+      }
+    ],
+    "external_calls": [],
+    "generated_files": []
+  },
+  "next_action": {
+    "recommendation": "continue",
+    "reason": "Reaction energy evaluation completed."
+  }
+}

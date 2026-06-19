@@ -1,0 +1,127 @@
+{
+  "status": "success",
+  "task_id": "TASK1",
+  "skill": "experimental_information_extraction",
+  "data": {
+    "experiment_id": "EXP-NO3RR-001",
+    "raw_text_summary": "NiCoO2 catalyst showed 0.20 V overpotential for nitrate reduction to ammonia in 1 M KOH. The researcher expects Ni-Co synergy to lower the nitrate activation barrier compared with NiO.",
+    "materials": [
+      {
+        "label": "NiCoO2",
+        "role": "catalyst",
+        "source": "input.materials"
+      },
+      {
+        "label": "KOH",
+        "source": "raw_text.pattern"
+      },
+      {
+        "label": "NiO",
+        "source": "raw_text.pattern"
+      }
+    ],
+    "measurements": [
+      {
+        "property": "overpotential",
+        "value": 0.2,
+        "unit": "V",
+        "target_reaction": "NO3RR to NH3",
+        "measurement_id": "measurement_1",
+        "source": "input.measurements"
+      },
+      {
+        "measurement_id": "measurement_2",
+        "value": 0.2,
+        "unit": "V",
+        "source": "raw_text.pattern",
+        "text_span": "0.20 V"
+      },
+      {
+        "measurement_id": "measurement_3",
+        "value": 1.0,
+        "unit": "M",
+        "source": "raw_text.pattern",
+        "text_span": "1 M"
+      }
+    ],
+    "conditions": {
+      "electrolyte": "1 M KOH",
+      "reaction": "nitrate reduction reaction",
+      "product": "ammonia"
+    },
+    "hypotheses": [
+      {
+        "statement": "Ni-Co synergy lowers the nitrate activation barrier.",
+        "hypothesis_id": "hypothesis_1",
+        "source": "input.hypotheses",
+        "status": "unverified"
+      }
+    ],
+    "targets": [
+      "NO3RR activity",
+      "NH3 selectivity"
+    ],
+    "keywords": [
+      "activation",
+      "ammonia",
+      "barrier",
+      "catalyst",
+      "compared",
+      "expects",
+      "KOH",
+      "lower",
+      "NH3 selectivity",
+      "Ni-Co",
+      "NiCoO2",
+      "NiO",
+      "nitrate",
+      "NO3RR activity",
+      "overpotential",
+      "reduction",
+      "researcher",
+      "synergy"
+    ],
+    "uncertainties": [],
+    "extraction_quality": {
+      "score": 1.0,
+      "has_raw_text": true,
+      "material_count": 3,
+      "measurement_count": 3,
+      "hypothesis_count": 1
+    }
+  },
+  "artifacts": [],
+  "messages": [
+    "Extracted 3 material(s), 3 measurement(s), and 1 hypothesis record(s)."
+  ],
+  "errors": [],
+  "provenance": {
+    "inputs": [
+      {
+        "type": "input_data",
+        "keys": [
+          "conditions",
+          "experiment_id",
+          "hypotheses",
+          "materials",
+          "measurements",
+          "raw_text",
+          "targets"
+        ]
+      },
+      {
+        "type": "context",
+        "keys": [
+          "dry_run",
+          "workdir"
+        ]
+      }
+    ],
+    "external_calls": [],
+    "generated_files": []
+  },
+  "next_action": {
+    "recommendation": "continue",
+    "reason": "Experimental context extracted for downstream MESA tasks."
+  }
+}
