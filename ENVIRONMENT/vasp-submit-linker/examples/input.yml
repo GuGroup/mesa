@@ -4,7 +4,7 @@
 #
 # vasp-job does NOT fill defaults: vasp.parameters is written explicitly and
 # passed to vasp-ase as-is. The agent assembles it from the skill's
-# .codex/skills/vasp-job/defaults.yaml  (common + task.<task> + overrides).
+# skills/vasp-job/defaults.yaml  (common + task.<task> + overrides).
 # Run `vasp-job schema` for the accepted top-level fields.
 
 schema_version: 1
@@ -49,4 +49,3 @@ vasp:
 
 queue:
   preset: auto             # 48/64 from qq availability, gam/std from gamma-only
-

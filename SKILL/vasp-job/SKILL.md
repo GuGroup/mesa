@@ -24,7 +24,8 @@ code — read `error`, fix the spec, and retry.
 | `vasp-job prepare <spec>` | Write input files only. No qsub. Use to dry-run and inspect before submitting. |
 | `vasp-job submit <spec>` | Write input files and submit with `qsub`. Returns `job_uid` and `scheduler_id`. |
 | `vasp-job status <id>` | Live SGE status for one job (`running` / `finished` / `failed` / `unknown`). |
-| `vasp-job list [--limit N]` | Recent jobs (default 20), newest first, with summary metadata. |
+| `vasp-job list [--limit N]` | Recent jobs (default 20), newest first, with compact id/name/state fields. |
+| `vasp-job list --verbose` | Recent jobs with timestamps, preset, project, and `remote_dir`. Use only when those details are needed. |
 | `vasp-job show <id>` | Full stored metadata plus live status for one job. |
 
 `<spec>` is a file path, or `-` to read from stdin (`cat spec.yml | vasp-job submit -`).
@@ -141,7 +142,9 @@ your full parameters) is recorded in the job's `input.yml`.
    `{"ok": true, "job_uid": "...", "scheduler_id": "123456", "remote_dir": "..."}`.
    Keep the `job_uid` — it is the handle for everything after this.
 5. Track: `vasp-job status <job_uid>` for live state, or `vasp-job show <job_uid>`
-   for metadata + status. `vasp-job list` shows recent jobs across the account.
+   for metadata + status. `vasp-job list` is intentionally compact; use
+   `vasp-job list --verbose` only when timestamps, preset, project, or `remote_dir`
+   are needed.
 6. Results: finished jobs leave output files in `remote_dir` (`OUTCAR`,
    `OSZICAR`, `CONTCAR`, `vasprun.xml`, ...). Read them from there.
 
@@ -163,4 +166,4 @@ is neither in the queue nor has a completion marker yet — check again shortly.
 | `job_name must contain only ...` | Use letters, numbers, `.`, `_`, `-` only. |
 | `Unknown queue.preset` / `No free 48/64 nodes` | Use a valid preset, or retry `auto` later when nodes free up. |
 | `vasp-ase did not generate required file` | Server-side POTCAR/`vasp_pp_path` issue — report it to the user. |
-| `Unknown job_uid` | The id is wrong or the job index is on another root — check `vasp-job list`. |
+| `Unknown job_uid` | The id is wrong or the job index is on another root — check `vasp-job list`; use `vasp-job list --verbose` if you need roots or directories. |

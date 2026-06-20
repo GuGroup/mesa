@@ -19,8 +19,8 @@ Status: resolved in the current working tree.
    - Added `test/` and `tmp/` to `.gitignore`.
 
 4. Skill prompt assets now prefer the path-based POSCAR workflow.
-   - Updated `.codex/skills/vasp-job/agents/openai.yaml`.
-   - Updated `.codex/skills/vasp-job/examples/prompts.md`.
+   - Updated `skills/vasp-job/agents/openai.yaml`.
+   - Updated `skills/vasp-job/examples/prompts.md`.
    - Synchronized the installed copies under `/home/mesa/.codex/skills/vasp-job/`.
 
 5. The skill description no longer advertises a non-existent result fetch command.
@@ -38,7 +38,7 @@ Commands used:
 PYTHONPATH=src uv run --no-project --with pyyaml python -m unittest discover -s tests -v
 uv tool run --from mkdocs-material mkdocs build --strict
 vasp-job schema
-diff -q .codex/skills/vasp-job/SKILL.md /home/mesa/.codex/skills/vasp-job/SKILL.md
-diff -q .codex/skills/vasp-job/agents/openai.yaml /home/mesa/.codex/skills/vasp-job/agents/openai.yaml
-diff -q .codex/skills/vasp-job/examples/prompts.md /home/mesa/.codex/skills/vasp-job/examples/prompts.md
+diff -q skills/vasp-job/SKILL.md /home/mesa/.codex/skills/vasp-job/SKILL.md
+diff -q skills/vasp-job/agents/openai.yaml /home/mesa/.codex/skills/vasp-job/agents/openai.yaml
+diff -q skills/vasp-job/examples/prompts.md /home/mesa/.codex/skills/vasp-job/examples/prompts.md
 ```

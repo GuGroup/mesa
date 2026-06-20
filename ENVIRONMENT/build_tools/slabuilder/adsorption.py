@@ -1602,6 +1602,7 @@ def _build_manual_molecular_adsorbate(
 ) -> Atoms | None:
     # Manual construction for radicals
     manual_geometries: dict[str, Atoms] = {
+        # --- Original ---
         "OH": Atoms("OH", positions=[[0, 0, 0], [0, 0, 0.97]]),
         "OOH": Atoms("OOH", positions=[[0, 0, 0], [0, 0, 1.33], [0.95, 0, 1.85]]),
         "SH": Atoms("SH", positions=[[0, 0, 0], [0, 0, 1.34]]),
@@ -1612,6 +1613,181 @@ def _build_manual_molecular_adsorbate(
             [-0.89, -0.51, 0.63],
         ]),
         "CH2": Atoms("CH2", positions=[[0, 0, 0], [0.63, 0, 0.88], [-0.63, 0, 0.88]]),
+        # --- NRR intermediates ---
+        # NH2: amino radical, N binds, 2H up (sp3-like, ~107° H-N-H)
+        "NH2": Atoms("NH2", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.48, 0.0, 0.84],  # H
+            [-0.48, 0.0, 0.84], # H
+        ]),
+        # NNH: diazenyl radical *N=N-H, terminal N binds, N=N 1.25 Å, N-H 1.02 Å
+        "NNH": Atoms("NNH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding, terminal)
+            [0.0, 0.0, 1.25],   # N
+            [0.0, 0.87, 1.72],  # H
+        ]),
+        # NNH2: *N=NH2, terminal N binds, N=N 1.25 Å
+        "NNH2": Atoms("NNH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding, terminal)
+            [0.0, 0.0, 1.25],    # N
+            [0.48, 0.0, 1.85],   # H
+            [-0.48, 0.0, 1.85],  # H
+        ]),
+        # NHNH: diazene HN=NH, one N binds (η¹), N=N 1.25 Å, N-H 1.02 Å
+        "NHNH": Atoms("NHNH", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 0.0, 1.25],    # N
+            [-0.87, 0.0, -0.47], # H on binding N (pointing down/away)
+            [0.87, 0.0, 1.72],   # H on remote N
+        ]),
+        # NHNH2: *NH-NH2, N-N 1.45 Å (single bond)
+        "NHNH2": Atoms("NHNH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding, NH end)
+            [0.0, 0.0, 1.45],    # N (NH2)
+            [-0.87, 0.0, -0.47], # H on binding N
+            [0.48, 0.0, 2.09],   # H on NH2
+            [-0.48, 0.0, 2.09],  # H on NH2
+        ]),
+        # NH2NH2: hydrazine *NH2-NH2, N-N 1.45 Å
+        "NH2NH2": Atoms("NH2NH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 0.0, 1.45],    # N
+            [0.48, 0.83, -0.36], # H on binding N
+            [-0.48, -0.83, -0.36], # H on binding N
+            [0.48, 0.83, 1.81],  # H on remote N
+            [-0.48, -0.83, 1.81],  # H on remote N
+        ]),
+        # --- NOXRR intermediates ---
+        # NO2: nitrogen dioxide, N binds, N=O 1.20 Å, O-N-O ~134°
+        "NO2": Atoms("NO2", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.98, 0.0, 0.72],  # O
+            [-0.98, 0.0, 0.72], # O
+        ]),
+        # NO3: nitrate, N binds, N-O ~1.26 Å, planar
+        "NO3": Atoms("NO3", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 1.09, 0.63],   # O
+            [0.95, -0.55, 0.63], # O
+            [-0.95, -0.55, 0.63],# O
+        ]),
+        # NOH: *N-OH, N binds, N-O 1.40 Å, O-H 0.97 Å
+        "NOH": Atoms("NOH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.0, 0.0, 1.40],   # O
+            [0.0, 0.78, 1.87],  # H
+        ]),
+        # HNO: nitroxyl *NH=O, N binds, N=O 1.21 Å, N-H 1.06 Å
+        "HNO": Atoms("HNO", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.97, 0.0, 0.70],  # O
+            [-0.53, 0.0, -0.87],# H (pointing down)
+        ]),
+        # NHOH: *NH-OH, N binds, N-O 1.40 Å
+        "NHOH": Atoms("NHOH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.0, 0.0, 1.40],   # O
+            [-0.87, 0.0, -0.47],# H on N
+            [0.78, 0.0, 1.87],  # H on O
+        ]),
+        # ONO: O-bound nitrite *O-N=O, O binds
+        "ONO": Atoms("ONO", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.40],   # N
+            [0.0, 0.98, 2.12],  # O
+        ]),
+        # --- CO2RR intermediates ---
+        # COOH: carboxyl *C(=O)OH, C binds, C=O 1.21 Å, C-O 1.36 Å
+        "COOH": Atoms("COOH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [-0.87, 0.0, 0.70],  # O (=O)
+            [0.87, 0.0, 0.70],   # O (-OH)
+            [1.50, 0.0, 1.30],   # H
+        ]),
+        # OCHO: formate *O-CH=O (O-bound), O binds
+        "OCHO": Atoms("OCHO", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.36],   # C
+            [0.0, 0.94, 1.95],  # H on C
+            [0.0, -0.87, 2.06], # O (=O)
+        ]),
+        # CHO: formyl *CH=O, C binds, C=O 1.21 Å, C-H 1.10 Å
+        "CHO": Atoms("CHO", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.87, 0.0, 0.70],  # O
+            [-0.55, 0.0, -0.87],# H
+        ]),
+        # COH: *C-OH, C binds, C-O 1.36 Å
+        "COH": Atoms("COH", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.0, 0.0, 1.36],   # O
+            [0.0, 0.78, 1.87],  # H
+        ]),
+        # CHOH: *CH-OH, C binds
+        "CHOH": Atoms("CHOH", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [-0.60, 0.0, -0.87],# H on C
+            [0.68, 0.0, 1.16],  # O
+            [1.30, 0.0, 1.76],  # H on O
+        ]),
+        # CH2OH: hydroxymethyl *CH2-OH, C binds
+        "CH2OH": Atoms("CH2OH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.52, 0.89, -0.36], # H
+            [0.52, -0.89, -0.36],# H
+            [0.0, 0.0, 1.43],    # O
+            [0.0, 0.78, 1.90],   # H on O
+        ]),
+        # OCH3: methoxy *O-CH3, O binds, O-C 1.43 Å
+        "OCH3": Atoms("OCH3", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.43],   # C
+            [0.0, 1.03, 1.93],  # H
+            [0.89, -0.51, 1.93],# H
+            [-0.89, -0.51, 1.93],# H
+        ]),
+        # CH3O: methoxy alias (same geometry as OCH3)
+        "CH3O": Atoms("OCH3", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.43],   # C
+            [0.0, 1.03, 1.93],  # H
+            [0.89, -0.51, 1.93],# H
+            [-0.89, -0.51, 1.93],# H
+        ]),
+        # --- C2 CO2RR intermediates ---
+        # OCCO: *OC-CO* (C-bound, oxalate-like), C-C 1.54 Å, C=O 1.21 Å
+        "OCCO": Atoms("OCCO", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.0, 0.0, 1.54],   # C
+            [-0.87, 0.0, -0.70],# O on C1
+            [0.87, 0.0, 2.24],  # O on C2
+        ]),
+        # OCCOH: *OC-C(OH), C-bound
+        "OCCOH": Atoms("OCCOH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.0, 0.0, 1.54],    # C
+            [-0.87, 0.0, -0.70], # O on C1 (=O)
+            [0.87, 0.0, 2.07],   # O on C2 (-OH)
+            [1.50, 0.0, 2.67],   # H on OH
+        ]),
+        # COCHO: *CO-CHO (glyoxal-like), C-bound
+        "COCHO": Atoms("COCHO", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.0, 0.0, 1.54],    # C
+            [-0.87, 0.0, -0.70], # O on C1 (=O)
+            [0.87, 0.0, 2.24],   # O on C2 (=O)
+            [-0.55, 0.0, 2.41],  # H on C2
+        ]),
+        # --- AOR intermediates ---
+        # CH3CO: acetyl *C(=O)CH3, C binds
+        "CH3CO": Atoms("CH3CO", positions=[
+            [0.0, 0.0, 0.0],     # C (binding, carbonyl)
+            [0.87, 0.0, 0.70],   # O (=O)
+            [0.0, 0.0, -1.54],   # C (methyl)
+            [0.0, 1.03, -2.04],  # H
+            [0.89, -0.51, -2.04],# H
+            [-0.89, -0.51, -2.04],# H
+        ]),
     }
     if adsorbate in manual_geometries:
         return _set_adsorbate_build_info(

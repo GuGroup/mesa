@@ -26,7 +26,7 @@ class JobsContractTests(unittest.TestCase):
             self.assertEqual(len(roots), 1)
             self.assertEqual(roots[0].name, "job_index")
 
-    def test_list_jobs_orders_recent_first_and_summarizes(self) -> None:
+    def test_list_jobs_orders_recent_first_and_uses_compact_summary(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             config = {"trusted_roots": [str(root)], "default_project_root": str(root)}
@@ -49,10 +49,32 @@ class JobsContractTests(unittest.TestCase):
             summary = result["jobs"][0]
             self.assertEqual(summary["job_name"], "new")
             self.assertEqual(summary["scheduler_id"], "222")
-            self.assertEqual(summary["preset"], "preset48gam")
-            # internal/bulky fields are not leaked into the summary
+            self.assertEqual(summary["state"], "submitted")
+            self.assertEqual(summary["task"], None)
+            # verbose/bulky fields are not leaked into the default summary
+            self.assertNotIn("preset", summary)
+            self.assertNotIn("remote_dir", summary)
+            self.assertNotIn("submitted_at", summary)
             self.assertNotIn("index_path", summary)
             self.assertNotIn("_sort_key", summary)
+
+    def test_list_jobs_verbose_includes_detail_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = {"trusted_roots": [str(root)], "default_project_root": str(root)}
+            write_index_entry(
+                root, "run_job", job_name="run", state="submitted", task="slab",
+                created_at="2026-06-10T00:00:00+00:00", submitted_at="2026-06-10T00:01:00+00:00",
+                scheduler_id="222", preset="preset48gam", project="screening",
+            )
+
+            result = list_jobs(config, limit=10, verbose=True)
+
+            summary = result["jobs"][0]
+            self.assertEqual(summary["preset"], "preset48gam")
+            self.assertEqual(summary["project"], "screening")
+            self.assertEqual(summary["submitted_at"], "2026-06-10T00:01:00+00:00")
+            self.assertIn("remote_dir", summary)
 
     def test_list_jobs_respects_limit(self) -> None:
         with TemporaryDirectory() as tmp:

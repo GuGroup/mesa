@@ -23,9 +23,9 @@
 - `slabuilder/adsorption.py`: adsorption site detection 및 adsorbate placement
 - `slabuilder/site_map.py`, `structure_understanding.py`: saved structure/site inspection
 - `slabuilder/cell_shape.py`: 2D cell transform/scoring utilities
-- `.codex/skills/build-slab-models`: clean slab skill
-- `.codex/skills/place-surface-adsorbates`: adsorbate placement skill
-- `.codex/skills/inspect-surface-sites`: read-only inspection skill
+- `skills/build-slab-models`: clean slab skill
+- `skills/place-surface-adsorbates`: adsorbate placement skill
+- `skills/inspect-surface-sites`: read-only inspection skill
 
 현재 저장소에 없는 것:
 
@@ -123,12 +123,12 @@
 
 새 skill이 사용할 스크립트는 두 개로 분리하는 것이 좋다.
 
-- `.codex/skills/build-heterostructures/scripts/screen_interfaces.py`
+- `skills/build-heterostructures/scripts/screen_interfaces.py`
   - 입력: `--substrate-formula` 또는 `--substrate-mpid`, `--film-formula` 또는 `--film-mpid`
   - 입력: `--max-miller`, `--max-matches`, `--max-area`, `--lowest/--all-matches`
   - 출력: JSON table 및 `screen_results.json`
 
-- `.codex/skills/build-heterostructures/scripts/build_heterostructure.py`
+- `skills/build-heterostructures/scripts/build_heterostructure.py`
   - 입력: substrate/film formula or MP-ID
   - 입력: `--substrate-miller h k l`, `--film-miller h k l`
   - 선택 입력: `--screen-results`, `--screen-index`
@@ -163,7 +163,7 @@ skill 이름 후보:
 트리:
 
 ```text
-.codex/skills/build-heterostructures/
+skills/build-heterostructures/
   SKILL.md
   scripts/
     screen_interfaces.py
@@ -230,8 +230,8 @@ RuO2/Ru interface를 max_miller=2로 screen하고 가장 compact한 low-strain �
 3. interface metadata와 VASP/extxyz export는 현재 `slabuilder/utils.py`의 POSCAR/export helper와 맞춘다.
 4. `scripts/screen_interfaces.py`를 만든다.
 5. `scripts/build_heterostructure.py`를 만든다.
-6. `.codex/skills/build-heterostructures/SKILL.md`를 작성한다.
-7. 설치된 skill copy(`/Users/mingi/.codex/skills`)에도 반영한다.
+6. `skills/build-heterostructures/SKILL.md`를 작성한다.
+7. `scripts/sync_codex_skills.py`로 설치된 Codex skill symlink(`/Users/mingi/.codex/skills`)에도 반영한다.
 8. 단위 테스트를 추가한다.
 9. smoke test를 수행한다.
 

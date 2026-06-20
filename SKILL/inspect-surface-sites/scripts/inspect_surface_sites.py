@@ -38,6 +38,17 @@ def load_record(path: str | None) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
 
 
+def apply_record_tags(atoms, record: dict[str, Any]):
+    tags = record.get("atom_tags")
+    if not isinstance(tags, list) or len(tags) != len(atoms):
+        return atoms
+    try:
+        atoms.set_tags([int(tag) for tag in tags])
+    except Exception:
+        pass
+    return atoms
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Read-only slabuilder site and fragment inspection.",
@@ -86,6 +97,7 @@ def main() -> int:
     structure_path = Path(args.structure).expanduser().resolve()
     atoms = load_atoms(structure_path)
     record = load_record(args.metadata)
+    atoms = apply_record_tags(atoms, record)
     structure_id = args.structure_id or record.get("id") or structure_path.stem
 
     output: dict[str, Any] = {

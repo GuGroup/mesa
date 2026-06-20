@@ -65,9 +65,9 @@ def main() -> int:
     parser.add_argument("--entry-index", type=int, default=0, help="Bulk candidate index after slabuilder sorting.")
     parser.add_argument("--backend", choices=["auto", "catkit", "pymatgen", "surfaxe"], default="auto", help="Slab generation backend.")
     parser.add_argument("--prefer-symmetry", action="store_true", help="When backend is auto, prefer pymatgen symmetry/non-polar filtering.")
-    parser.add_argument("--target-n-atoms", type=int, default=100, help="Target total atom count used by automatic layer/supercell selection.")
-    parser.add_argument("--target-lateral-size", type=float, default=10.0, help="Target a/b lateral lengths in Angstrom.")
-    parser.add_argument("--target-slab-thickness", type=float, default=8.0, help="Target material slab thickness in Angstrom, excluding vacuum.")
+    parser.add_argument("--target-n-atoms", type=int, default=60, help="Target total atom count used by automatic layer/supercell selection.")
+    parser.add_argument("--target-lateral-size", type=float, default=7.5, help="Target a/b lateral lengths in Angstrom.")
+    parser.add_argument("--target-slab-thickness", type=float, default=6.0, help="Target material slab thickness in Angstrom, excluding vacuum.")
     parser.add_argument("--vacuum", type=float, default=15.0, help="Total vacuum thickness in Angstrom.")
     parser.add_argument("--supercell-na", type=int, help="Explicit diagonal supercell repeat along the first surface lattice vector.")
     parser.add_argument("--supercell-nb", type=int, help="Explicit diagonal supercell repeat along the second surface lattice vector.")
@@ -75,17 +75,18 @@ def main() -> int:
     parser.add_argument("--fix-layers", type=int, help="Fix an explicit number of bottom layers (overrides --fix-ratio).")
     parser.add_argument("--fix-ratio", type=float, help="Fraction (0..1) of material thickness fixed from the bottom, c-axis fractional (default 0.4).")
     parser.add_argument("--termination", type=int, default=0, help="Termination index to save when --all-terminations is not set.")
-    parser.add_argument("--all-terminations", action="store_true", help="Save every generated termination instead of only --termination.")
+    parser.add_argument("--all-terminations", action="store_true", help="Advanced/diagnostic: save every generated termination instead of only --termination.")
     parser.add_argument("--allow-nonstoichiometric", action="store_true", help="Allow non-stoichiometric surface terminations such as O-rich or O-poor oxide slabs.")
-    parser.add_argument("--max-atoms", type=int, default=200, help="Maximum atom count accepted by validation.")
+    parser.add_argument("--write-extxyz", action="store_true", help="Also write extxyz files and POSCAR/extxyz index mapping metadata.")
+    parser.add_argument("--max-atoms", type=int, default=120, help="Maximum atom count accepted by validation.")
     parser.add_argument("--min-distance", type=float, default=0.5, help="Minimum interatomic distance threshold for validation in Angstrom.")
-    parser.add_argument("--outdir", default="slabuilder_outputs/slabs", help="Output directory for extxyz, POSCAR, and metadata files.")
+    parser.add_argument("--outdir", default="slabuilder_outputs/slabs", help="Output directory for POSCAR and metadata files.")
     args = parser.parse_args()
 
     try:
         from slabuilder import fetch_bulk_structures, generate_slab
         from slabuilder.structure_understanding import validate_structure_packet
-        from slabuilder.utils import save_structure, vasp_export_metadata
+        from slabuilder.utils import save_structure
     except Exception as exc:
         raise SystemExit(
             "Could not import slabuilder. Install it in the active environment. "
@@ -159,7 +160,6 @@ def main() -> int:
     for term_index, result, stoich in filtered:
         atoms = result.ase_atoms
         stem = safe_name(f"{entry.formula}_{entry.mpid}_{hkl}_term{term_index}")
-        extxyz_path = save_structure(atoms, outdir / f"{stem}.extxyz", fmt="extxyz")
         poscar_path = save_structure(atoms, outdir / f"{stem}_POSCAR", fmt="poscar")
         validation = validate_structure_packet(atoms, min_distance=args.min_distance, max_atoms=args.max_atoms)
         metadata = {
@@ -185,11 +185,15 @@ def main() -> int:
             },
             "validation": validation,
             "paths": {
-                "extxyz": str(extxyz_path),
                 "poscar": str(poscar_path),
             },
-            "vasp_export": vasp_export_metadata(atoms),
         }
+        if args.write_extxyz:
+            from slabuilder.utils import vasp_export_metadata
+
+            extxyz_path = save_structure(atoms, outdir / f"{stem}.extxyz", fmt="extxyz")
+            metadata["paths"]["extxyz"] = str(extxyz_path)
+            metadata["vasp_export"] = vasp_export_metadata(atoms)
         meta_path = outdir / f"{stem}.metadata.json"
         meta_path.write_text(json.dumps(metadata, indent=2, default=json_default))
         metadata["paths"]["metadata"] = str(meta_path)

@@ -17,7 +17,7 @@ Minimal required options:
 
 ```bash
 mamba run -n modeling python scripts/inspect_surface_sites.py \
-  --structure structures/Pt_111_CO/site0.extxyz
+  --structure structures/Pt_111_CO/site0_top_POSCAR.vasp
 ```
 
 Full option example:
@@ -28,11 +28,11 @@ inspection run. Selection-specific options that do not match the chosen
 
 ```bash
 mamba run -n modeling python scripts/inspect_surface_sites.py \
-  --structure structures/Pt_111_CO/site0.extxyz \
+  --structure structures/Pt_111_CO/site0_top_POSCAR.vasp \
   --metadata structures/Pt_111_CO/site0.metadata.json \
   --structure-id Pt111_CO_site0 \
   --min-distance 0.5 \
-  --max-atoms 200 \
+  --max-atoms 120 \
   --target-adsorbate CO \
   --site-backend acat \
   --max-site-distance 3.5 \

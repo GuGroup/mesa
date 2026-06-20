@@ -30,6 +30,16 @@ def safe_name(text: str) -> str:
     return text.strip("_") or "structure"
 
 
+def json_info(atoms, key: str, default: Any = None) -> Any:
+    raw = atoms.info.get(key)
+    if raw is None:
+        return default
+    try:
+        return json.loads(raw)
+    except Exception:
+        return default
+
+
 def load_atoms(path: Path):
     from ase.io import read
 
@@ -43,20 +53,21 @@ def main() -> int:
         description="Identify sites and place adsorbates with slabuilder.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--slab", required=True, help="Parent slab file, preferably extxyz.")
+    parser.add_argument("--slab", required=True, help="Parent slab file, usually POSCAR/VASP.")
     parser.add_argument("--adsorbate", required=True, help='Adsorbate label, name, or "smiles:<SMILES>".')
     parser.add_argument("--max-sites", type=int, default=3, help="Maximum adsorption-site candidates to place.")
     parser.add_argument("--height", type=float, help="Optional adsorbate anchor height above the site in Angstrom.")
     parser.add_argument("--backend", default="auto", choices=["auto", "acat", "catkit", "pymatgen"], help="Site-identification backend.")
-    parser.add_argument("--max-atoms", type=int, default=200, help="Maximum atom count accepted by validation.")
+    parser.add_argument("--write-extxyz", action="store_true", help="Also write extxyz files and POSCAR/extxyz index mapping metadata.")
+    parser.add_argument("--max-atoms", type=int, default=120, help="Maximum atom count accepted by validation.")
     parser.add_argument("--min-distance", type=float, default=0.5, help="Minimum interatomic distance threshold for validation in Angstrom.")
-    parser.add_argument("--outdir", default="slabuilder_outputs/adsorbates", help="Output directory for extxyz, POSCAR, and metadata files.")
+    parser.add_argument("--outdir", default="slabuilder_outputs/adsorbates", help="Output directory for POSCAR and metadata files.")
     args = parser.parse_args()
 
     try:
         from slabuilder import generate_all_adsorption_structures
         from slabuilder.structure_understanding import analyze_surface_sites_packet, validate_structure_packet
-        from slabuilder.utils import save_structure, vasp_export_metadata
+        from slabuilder.utils import save_structure
     except Exception as exc:
         raise SystemExit(
             "Could not import slabuilder. Install it in the active environment. "
@@ -82,7 +93,6 @@ def main() -> int:
     stem_base = safe_name(f"{slab_path.stem}_{args.adsorbate}")
     for index, (site, atoms) in enumerate(candidates):
         stem = f"{stem_base}_site{index}_{safe_name(site.site_type)}"
-        extxyz_path = save_structure(atoms, outdir / f"{stem}.extxyz", fmt="extxyz")
         poscar_path = save_structure(atoms, outdir / f"{stem}_POSCAR", fmt="poscar")
         validation = validate_structure_packet(atoms, min_distance=args.min_distance, max_atoms=args.max_atoms)
         site_graph = analyze_surface_sites_packet(
@@ -107,6 +117,10 @@ def main() -> int:
                 "validation_notes": site.validation_notes,
             },
             "n_atoms": len(atoms),
+            "slab_atom_count": int(atoms.info.get("slab_atom_count", 0) or 0),
+            "adsorbate_atom_count": int(atoms.info.get("adsorbate_atom_count", 0) or 0),
+            "adsorption_site_indices": atoms.info.get("adsorption_site_indices"),
+            "adsorption_site_atom_count": int(atoms.info.get("adsorption_site_atom_count", 0) or 0),
             "validation": validation,
             "site_graph_summary": {
                 "backend": site_graph.get("backend"),
@@ -128,12 +142,23 @@ def main() -> int:
                 ]
                 if atoms.info.get(key) is not None
             },
+            "source_site": json_info(atoms, "source_site_json", default={}),
             "paths": {
-                "extxyz": str(extxyz_path),
                 "poscar": str(poscar_path),
             },
-            "vasp_export": vasp_export_metadata(atoms),
         }
+        adsorbate_metadata = json_info(atoms, "adsorbate_metadata_json", default={})
+        if adsorbate_metadata:
+            metadata["adsorbate_metadata"].update(adsorbate_metadata)
+        tags = atoms.get_tags().astype(int).tolist() if "tags" in getattr(atoms, "arrays", {}) else []
+        if tags:
+            metadata["atom_tags"] = tags
+        if args.write_extxyz:
+            from slabuilder.utils import vasp_export_metadata
+
+            extxyz_path = save_structure(atoms, outdir / f"{stem}.extxyz", fmt="extxyz")
+            metadata["paths"]["extxyz"] = str(extxyz_path)
+            metadata["vasp_export"] = vasp_export_metadata(atoms)
         meta_path = outdir / f"{stem}.metadata.json"
         meta_path.write_text(json.dumps(metadata, indent=2, default=json_default))
         metadata["paths"]["metadata"] = str(meta_path)
