@@ -1,4 +1,0 @@
-interface:
-  display_name: "Reaction Pathway Balancing"
-  short_description: "Balance electrochemical CHON pathways"
-  default_prompt: "Use $reaction-pathway-balancing to balance an electrochemical CHON reaction pathway and return state metadata with slab normalization."

@@ -19,12 +19,13 @@ _apply_numpy_compat()
 
 from slabuilder.fetch_bulk import fetch_bulk_structures, BulkEntry
 from slabuilder.slab_gen import SlabResult, generate_slab
-from slabuilder.adsorption import generate_all_adsorption_structures
+from slabuilder.adsorption import build_adsorbate_atoms, generate_all_adsorption_structures
 
 __all__ = [
     "fetch_bulk_structures",
     "BulkEntry",
     "SlabResult",
     "generate_slab",
+    "build_adsorbate_atoms",
     "generate_all_adsorption_structures",
 ]

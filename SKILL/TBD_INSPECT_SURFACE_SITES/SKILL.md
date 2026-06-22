@@ -9,6 +9,11 @@ description: Read-only inspection of slabuilder structures, adsorption sites, fr
 
 Use this skill for read-only structural understanding. It may propose atom groups, fragments, site rows, neighbor edges, and local transform candidates, but it must not create new structures, place adsorbates, move atoms, or submit calculations.
 
+In `surface-reaction-modeling-workflow`, use this as the site-policy gate
+between clean slab selection and adsorbate placement when the surface exposes
+multiple species, multiple site types, existing adsorbates, or possible
+diffusion/dissociation moves.
+
 ## Quick Start
 
 Script paths are relative to this skill directory.
@@ -84,9 +89,13 @@ mamba run -n modeling python scripts/inspect_surface_sites.py \
 ## Workflow
 
 1. Identify the structure file and optional metadata JSON.
-2. Analyze structure packet and validation checks.
-3. Inspect requested atom selection, fragments, site graph, or local transform proposal.
-4. Report bounded JSON/tables with structure id, kind, tags, quality flags, fragments, occupied/current site, nearby site graph, and warnings.
+2. Confirm whether the structure is a clean slab or adsorbed structure, and
+   record the selected termination when metadata provides it.
+3. Analyze structure packet and validation checks.
+4. Inspect requested atom selection, fragments, site graph, or local transform proposal.
+5. Report bounded JSON/tables with structure id, kind, termination when known,
+   tags, quality flags, fragments, occupied/current site, nearby site graph, and
+   warnings.
 
 Keep site outputs bounded by `--max-sites`, `--max-edges`,
 `--neighbor-shell`, and `--max-site-distance` unless the user requests a wider

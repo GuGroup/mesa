@@ -11,6 +11,10 @@ Use this skill to generate clean slabs only. Stop at validated slab files and me
 
 The `slabuilder` engine this skill drives is vendored in this repo (`./slabuilder`) and installed with the project, so no external checkout is required.
 
+For end-to-end surface reaction modeling, use this skill as the slab gate in
+`surface-reaction-modeling-workflow`: do not place adsorbates until the bulk,
+Miller index, termination, and validation status are explicit.
+
 ## Prerequisite
 
 Bulk structures are fetched from the Materials Project, so an API key must be set as the `MP_API_KEY` or `PMG_MAPI_KEY` environment variable (or in a `.env` file in the working directory). Generation fails immediately without it.
@@ -94,9 +98,15 @@ mamba run -n modeling python scripts/build_slab_model.py \
 1. Confirm material, Miller index, and DFT-readiness policy.
 2. Fetch/select the bulk. Use a specific MP id when supplied; otherwise select the lowest energy-above-hull candidate returned by slabuilder.
 3. Generate compact slabs with target-based sizing.
-4. Save exactly one selected termination as `POSCAR` and JSON metadata unless the user explicitly requests broader enumeration.
-5. Validate atom count, cell sanity, minimum distance, tags, and metadata.
-6. Report MP id, Miller index, termination, backend, atom count, lateral lengths, slab thickness, vacuum, fixed atom count, validation status, and output paths.
+4. Screen terminations before selection when the surface is multicomponent,
+   oxide, nitride, oxynitride, carbide, sulfide, perovskite, polar, or otherwise
+   chemically ambiguous. Use `--all-terminations` and inspect
+   `termination_summary.json`.
+5. Save exactly one selected termination as `POSCAR` and JSON metadata only
+   after a single safe candidate exists or the user explicitly chooses
+   `--termination N`.
+6. Validate atom count, cell sanity, minimum distance, tags, and metadata.
+7. Report MP id, Miller index, termination, backend, atom count, lateral lengths, slab thickness, vacuum, fixed atom count, validation status, warnings, and output paths.
 
 ## Defaults
 
@@ -105,15 +115,31 @@ mamba run -n modeling python scripts/build_slab_model.py \
 - Leave `backend=auto` unless the task requires `catkit`, `pymatgen`, or `surfaxe`.
 - Prefer compact, square-like in-plane cells. Slabuilder estimates an appropriate 2D copy count from the initial surface unit cell's area and atom count, then scores non-diagonal 2D transforms for near-90° angle, similar a/b lengths, target side length/area, and atom-count control. In CatKit workflows this scoring is repeated against the actual CatKit surface cell before writing POSCAR, so an estimator-good matrix that makes an oblique final cell should be rejected when a better square-like alternative is available.
 - Bottom fixing defaults to `--fix-ratio 0.4`: the bottom 40% of the slab's material thickness is fixed, measured in c-axis fractional coordinates (tilt-safe, independent of added vacuum). Change the fraction with `--fix-ratio`, or pass `--fix-layers N` to fix an explicit layer count instead (overrides the ratio).
-- Save one termination with `--termination N` (default 0). Do not use `--all-terminations` unless the user explicitly asks to enumerate surfaces.
+- Save one termination with `--termination N` only after checking whether more
+  than one generated termination exists. For ambiguous surfaces, run
+  `--all-terminations` first and require an explicit choice when
+  `recommended_termination_candidates` has multiple values or
+  `selection_warnings` is non-empty.
 - Save POSCAR and metadata by default. Add `--write-extxyz` only when an extxyz artifact or POSCAR/extxyz index map is needed.
 - Save only stoichiometric terminations by default. In the CatKit backend this uses CatKit's `stoich` layer mode; `--allow-nonstoichiometric` switches CatKit to `trim` so O-rich/O-poor or reconstructed surface compositions can be saved intentionally.
 - Prefer automatic layer selection. Use explicit `--n-layers`, `--supercell-na`, or `--supercell-nb` only when requested or needed.
 - Select the bulk candidate with `--entry-index` (default 0) after `--max-results` fetches; use `--search-mode` / a `mp-…` id for exact lookups.
 - Ask before generation when bulk candidate, termination, or atom-count policy is scientifically ambiguous.
 
+## Handoff Contract
+
+Before handing a slab to `inspect-surface-sites`, `place-surface-adsorbates`, or
+`vasp-job`, have:
+
+- selected MP id / bulk candidate;
+- Miller index;
+- selected termination index;
+- `termination_summary.json` for ambiguous surfaces;
+- clean slab `POSCAR` and metadata;
+- validation status and warnings.
+
 ## Boundaries
 
 - Do not place adsorbates in this skill.
-- Do not submit MLIP/VASP calculations in this skill.
+- Do not submit calculation jobs in this skill.
 - Do not claim adsorption energies, surface energies, or reaction barriers from generated structures alone.

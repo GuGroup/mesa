@@ -1,9 +1,4 @@
----
-name: reaction-pathway-balancing
-description: Convert reaction pathway strings into balanced reaction metadata for electrochemical CHON systems. Use when Codex needs to parse, validate, or balance electrochemical reaction pathways for downstream VASP structure generation, calculation orchestration, or energy diagram construction.
----
-
-# Reaction Pathway Balancing Skill
+Reaction Pathway Balancing Skill
 
 Purpose
 

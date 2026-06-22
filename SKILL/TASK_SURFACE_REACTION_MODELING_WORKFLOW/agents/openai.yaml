@@ -1,0 +1,4 @@
+interface:
+  display_name: "Surface Reaction Modeling Workflow"
+  short_description: "Gate surface modeling skills before VASP"
+  default_prompt: "Use $surface-reaction-modeling-workflow to select slab terminations, adsorption sites, and gas references before VASP; default actual calculations to refinement settings and use screening only if I explicitly ask for quick comparison."

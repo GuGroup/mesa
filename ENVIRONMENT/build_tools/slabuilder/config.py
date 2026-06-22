@@ -16,7 +16,7 @@ BACKEND_SYMMETRY: str = "pymatgen"
 
 # Adsorbate classification and chemistry defaults.
 CLOSED_SHELL_ADSORBATES: frozenset[str] = frozenset(
-    ["CO", "H2O", "CO2", "CH4", "NH3", "N2", "O2",
+    ["CO", "H2", "H2O", "CO2", "CH4", "NH3", "N2", "O2",
      # CO2RR closed-shell intermediates
      "HCOOH", "CH2O", "H2CO", "CH3OH", "C2H5OH",
      # NRR / NOXRR closed-shell
@@ -127,6 +127,7 @@ ADSORBATE_BINDING_ATOMS: dict[str, str] = {
     "NO": "N",
     "CO2": "C",
     "N2": "N",
+    "H2": "H",
     "O2": "O",
     "H2O": "O",
     "NH3": "N",
@@ -208,6 +209,7 @@ SITE_PRIORITY: dict[str, list[str]] = {
     "C": ["fcc_hollow", "hcp_hollow", "bridge", "top"],
     "S": ["fcc_hollow", "hcp_hollow", "bridge", "top"],
     "H": ["top", "bridge", "fcc_hollow"],
+    "H2": ["top", "bridge", "fcc_hollow"],
     "CO": ["top", "bridge"],
     "H2O": ["top"],
     "NH3": ["top"],
@@ -272,6 +274,7 @@ DEFAULT_BOND_HEIGHT: dict[str, float] = {
     "C": 2.0,
     "S": 2.2,
     "H": 1.6,
+    "H2": 1.6,
     "CO": 2.0,
     "H2O": 2.0,
     "OH": 1.9,

@@ -21,13 +21,17 @@ def composition_symbols(structure: Structure) -> set[str]:
 class BackendPolicy:
     """Resolve slab generation backend from explicit user intent and chemistry."""
 
-    oxide_nitride_backend: Backend = "surfaxe"
+    oxide_backend: Backend = "surfaxe"
     default_backend: Backend = "catkit"
     symmetry_backend: Backend = "pymatgen"
 
-    def is_oxide_or_nitride_like(self, structure: Structure) -> bool:
+    def is_oxide_like(self, structure: Structure) -> bool:
         symbols = composition_symbols(structure)
-        return bool({"O", "N"} & symbols) and bool(symbols - {"O", "N"})
+        return "O" in symbols and bool(symbols - {"O"})
+
+    def is_nitride_like(self, structure: Structure) -> bool:
+        symbols = composition_symbols(structure)
+        return "N" in symbols and "O" not in symbols and bool(symbols - {"N"})
 
     def choose(
         self,
@@ -40,13 +44,15 @@ class BackendPolicy:
             return explicit_backend
         if prefer_symmetry:
             return self.symmetry_backend
-        if self.is_oxide_or_nitride_like(structure):
-            return self.oxide_nitride_backend
+        if self.is_oxide_like(structure):
+            return self.oxide_backend
+        if self.is_nitride_like(structure):
+            return self.default_backend
         return self.default_backend
 
 
 DEFAULT_BACKEND_POLICY = BackendPolicy(
-    oxide_nitride_backend=BACKEND_OXIDE_NITRIDE,
+    oxide_backend=BACKEND_OXIDE_NITRIDE,
     default_backend=BACKEND_DEFAULT,
     symmetry_backend=BACKEND_SYMMETRY,
 )

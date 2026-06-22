@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 from ase import Atoms
+from ase.constraints import FixAtoms
 from ase.formula import Formula
 from ase.neighborlist import NeighborList, natural_cutoffs
 
@@ -244,13 +245,30 @@ def _site_summary(record: dict[str, Any] | None, atoms: Atoms) -> dict[str, Any]
 def _site_position(site: dict[str, Any] | None) -> np.ndarray | None:
     if not isinstance(site, dict):
         return None
-    value = site.get("position") or site.get("placed_position")
+    value = site.get("placed_position") or site.get("position")
     if not isinstance(value, (list, tuple)) or len(value) < 3:
         return None
     try:
         return np.array(value[:3], dtype=float)
     except Exception:
         return None
+
+
+def _site_surface_indices(site: dict[str, Any] | None) -> tuple[int, ...]:
+    if not isinstance(site, dict):
+        return ()
+    raw = site.get("surface_atom_indices")
+    if raw is None:
+        raw = site.get("surface_atom_idx")
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    out: list[int] = []
+    for value in raw:
+        try:
+            out.append(int(value))
+        except Exception:
+            continue
+    return tuple(sorted(out))
 
 
 def _mic_norm(atoms: Atoms, left: np.ndarray, right: np.ndarray) -> float:
@@ -292,6 +310,23 @@ def _slab_atom_count_for_sites(atoms: Atoms, record: dict[str, Any]) -> tuple[in
         if count > 0:
             return int(count), warnings
     return len(atoms), warnings
+
+
+def _slab_atoms_for_sites(atoms: Atoms, record: dict[str, Any]) -> tuple[Atoms, list[str]]:
+    warnings: list[str] = []
+    raw_indices = record.get("slab_atom_indices")
+    if isinstance(raw_indices, (list, tuple)):
+        indices = _valid_indices(atoms, raw_indices)
+        if indices:
+            slab = atoms[indices].copy()
+            slab.set_pbc([True, True, False])
+            return slab, warnings
+        warnings.append("invalid slab_atom_indices metadata ignored")
+    n_slab, count_warnings = _slab_atom_count_for_sites(atoms, record)
+    warnings.extend(count_warnings)
+    slab = atoms[:n_slab].copy()
+    slab.set_pbc([True, True, False])
+    return slab, warnings
 
 
 def _normalize_site(site: dict[str, Any], index: int) -> dict[str, Any]:
@@ -354,6 +389,111 @@ def _nearest_site(
     return site
 
 
+def _match_source_site_to_site_map(
+    atoms: Atoms,
+    sites: list[dict[str, Any]],
+    source_site: dict[str, Any] | None,
+    *,
+    max_position_match_distance: float = 1.25,
+) -> tuple[dict[str, Any], float, str] | None:
+    if not isinstance(source_site, dict) or not sites:
+        return None
+
+    source_id = source_site.get("id")
+    if source_id is not None:
+        for site in sites:
+            if str(site.get("id")) == str(source_id):
+                position = _site_position(source_site)
+                site_position = _site_position(site)
+                distance = (
+                    _mic_norm(atoms, position, site_position)
+                    if position is not None and site_position is not None
+                    else 0.0
+                )
+                return site, float(distance), "id"
+
+    source_type = str(source_site.get("site_type") or "")
+    source_indices = _site_surface_indices(source_site)
+    source_position = _site_position(source_site)
+
+    indexed_candidates: list[tuple[int, float, str, dict[str, Any]]] = []
+    if source_indices:
+        for site in sites:
+            site_indices = _site_surface_indices(site)
+            if not site_indices or site_indices != source_indices:
+                continue
+            type_penalty = 0 if str(site.get("site_type") or "") == source_type else 1
+            site_position = _site_position(site)
+            distance = (
+                _mic_norm(atoms, source_position, site_position)
+                if source_position is not None and site_position is not None
+                else 0.0
+            )
+            indexed_candidates.append((type_penalty, float(distance), str(site.get("id")), site))
+        if indexed_candidates:
+            type_penalty, distance, _, site = min(indexed_candidates, key=lambda item: item[:3])
+            method = "surface_atom_indices" if type_penalty == 0 else "surface_atom_indices_type_mismatch"
+            return site, float(distance), method
+
+    if source_type and source_position is not None:
+        typed_candidates: list[tuple[float, str, dict[str, Any]]] = []
+        for site in sites:
+            if str(site.get("site_type") or "") != source_type:
+                continue
+            site_position = _site_position(site)
+            if site_position is None:
+                continue
+            typed_candidates.append((
+                float(_mic_norm(atoms, source_position, site_position)),
+                str(site.get("id")),
+                site,
+            ))
+        if typed_candidates:
+            distance, _, site = min(typed_candidates, key=lambda item: item[:2])
+            if distance > float(max_position_match_distance):
+                return None
+            return site, float(distance), "site_type_position"
+
+    return None
+
+
+def _current_site_from_source_site(
+    atoms: Atoms,
+    sites: list[dict[str, Any]],
+    source_site: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(source_site, dict):
+        return None
+
+    current = dict(source_site)
+    if "position" not in current or current.get("position") is None:
+        current["position"] = [0.0, 0.0, 0.0]
+    if "placed_position" in current and current.get("placed_position") is not None:
+        current.setdefault("source_position", current.get("position"))
+        current["position"] = current.get("placed_position")
+    current.setdefault("site_type", "unknown")
+    current.setdefault("surface_atom_indices", list(_site_surface_indices(current)))
+    current.setdefault("sources", [])
+    if "validation_score" not in current:
+        current["validation_score"] = 0.0
+
+    match = _match_source_site_to_site_map(atoms, sites, source_site)
+    if match is not None:
+        site, distance, method = match
+        if site.get("id") is not None:
+            current["id"] = str(site.get("id"))
+            current["site_map_id"] = str(site.get("id"))
+        current["site_map_site_type"] = str(site.get("site_type") or "unknown")
+        current["site_map_match_distance"] = float(distance)
+        current["site_map_match_method"] = method
+    else:
+        current.setdefault("id", "source_site")
+
+    current["source"] = "metadata"
+    current["match_distance"] = 0.0
+    return current
+
+
 def _anchor_position_for_sites(atoms: Atoms, record: dict[str, Any]) -> np.ndarray | None:
     ads_meta = record.get("adsorbate_metadata") or _json_info(atoms, "adsorbate_metadata_json", default=None)
     if isinstance(ads_meta, dict):
@@ -394,10 +534,8 @@ def analyze_surface_sites_packet(
         source = "metadata"
         site_map = raw_site_map
     else:
-        n_slab, count_warnings = _slab_atom_count_for_sites(atoms, record)
-        warnings.extend(count_warnings)
-        slab = atoms[:n_slab].copy()
-        slab.set_pbc([True, True, False])
+        slab, slab_warnings = _slab_atoms_for_sites(atoms, record)
+        warnings.extend(slab_warnings)
         try:
             site_map = site_map_to_jsonable(
                 build_site_map(
@@ -422,9 +560,9 @@ def analyze_surface_sites_packet(
         neighbor_shell=neighbor_shell,
     )
     source_site = record.get("source_site") or _json_info(atoms, "source_site_json", default=None)
-    current_site = _nearest_site(atoms, sites, _anchor_position_for_sites(atoms, record))
+    current_site = _current_site_from_source_site(atoms, sites, source_site)
     if current_site is None:
-        current_site = _nearest_site(atoms, sites, _site_position(source_site))
+        current_site = _nearest_site(atoms, sites, _anchor_position_for_sites(atoms, record))
 
     site_type_counts = Counter(str(site.get("site_type") or "unknown") for site in sites)
     return {
@@ -477,41 +615,83 @@ def _site_by_id(sites: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {str(site.get("id")): site for site in sites if site.get("id") is not None}
 
 
+def _distance_shell(distance: float, shells: list[float], *, tolerance: float = 0.25) -> int:
+    for index, existing in enumerate(shells, start=1):
+        if abs(float(distance) - existing) <= float(tolerance):
+            return index
+    shells.append(float(distance))
+    return len(shells)
+
+
 def _neighbor_site_targets(
     site_packet: dict[str, Any],
     *,
     source_site: dict[str, Any] | None = None,
+    atoms: Atoms | None = None,
 ) -> list[tuple[dict[str, Any], float, int]]:
     current = source_site if source_site is not None else site_packet.get("current_site")
     current_id = str(current.get("id")) if isinstance(current, dict) and current.get("id") is not None else ""
-    if not current_id:
+    if not isinstance(current, dict):
         return []
     by_id = _site_by_id(site_packet.get("sites") or [])
     targets: list[tuple[dict[str, Any], float, int]] = []
     seen: set[str] = set()
-    for edge in site_packet.get("neighbors") or []:
-        if not isinstance(edge, dict):
+    if current_id:
+        for edge in site_packet.get("neighbors") or []:
+            if not isinstance(edge, dict):
+                continue
+            source = str(edge.get("source_site_id"))
+            target = str(edge.get("target_site_id"))
+            if source == current_id:
+                target_id = target
+            elif target == current_id:
+                target_id = source
+            else:
+                continue
+            site = by_id.get(target_id)
+            if site is None or target_id in seen:
+                continue
+            seen.add(target_id)
+            try:
+                distance = float(edge.get("distance", 0.0))
+                shell = int(edge.get("shell", 1))
+            except Exception:
+                distance = 0.0
+                shell = 1
+            targets.append((site, distance, shell))
+    if targets:
+        targets.sort(key=lambda item: (item[2], item[1], str(item[0].get("id"))))
+        return targets
+
+    current_position = _site_position(current)
+    if not isinstance(atoms, Atoms) or current_position is None:
+        return []
+    max_site_distance = float(site_packet.get("max_site_distance") or 3.5)
+    neighbor_shell = int(site_packet.get("neighbor_shell") or 2)
+    current_indices = _site_surface_indices(current)
+    current_type = str(current.get("site_type") or "")
+    spatial: list[tuple[float, str, dict[str, Any]]] = []
+    for site in site_packet.get("sites") or []:
+        if not isinstance(site, dict):
             continue
-        source = str(edge.get("source_site_id"))
-        target = str(edge.get("target_site_id"))
-        if source == current_id:
-            target_id = target
-        elif target == current_id:
-            target_id = source
-        else:
+        site_id = str(site.get("id")) if site.get("id") is not None else ""
+        if current_id and site_id == current_id:
             continue
-        site = by_id.get(target_id)
-        if site is None or target_id in seen:
+        site_indices = _site_surface_indices(site)
+        if current_indices and site_indices == current_indices and str(site.get("site_type") or "") == current_type:
             continue
-        seen.add(target_id)
-        try:
-            distance = float(edge.get("distance", 0.0))
-            shell = int(edge.get("shell", 1))
-        except Exception:
-            distance = 0.0
-            shell = 1
-        targets.append((site, distance, shell))
-    targets.sort(key=lambda item: (item[2], item[1], str(item[0].get("id"))))
+        site_position = _site_position(site)
+        if site_position is None:
+            continue
+        distance = _mic_norm(atoms, current_position, site_position)
+        if 0.35 < distance <= max_site_distance:
+            spatial.append((float(distance), site_id, site))
+    spatial.sort(key=lambda item: (item[0], item[1]))
+    shells: list[float] = []
+    for distance, _, site in spatial:
+        shell = _distance_shell(distance, shells)
+        if shell <= neighbor_shell:
+            targets.append((site, float(distance), int(shell)))
     return targets
 
 
@@ -535,7 +715,29 @@ def _adsorbate_bond_pairs(
             global_j = indices[int(local_j)]
             if int(global_i) != int(global_j):
                 bonds.add(tuple(sorted((int(global_i), int(global_j)))))
-    return sorted(bonds)
+    return _prune_terminal_terminal_bonds(atoms, sorted(bonds))
+
+
+def _prune_terminal_terminal_bonds(atoms: Atoms, bonds: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Remove spurious terminal-terminal bonds induced by covalent cutoffs."""
+    normalized = {tuple(sorted((int(a), int(b)))) for a, b in bonds}
+    pruned: list[tuple[int, int]] = []
+    for a, b in sorted(normalized):
+        if atoms[a].symbol != atoms[b].symbol:
+            pruned.append((a, b))
+            continue
+        remove = False
+        for center in range(len(atoms)):
+            if center in {a, b}:
+                continue
+            if atoms[center].symbol == atoms[a].symbol:
+                continue
+            if tuple(sorted((a, center))) in normalized and tuple(sorted((b, center))) in normalized:
+                remove = True
+                break
+        if not remove:
+            pruned.append((a, b))
+    return pruned
 
 
 def _components_after_removing_bond_readonly(
@@ -702,7 +904,7 @@ def propose_local_transform_packet(
     )
     warnings.extend(site_packet.get("warnings") or [])
     source_site = site_packet.get("current_site") or site_packet.get("source_site")
-    targets = _neighbor_site_targets(site_packet)
+    targets = _neighbor_site_targets(site_packet, atoms=atoms)
     if not source_site:
         warnings.append("no current/source adsorption site could be matched")
     if normalized == "diffusion" and not targets:
@@ -769,7 +971,7 @@ def propose_local_transform_packet(
             )
             if moving_anchor is None or moving_source_site is None:
                 continue
-            moving_targets = _neighbor_site_targets(site_packet, source_site=moving_source_site)
+            moving_targets = _neighbor_site_targets(site_packet, source_site=moving_source_site, atoms=atoms)
             if not moving_targets:
                 continue
 
@@ -785,7 +987,7 @@ def propose_local_transform_packet(
                     remaining_fragment,
                 )
                 if remaining_source_site is not None:
-                    remaining_targets = _neighbor_site_targets(site_packet, source_site=remaining_source_site)
+                    remaining_targets = _neighbor_site_targets(site_packet, source_site=remaining_source_site, atoms=atoms)
 
             pairs: list[tuple[dict[str, Any], float, int, dict[str, Any] | None, float | None, int | None]] = []
             for target, distance, shell in moving_targets:
@@ -1181,7 +1383,23 @@ def validate_structure_packet(
     if "tags" in arrays:
         add("tags_length", len(atoms.get_tags()) == len(atoms), "tags length matches atom count")
     else:
-        add("tags_present", False, "tags array missing")
+        has_fix_atoms = any(isinstance(constraint, FixAtoms) for constraint in atoms.constraints)
+        record_kind = str((record or {}).get("kind") or "").strip().lower()
+        clean_slab_like = record_kind == "slab" or (
+            has_fix_atoms
+            and not (record or {}).get("adsorbate_metadata")
+            and not atoms.info.get("adsorbate_metadata_json")
+            and not atoms.info.get("slab_atom_count")
+        )
+        add(
+            "tags_present",
+            clean_slab_like,
+            (
+                "tags array missing; allowed for clean slab with FixAtoms"
+                if clean_slab_like
+                else "tags array missing"
+            ),
+        )
     if "initial_magmoms" in arrays:
         add(
             "magmoms_length",

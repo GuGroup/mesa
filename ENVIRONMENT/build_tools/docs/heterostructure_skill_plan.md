@@ -23,9 +23,9 @@
 - `slabuilder/adsorption.py`: adsorption site detection 및 adsorbate placement
 - `slabuilder/site_map.py`, `structure_understanding.py`: saved structure/site inspection
 - `slabuilder/cell_shape.py`: 2D cell transform/scoring utilities
-- `skills/build-slab-models`: clean slab skill
-- `skills/place-surface-adsorbates`: adsorbate placement skill
-- `skills/inspect-surface-sites`: read-only inspection skill
+- `SKILL/TASK_BUILD_SLAB_MODELS`: clean slab skill
+- `SKILL/TASK_PLACE_SURFACE_ADSORBATES`: adsorbate placement skill
+- `SKILL/TBD_INSPECT_SURFACE_SITES`: read-only inspection skill
 
 현재 저장소에 없는 것:
 
