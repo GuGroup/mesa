@@ -1,16 +1,24 @@
 # VASP parameter defaults for the vasp-job skill (surface-catalysis protocol).
 #
 # vasp-job does NOT merge these — the agent does. To build a job's
-# vasp.parameters: take `common`, overlay `task.<task>`, then apply any
-# system-specific overrides, and write the result explicitly into the spec.
+# vasp.parameters for actual calculations: take top-level `common`, overlay
+# top-level `task.<task>`, then apply system-specific overrides, and write the
+# result explicitly into the spec.
+# For explicitly requested quick screening/comparison jobs, start from the same
+# top-level defaults, then overlay `profile.screening.common` and
+# `profile.screening.task.<task>`.
 # Keys are lowercase vasp-ase keywords (not uppercase INCAR tags).
+#
+# Top-level defaults are refinement-oriented actual-calculation defaults. They
+# are the default once the workflow has selected a small candidate set for real
+# VASP calculation. Screening must be requested explicitly.
 
 common:
   gga: RP                 # RPBE functional
   prec: Normal
   encut: 400
-  ediff: 1.0e-4
-  nelm: 1000
+  ediff: 1.0e-5
+  nelm: 200
   ismear: 1               # see system-dependent notes below
   sigma: 0.1
   ispin: 1                # see system-dependent notes below
@@ -20,14 +28,30 @@ common:
   lreal: Auto
   lcharg: false
   lwave: false
-  kspacing: 0.30          # default k-point policy (Gamma-centered)
+  kspacing: 0.30          # refinement default k-point policy (Gamma-centered)
   kgamma: true
 
 task:
-  bulk:   { ibrion: 2, isif: 3, nsw: 1000, ediffg: -5.0e-2, potim: 0.1, algo: Fast }
-  slab:   { ibrion: 2, isif: 0, nsw: 1000, ediffg: -5.0e-2, potim: 0.1, algo: Fast }
-  freq:   { ibrion: 5, nfree: 2, potim: 0.015, nsw: 1, isif: 0, ediff: 1.0e-5, algo: Normal, isym: 0 }
-  static: { ibrion: -1, nsw: 0, algo: Normal }
+  bulk:   { ibrion: 2, isif: 3, nsw: 300, ediffg: -5.0e-2, potim: 0.1, algo: Fast }
+  slab:   { ibrion: 2, isif: 0, nsw: 300, ediffg: -5.0e-2, potim: 0.1, algo: Fast }
+  freq:   { ibrion: 5, nfree: 2, potim: 0.015, nsw: 1, isif: 0, ediff: 1.0e-6, algo: Normal, isym: 0 }
+  static: { ibrion: -1, nsw: 0, ediff: 1.0e-6, algo: Normal }
+
+profile:
+  # Explicit quick-screening profile. Use only when the user asks for screening,
+  # quick comparison, rough triage, or geometry sanity checks across candidates.
+  # Do not use this as the default for actual submitted calculations.
+  screening:
+    common:
+      encut: 350
+      ediff: 1.0e-4
+      nelm: 120
+      kspacing: 0.45
+    task:
+      bulk:   { nsw: 120, ediffg: -8.0e-2, potim: 0.2 }
+      slab:   { nsw: 120, ediffg: -8.0e-2, potim: 0.2 }
+      static: { ediff: 1.0e-4 }
+      freq:   { ediff: 1.0e-5 }
 
 # System-dependent — DECIDE per job, do not blindly copy `common`:
 #   ismear / sigma
@@ -39,5 +63,16 @@ task:
 #     magnetic (Fe/Co/Ni/  -> ispin 2 + magmom (per-atom initial moments;
 #       Mn/Cr/...)              REQUIRED when ispin 2)
 #   k-points
-#     default is kspacing 0.30. Use an explicit vasp.kpts only when a fixed
-#     mesh is needed (then omit kspacing/kgamma for that job).
+#     default actual calculation is kspacing 0.30. Explicit screening uses
+#     profile.screening.common.kspacing 0.45. Use an explicit vasp.kpts only
+#     when a fixed mesh is needed (then omit kspacing/kgamma for that job).
+#     gas-phase molecules in 15 Å boxes -> vasp.kpts [1,1,1] and
+#       vasp.gamma true; omit kspacing/kgamma.
+#
+# Gas-phase molecule relax/static/freq policy:
+#   - build structures with build-gas-phase-models first.
+#   - gas relaxation has no dedicated CLI task enum yet; omit `task` and write
+#     explicit relax parameters.
+#   - gas static uses task.static; gas frequency uses task.freq only after a
+#     selected relaxed endpoint exists.
+#   - do not infer charge or spin here; preserve explicit user values only.

@@ -47,8 +47,9 @@ def main(argv: list[str] | None = None) -> int:
     status_p.add_argument("identifier", help="SGE scheduler_id or vasp-submit job_uid")
     status_p.add_argument("remote_dir", nargs="?")
 
-    list_p = sub.add_parser("list", help="Recent jobs with summary metadata")
+    list_p = sub.add_parser("list", help="Recent jobs with compact status fields")
     list_p.add_argument("--limit", type=int, default=20, help="Max jobs to show (default 20)")
+    list_p.add_argument("--verbose", action="store_true", help="Include timestamps, preset, project, and remote_dir")
 
     show_p = sub.add_parser("show", help="Full metadata + live status for one job")
     show_p.add_argument("identifier", help="vasp-submit job_uid or SGE scheduler_id")
@@ -70,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
             scheduler_id, remote_dir, job_uid = resolve_status_target(args.identifier, config)
             json_print(status_job(scheduler_id, args.remote_dir or remote_dir, job_uid))
         elif args.command == "list":
-            json_print(list_jobs(config, args.limit))
+            json_print(list_jobs(config, args.limit, verbose=args.verbose))
         elif args.command == "show":
             json_print(show_job(args.identifier, config))
         elif args.command == "schema":

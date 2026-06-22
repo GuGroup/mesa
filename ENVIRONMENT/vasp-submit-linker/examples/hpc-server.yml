@@ -18,7 +18,7 @@ vasp_ase_env: {}
 
 # NOTE: VASP/INCAR defaults (functional, encut, ismear, per-task ibrion/isif, ...)
 # are NOT configured here. They live with the agent skill at
-#   .codex/skills/vasp-job/defaults.yaml
+#   SKILL/TASK_VASP_JOB/defaults.yaml
 # The agent assembles vasp.parameters from that file and writes them explicitly
 # into the job spec; vasp-job passes them through to vasp-ase as-is.
 

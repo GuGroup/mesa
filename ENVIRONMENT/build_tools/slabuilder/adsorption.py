@@ -91,6 +91,22 @@ class AdsorptionSite:
     validation_notes: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class AdsorbatePlacementSpec:
+    """Request for placing one adsorbate at one selected site on a slab.
+
+    ``site_type`` may be an exact type such as ``top`` or a family such as
+    ``hollow``. ``site_ordinal`` selects the nth matching site after the normal
+    chemistry-aware site sorting. This is intended for multi-site co-adsorption
+    setup generation, not for replacing a DFT relaxation workflow.
+    """
+
+    adsorbate: str
+    site_type: str | None = None
+    site_ordinal: int = 0
+    height: float | None = None
+
+
 # ---------------------------------------------------------------------------
 # Adsorbate classification
 # ---------------------------------------------------------------------------
@@ -1565,6 +1581,7 @@ def _build_ase_adsorbate(
 ) -> Atoms | None:
     # Try ASE molecule database first
     ase_known = {
+        "H2": "H2",
         "H2O": "H2O",
         "NH3": "NH3",
         "CO2": "CO2",
@@ -1602,6 +1619,7 @@ def _build_manual_molecular_adsorbate(
 ) -> Atoms | None:
     # Manual construction for radicals
     manual_geometries: dict[str, Atoms] = {
+        # --- Original ---
         "OH": Atoms("OH", positions=[[0, 0, 0], [0, 0, 0.97]]),
         "OOH": Atoms("OOH", positions=[[0, 0, 0], [0, 0, 1.33], [0.95, 0, 1.85]]),
         "SH": Atoms("SH", positions=[[0, 0, 0], [0, 0, 1.34]]),
@@ -1612,6 +1630,181 @@ def _build_manual_molecular_adsorbate(
             [-0.89, -0.51, 0.63],
         ]),
         "CH2": Atoms("CH2", positions=[[0, 0, 0], [0.63, 0, 0.88], [-0.63, 0, 0.88]]),
+        # --- NRR intermediates ---
+        # NH2: amino radical, N binds, 2H up (sp3-like, ~107° H-N-H)
+        "NH2": Atoms("NH2", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.48, 0.0, 0.84],  # H
+            [-0.48, 0.0, 0.84], # H
+        ]),
+        # NNH: diazenyl radical *N=N-H, terminal N binds, N=N 1.25 Å, N-H 1.02 Å
+        "NNH": Atoms("NNH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding, terminal)
+            [0.0, 0.0, 1.25],   # N
+            [0.0, 0.87, 1.72],  # H
+        ]),
+        # NNH2: *N=NH2, terminal N binds, N=N 1.25 Å
+        "NNH2": Atoms("NNH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding, terminal)
+            [0.0, 0.0, 1.25],    # N
+            [0.48, 0.0, 1.85],   # H
+            [-0.48, 0.0, 1.85],  # H
+        ]),
+        # NHNH: diazene HN=NH, one N binds (η¹), N=N 1.25 Å, N-H 1.02 Å
+        "NHNH": Atoms("NHNH", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 0.0, 1.25],    # N
+            [-0.87, 0.0, -0.47], # H on binding N (pointing down/away)
+            [0.87, 0.0, 1.72],   # H on remote N
+        ]),
+        # NHNH2: *NH-NH2, N-N 1.45 Å (single bond)
+        "NHNH2": Atoms("NHNH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding, NH end)
+            [0.0, 0.0, 1.45],    # N (NH2)
+            [-0.87, 0.0, -0.47], # H on binding N
+            [0.48, 0.0, 2.09],   # H on NH2
+            [-0.48, 0.0, 2.09],  # H on NH2
+        ]),
+        # NH2NH2: hydrazine *NH2-NH2, N-N 1.45 Å
+        "NH2NH2": Atoms("NH2NH2", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 0.0, 1.45],    # N
+            [0.48, 0.83, -0.36], # H on binding N
+            [-0.48, -0.83, -0.36], # H on binding N
+            [0.48, 0.83, 1.81],  # H on remote N
+            [-0.48, -0.83, 1.81],  # H on remote N
+        ]),
+        # --- NOXRR intermediates ---
+        # NO2: nitrogen dioxide, N binds, N=O 1.20 Å, O-N-O ~134°
+        "NO2": Atoms("NO2", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.98, 0.0, 0.72],  # O
+            [-0.98, 0.0, 0.72], # O
+        ]),
+        # NO3: nitrate, N binds, N-O ~1.26 Å, planar
+        "NO3": Atoms("NO3", positions=[
+            [0.0, 0.0, 0.0],     # N (binding)
+            [0.0, 1.09, 0.63],   # O
+            [0.95, -0.55, 0.63], # O
+            [-0.95, -0.55, 0.63],# O
+        ]),
+        # NOH: *N-OH, N binds, N-O 1.40 Å, O-H 0.97 Å
+        "NOH": Atoms("NOH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.0, 0.0, 1.40],   # O
+            [0.0, 0.78, 1.87],  # H
+        ]),
+        # HNO: nitroxyl *NH=O, N binds, N=O 1.21 Å, N-H 1.06 Å
+        "HNO": Atoms("HNO", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.97, 0.0, 0.70],  # O
+            [-0.53, 0.0, -0.87],# H (pointing down)
+        ]),
+        # NHOH: *NH-OH, N binds, N-O 1.40 Å
+        "NHOH": Atoms("NHOH", positions=[
+            [0.0, 0.0, 0.0],    # N (binding)
+            [0.0, 0.0, 1.40],   # O
+            [-0.87, 0.0, -0.47],# H on N
+            [0.78, 0.0, 1.87],  # H on O
+        ]),
+        # ONO: O-bound nitrite *O-N=O, O binds
+        "ONO": Atoms("ONO", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.40],   # N
+            [0.0, 0.98, 2.12],  # O
+        ]),
+        # --- CO2RR intermediates ---
+        # COOH: carboxyl *C(=O)OH, C binds, C=O 1.21 Å, C-O 1.36 Å
+        "COOH": Atoms("COOH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [-0.87, 0.0, 0.70],  # O (=O)
+            [0.87, 0.0, 0.70],   # O (-OH)
+            [1.50, 0.0, 1.30],   # H
+        ]),
+        # OCHO: formate *O-CH=O (O-bound), O binds
+        "OCHO": Atoms("OCHO", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.36],   # C
+            [0.0, 0.94, 1.95],  # H on C
+            [0.0, -0.87, 2.06], # O (=O)
+        ]),
+        # CHO: formyl *CH=O, C binds, C=O 1.21 Å, C-H 1.10 Å
+        "CHO": Atoms("CHO", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.87, 0.0, 0.70],  # O
+            [-0.55, 0.0, -0.87],# H
+        ]),
+        # COH: *C-OH, C binds, C-O 1.36 Å
+        "COH": Atoms("COH", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.0, 0.0, 1.36],   # O
+            [0.0, 0.78, 1.87],  # H
+        ]),
+        # CHOH: *CH-OH, C binds
+        "CHOH": Atoms("CHOH", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [-0.60, 0.0, -0.87],# H on C
+            [0.68, 0.0, 1.16],  # O
+            [1.30, 0.0, 1.76],  # H on O
+        ]),
+        # CH2OH: hydroxymethyl *CH2-OH, C binds
+        "CH2OH": Atoms("CH2OH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.52, 0.89, -0.36], # H
+            [0.52, -0.89, -0.36],# H
+            [0.0, 0.0, 1.43],    # O
+            [0.0, 0.78, 1.90],   # H on O
+        ]),
+        # OCH3: methoxy *O-CH3, O binds, O-C 1.43 Å
+        "OCH3": Atoms("OCH3", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.43],   # C
+            [0.0, 1.03, 1.93],  # H
+            [0.89, -0.51, 1.93],# H
+            [-0.89, -0.51, 1.93],# H
+        ]),
+        # CH3O: methoxy alias (same geometry as OCH3)
+        "CH3O": Atoms("OCH3", positions=[
+            [0.0, 0.0, 0.0],    # O (binding)
+            [0.0, 0.0, 1.43],   # C
+            [0.0, 1.03, 1.93],  # H
+            [0.89, -0.51, 1.93],# H
+            [-0.89, -0.51, 1.93],# H
+        ]),
+        # --- C2 CO2RR intermediates ---
+        # OCCO: *OC-CO* (C-bound, oxalate-like), C-C 1.54 Å, C=O 1.21 Å
+        "OCCO": Atoms("OCCO", positions=[
+            [0.0, 0.0, 0.0],    # C (binding)
+            [0.0, 0.0, 1.54],   # C
+            [-0.87, 0.0, -0.70],# O on C1
+            [0.87, 0.0, 2.24],  # O on C2
+        ]),
+        # OCCOH: *OC-C(OH), C-bound
+        "OCCOH": Atoms("OCCOH", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.0, 0.0, 1.54],    # C
+            [-0.87, 0.0, -0.70], # O on C1 (=O)
+            [0.87, 0.0, 2.07],   # O on C2 (-OH)
+            [1.50, 0.0, 2.67],   # H on OH
+        ]),
+        # COCHO: *CO-CHO (glyoxal-like), C-bound
+        "COCHO": Atoms("COCHO", positions=[
+            [0.0, 0.0, 0.0],     # C (binding)
+            [0.0, 0.0, 1.54],    # C
+            [-0.87, 0.0, -0.70], # O on C1 (=O)
+            [0.87, 0.0, 2.24],   # O on C2 (=O)
+            [-0.55, 0.0, 2.41],  # H on C2
+        ]),
+        # --- AOR intermediates ---
+        # CH3CO: acetyl *C(=O)CH3, C binds
+        "CH3CO": Atoms("CH3CO", positions=[
+            [0.0, 0.0, 0.0],     # C (binding, carbonyl)
+            [0.87, 0.0, 0.70],   # O (=O)
+            [0.0, 0.0, -1.54],   # C (methyl)
+            [0.0, 1.03, -2.04],  # H
+            [0.89, -0.51, -2.04],# H
+            [-0.89, -0.51, -2.04],# H
+        ]),
     }
     if adsorbate in manual_geometries:
         return _set_adsorbate_build_info(
@@ -1637,6 +1830,16 @@ def _build_adsorbate_atoms(adsorbate: str) -> Atoms:
     expected = _expected_binding_element(adsorbate)
     mol = _build_adsorbate_atoms_impl(adsorbate, expected)
     return _ensure_binding_atom_first(mol, expected)
+
+
+def build_adsorbate_atoms(adsorbate: str) -> Atoms:
+    """Build a reusable adsorbate/gas-reference ASE molecule.
+
+    This public wrapper exposes the same label/SMILES/name resolution used by
+    surface placement without placing the molecule on a slab. It deliberately
+    does not assign charge, spin, or calculation settings.
+    """
+    return _build_adsorbate_atoms(adsorbate)
 
 
 def _build_adsorbate_atoms_impl(adsorbate: str, binding_element: str | None) -> Atoms:
@@ -1973,3 +2176,213 @@ def generate_all_adsorption_structures(
             )
 
     return results[:max_sites] if max_sites is not None else results
+
+
+def _site_position_wrapped_cart(atoms: Atoms, site: AdsorptionSite) -> np.ndarray:
+    cell = atoms.cell.array
+    frac = np.linalg.solve(cell.T, np.array(site.position, dtype=float))
+    frac[:2] %= 1.0
+    return frac @ cell
+
+
+def _position_xy_distance(atoms: Atoms, left: np.ndarray, right: np.ndarray) -> float:
+    cell = atoms.cell.array
+    delta = np.array(left, dtype=float) - np.array(right, dtype=float)
+    frac = np.linalg.solve(cell.T, delta)
+    for axis, periodic in enumerate(atoms.pbc):
+        if periodic and axis < 2:
+            frac[axis] -= np.round(frac[axis])
+    vec = frac[0] * cell[0] + frac[1] * cell[1]
+    return float(np.linalg.norm(vec[:2]))
+
+
+def _site_type_matches(requested: str | None, actual: str) -> bool:
+    if requested is None or requested == "":
+        return True
+    requested_norm = str(requested).lower()
+    actual_norm = str(actual).lower()
+    if requested_norm == actual_norm:
+        return True
+    if requested_norm == "hollow":
+        return "hollow" in actual_norm
+    if requested_norm == "bridge":
+        return "bridge" in actual_norm
+    if requested_norm in {"top", "ontop"}:
+        return actual_norm in {"top", "ontop"}
+    return False
+
+
+def _select_multi_adsorption_site(
+    slab_atoms: Atoms,
+    spec: AdsorbatePlacementSpec,
+    *,
+    backend: str,
+    selected_positions: list[np.ndarray],
+    min_site_separation: float,
+) -> tuple[int, AdsorptionSite]:
+    sites = identify_adsorption_sites(slab_atoms, spec.adsorbate, backend=backend)
+    matching = [
+        (index, site)
+        for index, site in enumerate(sites)
+        if _site_type_matches(spec.site_type, site.site_type)
+    ]
+    if not matching:
+        requested = spec.site_type or "any"
+        raise ValueError(f"No {requested!r} site found for adsorbate {spec.adsorbate!r}.")
+
+    far_enough: list[tuple[int, AdsorptionSite]] = []
+    for index, site in matching:
+        position = _site_position_wrapped_cart(slab_atoms, site)
+        if all(
+            _position_xy_distance(slab_atoms, position, occupied) >= min_site_separation
+            for occupied in selected_positions
+        ):
+            far_enough.append((index, site))
+
+    if not far_enough:
+        requested = spec.site_type or "any"
+        raise ValueError(
+            f"No {requested!r} site for {spec.adsorbate!r} is at least "
+            f"{min_site_separation:.2f} Å from already selected sites."
+        )
+    if spec.site_ordinal < 0 or spec.site_ordinal >= len(far_enough):
+        requested = spec.site_type or "any"
+        raise ValueError(
+            f"Site ordinal {spec.site_ordinal} is out of range for "
+            f"{len(far_enough)} available {requested!r} sites for {spec.adsorbate!r}."
+        )
+    return far_enough[spec.site_ordinal]
+
+
+def _multi_binding_contact_record(
+    atoms: Atoms,
+    *,
+    n_slab: int,
+    adsorbate: str,
+    atom_indices: list[int],
+    anchor_index: int,
+) -> dict:
+    expected = _expected_binding_element(adsorbate) or atoms[anchor_index].symbol
+    slab_indices = list(range(n_slab))
+    closest_index = anchor_index
+    closest_distance = float("inf")
+    anchor_distance = float(np.min(atoms.get_distances(anchor_index, slab_indices, mic=True)))
+    for index in atom_indices:
+        distance = float(np.min(atoms.get_distances(index, slab_indices, mic=True)))
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_index = int(index)
+    ads_z = atoms.positions[atom_indices, 2]
+    anchor_is_lowest = bool(atoms.positions[anchor_index, 2] <= ads_z.min() + 0.15)
+    closest_element = atoms[closest_index].symbol
+    ok = (
+        closest_index == anchor_index
+        or closest_element == expected
+        or anchor_is_lowest
+        or anchor_distance - closest_distance <= _BINDING_CONTACT_TOLERANCE_A
+    )
+    return {
+        "expected_element": expected,
+        "closest_index": int(closest_index),
+        "closest_element": closest_element,
+        "closest_distance": round(float(closest_distance), 4),
+        "anchor_distance": round(float(anchor_distance), 4),
+        "ok": bool(ok),
+    }
+
+
+def add_multiple_adsorbates_to_slab(
+    slab_atoms: Atoms,
+    placements: list[AdsorbatePlacementSpec],
+    *,
+    backend: str = "auto",
+    min_site_separation: float = 1.8,
+) -> Atoms:
+    """Place several adsorbates on distinct sites of the same clean slab.
+
+    Site detection is always performed on the clean parent slab. Each adsorbate
+    is then rigidly added to the combined slab using that clean-slab site
+    coordinate, so previously placed adsorbates do not redefine the surface
+    height for later placements.
+    """
+    if not placements:
+        raise ValueError("At least one adsorbate placement is required.")
+
+    combined = slab_atoms.copy()
+    combined.set_pbc([True, True, False])
+    combined.wrap()
+    old_constraints = slab_atoms.constraints
+    n_slab = len(combined)
+    selected_positions: list[np.ndarray] = []
+    site_indices: list[int] = []
+    records: list[dict] = []
+
+    for placement_index, spec in enumerate(placements):
+        detected_site_index, site = _select_multi_adsorption_site(
+            slab_atoms,
+            spec,
+            backend=backend,
+            selected_positions=selected_positions,
+            min_site_separation=min_site_separation,
+        )
+        site_cart = _site_position_wrapped_cart(slab_atoms, site)
+        selected_positions.append(site_cart)
+        site_indices.extend(int(index) for index in site.surface_atom_idx)
+
+        ads_atoms = _build_adsorbate_atoms(spec.adsorbate)
+        _copy_adsorbate_build_info(combined, ads_atoms)
+        height = spec.height if spec.height is not None else DEFAULT_BOND_HEIGHT.get(spec.adsorbate, 2.0)
+        start = len(combined)
+        ads_copy = ads_atoms.copy()
+        ads_copy.positions = ads_copy.positions + np.array(
+            [float(site_cart[0]), float(site_cart[1]), float(site_cart[2]) + float(height)]
+        )
+        combined += ads_copy
+        atom_indices = list(range(start, len(combined)))
+        anchor_index = atom_indices[0]
+        records.append(
+            {
+                "placement_index": int(placement_index),
+                "adsorbate": spec.adsorbate,
+                "requested_site_type": spec.site_type,
+                "requested_site_ordinal": int(spec.site_ordinal),
+                "detected_site_index": int(detected_site_index),
+                "site": _source_site_metadata(site),
+                "height": float(height),
+                "atom_indices": atom_indices,
+                "anchor_index": int(anchor_index),
+                "formula": combined[atom_indices].get_chemical_formula(),
+                "builder": ads_atoms.info.get("adsorbate_builder"),
+                "smiles": ads_atoms.info.get("adsorbate_smiles"),
+                "smiles_source": ads_atoms.info.get("adsorbate_smiles_source"),
+            }
+        )
+
+    combined.set_constraint(old_constraints)
+    _normalize_ase_adsorbate_info(combined)
+    _preserve_slab_magmoms_zero_adsorbate(combined, slab_atoms, n_slab)
+    tag_slab_and_adsorbate(combined, n_slab, site_indices)
+    combined.info["multi_adsorbate_count"] = len(records)
+    for record in records:
+        record["binding_contact"] = _multi_binding_contact_record(
+            combined,
+            n_slab=n_slab,
+            adsorbate=record["adsorbate"],
+            atom_indices=record["atom_indices"],
+            anchor_index=record["anchor_index"],
+        )
+    combined.info["multi_adsorbate_metadata_json"] = json.dumps(records, sort_keys=True, default=str)
+    combined.info["adsorbate_atom_indices_json"] = json.dumps(list(range(n_slab, len(combined))))
+    combined.info["adsorbate_metadata_json"] = json.dumps(
+        {
+            "atom_indices": list(range(n_slab, len(combined))),
+            "formula": combined[n_slab:].get_chemical_formula(),
+            "count": len(records),
+            "placements": records,
+        },
+        sort_keys=True,
+        default=str,
+    )
+    combined = _wrap_adsorbate_into_cell(combined, n_slab)
+    combined = _annotate_acat_coverage(combined, n_slab)
+    return _check_post_placement_distance(combined)

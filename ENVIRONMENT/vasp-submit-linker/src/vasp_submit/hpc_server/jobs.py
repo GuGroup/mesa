@@ -15,7 +15,15 @@ from pathlib import Path
 from typing import Any
 
 
-SUMMARY_FIELDS = (
+LIST_FIELDS = (
+    "job_uid",
+    "job_name",
+    "state",
+    "scheduler_id",
+    "task",
+)
+
+VERBOSE_SUMMARY_FIELDS = (
     "job_uid",
     "job_name",
     "task",
@@ -84,13 +92,14 @@ def read_index_entries(config: dict[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
-def summarize(entry: dict[str, Any]) -> dict[str, Any]:
-    return {field: entry.get(field) for field in SUMMARY_FIELDS}
+def summarize(entry: dict[str, Any], *, verbose: bool = False) -> dict[str, Any]:
+    fields = VERBOSE_SUMMARY_FIELDS if verbose else LIST_FIELDS
+    return {field: entry.get(field) for field in fields}
 
 
-def list_jobs(config: dict[str, Any], limit: int = 20) -> dict[str, Any]:
+def list_jobs(config: dict[str, Any], limit: int = 20, *, verbose: bool = False) -> dict[str, Any]:
     entries = read_index_entries(config)
-    jobs = [summarize(entry) for entry in entries[: max(limit, 0)]]
+    jobs = [summarize(entry, verbose=verbose) for entry in entries[: max(limit, 0)]]
     return {"ok": True, "count": len(jobs), "total": len(entries), "jobs": jobs}
 
 

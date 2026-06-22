@@ -43,6 +43,7 @@ from slabuilder.config import (
     ATOM_COUNT_TOLERANCE,
 )
 from slabuilder.cell_shape import (
+    cell_shape_metrics,
     enumerate_2d_integer_transforms,
     make_2d_supercell,
     score_2d_cell_shape,
@@ -571,6 +572,10 @@ class _TargetSlabChoice:
     estimated_thickness: float
 
 
+def _det2(matrix_2d: tuple[tuple[int, int], tuple[int, int]]) -> int:
+    return int(matrix_2d[0][0] * matrix_2d[1][1] - matrix_2d[0][1] * matrix_2d[1][0])
+
+
 def _target_score(
     n_atoms: float,
     lateral_a: float,
@@ -587,15 +592,183 @@ def _target_score(
     lateral_scale = max(float(lateral_tolerance), 0.1)
     thickness_scale = max(float(target_slab_thickness) * 0.25, 1.0)
 
-    atom_penalty = abs(n_atoms - target_n_atoms) / atom_scale
+    atom_delta = n_atoms - target_n_atoms
+    atom_penalty = abs(atom_delta) / atom_scale
+    oversized_atom_penalty = max(0.0, atom_delta) / max(float(target_n_atoms), 1.0)
     lateral_penalty = (
         abs(lateral_a - target_lateral_size)
         + abs(lateral_b - target_lateral_size)
     ) / (2.0 * lateral_scale)
+    oversized_lateral_penalty = (
+        max(0.0, lateral_a - target_lateral_size)
+        + max(0.0, lateral_b - target_lateral_size)
+    ) / max(float(target_lateral_size), 1.0)
     thickness_penalty = abs(slab_thickness - target_slab_thickness) / thickness_scale
+    oversized_thickness_penalty = max(0.0, slab_thickness - target_slab_thickness) / max(
+        float(target_slab_thickness),
+        1.0,
+    )
     aspect_penalty = abs(lateral_a - lateral_b) / max(target_lateral_size, 1.0)
 
-    return atom_penalty + 1.5 * lateral_penalty + 1.25 * thickness_penalty + 0.15 * aspect_penalty
+    return (
+        atom_penalty
+        + 0.9 * oversized_atom_penalty
+        + 1.5 * lateral_penalty
+        + 0.75 * oversized_lateral_penalty
+        + 1.25 * thickness_penalty
+        + 0.75 * oversized_thickness_penalty
+        + 0.15 * aspect_penalty
+    )
+
+
+def _square_lateral_score(
+    cell_2d: np.ndarray,
+    *,
+    atom_count: int,
+    target_atom_count: int,
+    target_lateral_size: float,
+    lateral_tolerance: float,
+) -> float:
+    """Score how close an in-plane cell is to a compact square target.
+
+    This deliberately evaluates the transformed cell itself, not just diagonal
+    repeats. A good slab cell should be near-orthogonal, have similar a/b
+    lengths, stay near the requested side length and area, and avoid atom-count
+    overshoot. None of these are hard constraints because some surfaces cannot
+    form a clean square within a small integer transform search.
+    """
+    metrics = cell_shape_metrics(cell_2d)
+    side_a, side_b = metrics.lengths[:2]
+    target_side = max(float(target_lateral_size), 1.0)
+    target_area = target_side * target_side
+    atom_target = max(float(target_atom_count), 1.0)
+
+    angle_penalty = (metrics.inplane_angle_deviation / 15.0) ** 2
+    aspect_penalty = abs(np.log(max(metrics.lateral_aspect_ratio, 1e-12))) / np.log(1.25)
+    aspect_penalty = aspect_penalty ** 2
+    side_penalty = (abs(side_a - target_side) + abs(side_b - target_side)) / (2.0 * target_side)
+    area_penalty = abs(metrics.area_ab - target_area) / target_area
+    max_side = max(side_a, side_b)
+    min_side = min(side_a, side_b)
+    max_allowed = target_side + max(float(lateral_tolerance), 0.0)
+    min_preferred = max(target_side - max(float(lateral_tolerance), 0.0), target_side * 0.55)
+    excess_side_penalty = max(0.0, max_side - max_allowed) / target_side
+    undersized_penalty = max(0.0, min_preferred - min_side) / target_side
+    atom_delta = float(atom_count) - atom_target
+    atom_penalty = abs(atom_delta) / atom_target
+    atom_oversize_penalty = max(0.0, atom_delta) / atom_target
+
+    return float(
+        3.5 * angle_penalty
+        + 2.5 * aspect_penalty
+        + 1.0 * side_penalty
+        + 0.6 * area_penalty
+        + 5.0 * excess_side_penalty
+        + 1.0 * undersized_penalty
+        + 0.5 * atom_penalty
+        + 1.2 * atom_oversize_penalty
+    )
+
+
+def _ideal_copy_multiple(
+    base_cell_2d: np.ndarray,
+    *,
+    base_atom_count: float,
+    target_atom_count: int,
+    target_lateral_size: float,
+) -> float:
+    """Estimate the preferred 2D copy determinant from the base cell.
+
+    A square-ish target has area ``target_lateral_size ** 2``. The atom-count
+    target gives an independent preferred determinant. Blend both so a material
+    with a large primitive surface cell does not get blindly copied to an
+    oversized slab just to hit a lateral side length, and a tiny primitive cell
+    does not get a huge cell solely to satisfy a square shape score.
+    """
+    metrics = cell_shape_metrics(base_cell_2d)
+    target_side = max(float(target_lateral_size), 1.0)
+    by_area = (target_side * target_side) / max(metrics.area_ab, 1e-8)
+    by_atoms = float(target_atom_count) / max(float(base_atom_count), 1.0)
+    return max(1.0, 0.55 * by_atoms + 0.45 * by_area)
+
+
+def _copy_multiple_penalty(det: int, ideal_det: float) -> float:
+    """Penalty for copy count mismatch, with extra cost for oversizing."""
+    det = max(int(det), 1)
+    ideal = max(float(ideal_det), 1.0)
+    mismatch = abs(np.log(det / ideal))
+    oversize = max(0.0, det - ideal) / ideal
+    return float(mismatch + 0.8 * oversize)
+
+
+def _choose_actual_2d_transform(
+    base_cell_2d: np.ndarray,
+    *,
+    base_atom_count: int,
+    slab_thickness: float,
+    target_n_atoms: int,
+    atom_tolerance: int,
+    target_lateral_size: float,
+    lateral_tolerance: float,
+    target_slab_thickness: float,
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Choose a 2D transform against the actual backend surface cell.
+
+    The target layer/supercell search estimates a surface cell with pymatgen,
+    but CatKit can return the same surface in a different in-plane basis. Score
+    non-diagonal transforms on the actual CatKit base cell before applying one;
+    otherwise a matrix that is near-orthogonal in the estimator basis can become
+    highly oblique in the final POSCAR.
+    """
+    candidates = _auto_2d_transform_candidates()
+    scored: list[tuple[float, tuple[tuple[int, int], tuple[int, int]]]] = []
+    ideal_det = _ideal_copy_multiple(
+        base_cell_2d,
+        base_atom_count=base_atom_count,
+        target_atom_count=target_n_atoms,
+        target_lateral_size=target_lateral_size,
+    )
+    for matrix_2d in candidates:
+        det = _det2(matrix_2d)
+        if det < 1:
+            continue
+        transformed_cell = transform_2d_cell(base_cell_2d, matrix_2d)
+        metrics = cell_shape_metrics(transformed_cell)
+        lateral_a, lateral_b = metrics.lengths[:2]
+        n_atoms = int(base_atom_count * det)
+        score = _target_score(
+            n_atoms=n_atoms,
+            lateral_a=lateral_a,
+            lateral_b=lateral_b,
+            slab_thickness=slab_thickness,
+            target_n_atoms=target_n_atoms,
+            atom_tolerance=atom_tolerance,
+            target_lateral_size=target_lateral_size,
+            lateral_tolerance=lateral_tolerance,
+            target_slab_thickness=target_slab_thickness,
+        )
+        score += 1.8 * _square_lateral_score(
+            transformed_cell,
+            atom_count=n_atoms,
+            target_atom_count=target_n_atoms,
+            target_lateral_size=target_lateral_size,
+            lateral_tolerance=lateral_tolerance,
+        )
+        score += 0.02 * score_2d_cell_shape(
+            transformed_cell,
+            atom_count=n_atoms,
+            target_atom_count=target_n_atoms,
+            target_lateral_size=target_lateral_size,
+        )
+        score += 0.03 * (n_atoms / max(target_n_atoms, 1))
+        score += 0.01 * det
+        score += 1.4 * _copy_multiple_penalty(det, ideal_det)
+        scored.append((float(score), matrix_2d))
+
+    if not scored:
+        return ((1, 0), (0, 1))
+
+    return min(scored, key=lambda item: item[0])[1]
 
 
 def _score_result_against_targets(
@@ -684,6 +857,13 @@ def _choose_target_slab_parameters(
         if n_layers < 1:
             continue
         thickness = max(n_layers - 1, 1) * d_spacing
+        base_atom_count = atoms_per_layer * n_layers
+        ideal_det = _ideal_copy_multiple(
+            base_cell_2d,
+            base_atom_count=base_atom_count,
+            target_atom_count=target_n_atoms,
+            target_lateral_size=target_lateral_size,
+        )
         for matrix_2d in transform_candidates:
             det = matrix_2d[0][0] * matrix_2d[1][1] - matrix_2d[0][1] * matrix_2d[1][0]
             if det < 1:
@@ -703,14 +883,23 @@ def _choose_target_slab_parameters(
                 lateral_tolerance=lateral_tolerance,
                 target_slab_thickness=target_slab_thickness,
             )
-            score += 0.8 * score_2d_cell_shape(
+            score += 1.2 * _square_lateral_score(
+                transformed_cell,
+                atom_count=n_atoms,
+                target_atom_count=target_n_atoms,
+                target_lateral_size=target_lateral_size,
+                lateral_tolerance=lateral_tolerance,
+            )
+            score += 0.05 * score_2d_cell_shape(
                 transformed_cell,
                 atom_count=n_atoms,
                 target_atom_count=target_n_atoms,
                 target_lateral_size=target_lateral_size,
             )
-            # Small tie-breaker toward smaller cells when scores are nearly equal.
-            score += 0.001 * (n_atoms / max(target_n_atoms, 1))
+            # Tie-break toward compact DFT-ready cells when scores are close.
+            score += 0.02 * (n_atoms / max(target_n_atoms, 1))
+            score += 0.01 * ((lateral_a + lateral_b) / max(2.0 * target_lateral_size, 1.0))
+            score += 1.0 * _copy_multiple_penalty(det, ideal_det)
             na, nb = _legacy_repeat_guess(matrix_2d)
             choice = _TargetSlabChoice(
                 n_layers=n_layers,
@@ -818,6 +1007,9 @@ def _generate_via_catkit(
     vacuum: float,
     target_lateral_size: float,
     lateral_tolerance: float,
+    target_n_atoms: int,
+    atom_tolerance: int,
+    target_slab_thickness: float,
     layer_type: str = "trim",
     supercell: tuple[int, int] | None = None,
     supercell_matrix: tuple[tuple[int, int], tuple[int, int]] | None = None,
@@ -858,18 +1050,6 @@ def _generate_via_catkit(
     for iterm, _ in enumerate(terminations):
         slab_gratoms = gen.get_slab(iterm=iterm)
 
-        # Determine supercell size
-        cell = slab_gratoms.cell
-        a = float(np.linalg.norm(cell[0]))
-        b = float(np.linalg.norm(cell[1]))
-        if supercell is not None:
-            matrix_2d = _diag_supercell_matrix(supercell)
-        elif supercell_matrix is not None:
-            matrix_2d = tuple(tuple(int(value) for value in row) for row in supercell_matrix)
-        else:
-            matrix_2d = _diag_supercell_matrix(_get_supercell_matrix(a, b, target_lateral_size, lateral_tolerance))
-        na, nb = _legacy_repeat_guess(matrix_2d)
-
         # Convert to plain ASE Atoms immediately (drop Gratoms graph)
         atoms = Atoms(
             numbers=slab_gratoms.numbers,
@@ -882,6 +1062,22 @@ def _generate_via_catkit(
                 slab_gratoms.get_initial_magnetic_moments()
             )
         _apply_uniform_initial_magmoms_by_number(atoms, uniform_magmoms_by_number)
+
+        if supercell is not None:
+            matrix_2d = _diag_supercell_matrix(supercell)
+        else:
+            matrix_2d = _choose_actual_2d_transform(
+                np.array(atoms.cell[:2], dtype=float),
+                base_atom_count=len(atoms),
+                slab_thickness=_slab_thickness_ase(atoms),
+                target_n_atoms=target_n_atoms,
+                atom_tolerance=atom_tolerance,
+                target_lateral_size=target_lateral_size,
+                lateral_tolerance=lateral_tolerance,
+                target_slab_thickness=target_slab_thickness,
+            )
+        na, nb = _legacy_repeat_guess(matrix_2d)
+
         # Use ASE make_supercell instead of CatKit set_size to avoid
         # layer-count artefacts from non-orthogonal cell tiling.
         if matrix_2d != ((1, 0), (0, 1)):
@@ -1084,9 +1280,9 @@ def generate_slab(
 
     The unified API is target-based. It searches candidate layer counts and
     lateral supercells, then picks the combination closest to:
-        - atom count       ≈ ``target_n_atoms`` (default 100, tolerance 100)
-        - lateral a and b  ≈ ``target_lateral_size`` Å (default 10 Å; 2 Å soft scale)
-        - slab thickness   ≈ ``target_slab_thickness`` Å (default 8 Å, vacuum excluded)
+        - atom count       ≈ ``target_n_atoms`` (default 60, tolerance 40)
+        - lateral a and b  ≈ ``target_lateral_size`` Å (default 7.5 Å; 2 Å soft scale)
+        - slab thickness   ≈ ``target_slab_thickness`` Å (default 6 Å, vacuum excluded)
 
     When ``backend`` is omitted, the backend is chosen from composition:
     oxide/nitride-like structures use surfaxe, everything else uses catkit.
@@ -1096,11 +1292,11 @@ def generate_slab(
         bulk_structure:        pymatgen Structure of the bulk material.
         miller_index:          Surface Miller index, e.g. (1, 1, 1).
         vacuum:                Total vacuum thickness in Å (default 15 Å).
-        target_lateral_size:   Target lateral cell size in Å (default 10 Å).
+        target_lateral_size:   Target lateral cell size in Å (default 7.5 Å).
         lateral_tolerance:     Lateral penalty scale in Å, not a hard bound (default 2 Å).
-        target_slab_thickness: Target slab thickness excluding vacuum (default 8 Å).
-        target_n_atoms:        Target total atom count for auto mode (default 100).
-        atom_tolerance:        Atom-count deviation scale (default ±100 atoms).
+        target_slab_thickness: Target slab thickness excluding vacuum (default 6 Å).
+        target_n_atoms:        Target total atom count for auto mode (default 60).
+        atom_tolerance:        Atom-count deviation scale (default ±40 atoms).
         fix_layers:            Fix an explicit number of bottom atomic layers.
                                When given it takes precedence over fix_ratio and
                                selects the layer-count fixing mode.
@@ -1151,11 +1347,23 @@ def generate_slab(
         explicit_backend=backend,
         prefer_symmetry=prefer_symmetry,
     )
+    backend_n_layers = choice.n_layers
+    if (
+        resolved_backend == "catkit"
+        and n_layers_override is None
+        and catkit_layer_type == "stoich"
+    ):
+        # CatKit's stoichiometric trimming can return one fewer useful atomic
+        # layer than the target estimator predicts. Start one layer higher so
+        # compact default slabs do not briefly pass through a too-thin geometry.
+        backend_n_layers += 1
+        if fix_layers is None:
+            n_fix = max(1, round(backend_n_layers / 3))
 
     kw = dict(
         bulk_structure=bulk_structure,
         miller_index=miller_index,
-        n_layers=choice.n_layers,
+        n_layers=backend_n_layers,
         n_fix=n_fix,
         vacuum=vacuum,
         target_lateral_size=target_lateral_size,
@@ -1167,7 +1375,13 @@ def generate_slab(
     def _run_backend(params: dict) -> list[SlabResult]:
         if resolved_backend == "catkit":
             try:
-                return _generate_via_catkit(**params, layer_type=catkit_layer_type)
+                return _generate_via_catkit(
+                    **params,
+                    target_n_atoms=target_n_atoms,
+                    atom_tolerance=atom_tolerance,
+                    target_slab_thickness=target_slab_thickness,
+                    layer_type=catkit_layer_type,
+                )
             except Exception as exc:
                 warnings.warn(
                     f"CatKit SlabGenerator failed: {exc}. Falling back to pymatgen.",
@@ -1200,42 +1414,76 @@ def generate_slab(
             for r in results
         )
 
+    def _best_thickness_result(results: list[SlabResult]) -> SlabResult:
+        return min(results, key=lambda r: abs(r.slab_thickness - target_slab_thickness))
+
+    def _thickness_retry_quality(results: list[SlabResult]) -> tuple[float, float, float]:
+        """Rank retry candidates, prioritizing physically useful slab thickness."""
+        best_result = _best_thickness_result(results)
+        tolerance = max(1.5, target_slab_thickness * 0.25)
+        min_auto_layers = 4 if target_slab_thickness >= 4.0 else 2
+        thin_deficit = max(0.0, target_slab_thickness - tolerance - best_result.slab_thickness)
+        layer_deficit = max(0, min_auto_layers - int(best_result.n_layers))
+        underbuilt_penalty = (thin_deficit / tolerance) + float(layer_deficit)
+        thickness_error = abs(best_result.slab_thickness - target_slab_thickness) / tolerance
+        return (
+            underbuilt_penalty,
+            thickness_error,
+            _best_score(results),
+        )
+
     results = _run_backend(kw)
 
     # CatKit can start from a compact surface cell, which is desirable, but its
     # effective z-layer spacing can differ from the estimator. If the generated
-    # slab is too thin/thick, rescale only n_layers and keep the chosen a/b
-    # supercell so we preserve CatKit's compact lateral cell advantage.
+    # slab is too thin/thick, rescale only n_layers. CatKit retries rescore the
+    # a/b transform against the actual regenerated surface cell.
     if n_layers_override is None and results:
-        best = min(results, key=lambda r: abs(r.slab_thickness - target_slab_thickness))
+        best = _best_thickness_result(results)
         if best.slab_thickness > 0:
             thickness_error = abs(best.slab_thickness - target_slab_thickness)
             tolerance = max(1.5, target_slab_thickness * 0.25)
             if thickness_error > tolerance:
-                current_score = _best_score(results)
-                params = dict(kw)
-                tried = {int(params["n_layers"])}
-                for _ in range(3):
-                    scale = target_slab_thickness / max(best.slab_thickness, 0.1)
-                    next_layers = max(2, int(round(params["n_layers"] * scale)))
-                    if next_layers in tried:
-                        next_layers += 1 if best.slab_thickness < target_slab_thickness else -1
-                    next_layers = max(2, min(60, next_layers))
-                    if next_layers in tried:
-                        break
-                    tried.add(next_layers)
+                current_quality = _thickness_retry_quality(results)
+                base_layers = int(kw["n_layers"])
+                scale = target_slab_thickness / max(best.slab_thickness, 0.1)
+                scaled_layers = max(2, int(round(base_layers * scale)))
+                if best.slab_thickness < target_slab_thickness:
+                    trial_layers = {
+                        *range(base_layers + 1, min(60, base_layers + 8) + 1),
+                        scaled_layers - 1,
+                        scaled_layers,
+                        scaled_layers + 1,
+                    }
+                else:
+                    trial_layers = {
+                        *range(max(2, base_layers - 8), base_layers),
+                        scaled_layers - 1,
+                        scaled_layers,
+                        scaled_layers + 1,
+                    }
+                trial_layers = sorted(
+                    {
+                        max(2, min(60, int(n_layers)))
+                        for n_layers in trial_layers
+                        if int(n_layers) != base_layers
+                    },
+                    key=lambda n_layers: (
+                        abs(n_layers - base_layers),
+                        abs(n_layers - scaled_layers),
+                    ),
+                )
+                for next_layers in trial_layers:
+                    params = dict(kw)
                     params["n_layers"] = next_layers
                     if fix_layers is None:
                         params["n_fix"] = max(1, round(next_layers / 3))
                     candidate = _run_backend(params)
-                    candidate_best = min(
-                        candidate,
-                        key=lambda r: abs(r.slab_thickness - target_slab_thickness),
-                    )
-                    candidate_score = _best_score(candidate)
-                    if candidate_score <= current_score:
+                    candidate_best = _best_thickness_result(candidate)
+                    candidate_quality = _thickness_retry_quality(candidate)
+                    if candidate_quality < current_quality:
                         results = candidate
-                        current_score = candidate_score
+                        current_quality = candidate_quality
                         best = candidate_best
                     if abs(best.slab_thickness - target_slab_thickness) <= tolerance:
                         break
