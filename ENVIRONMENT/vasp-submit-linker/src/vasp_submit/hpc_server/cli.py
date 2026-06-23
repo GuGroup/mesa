@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from vasp_submit.common.config import default_config_path, load_yaml
+from vasp_submit.common.config import default_config_path, dump_yaml, load_yaml
 from vasp_submit.common.schema import JOB_SPEC_SCHEMA
-from vasp_submit.common.spec import load_spec_text
+from vasp_submit.common.spec import load_and_resolve_spec, load_spec_text
 from vasp_submit.hpc_server.jobs import list_jobs, resolve_status_target, show_job, status_job
 from vasp_submit.hpc_server.renderer import prepare_job, submit_job
 
@@ -39,9 +39,11 @@ def main(argv: list[str] | None = None) -> int:
 
     prepare_p = sub.add_parser("prepare", help="Write VASP input files without submitting")
     prepare_p.add_argument("input", help="JSON/YAML spec path, or '-' to read from stdin")
+    prepare_p.add_argument("--common", type=Path, default=None, help="Reusable common spec file merged under this spec (this spec wins)")
 
     submit_p = sub.add_parser("submit", help="Write input files and submit with qsub")
     submit_p.add_argument("input", help="JSON/YAML spec path, or '-' to read from stdin")
+    submit_p.add_argument("--common", type=Path, default=None, help="Reusable common spec file merged under this spec (this spec wins)")
 
     status_p = sub.add_parser("status", help="Live SGE status for one job")
     status_p.add_argument("identifier", help="SGE scheduler_id or vasp-submit job_uid")
@@ -62,6 +64,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command in {"prepare", "submit"}:
             spec, original, spec_base_dir = read_spec_arg(args.input)
+            had_inheritance = ("extends" in spec) or (args.common is not None)
+            spec = load_and_resolve_spec(spec, spec_base_dir, common_path=args.common)
+            if had_inheritance:
+                # Record the fully merged spec so the preserved input is
+                # self-contained (the raw spec only had an `extends` pointer).
+                original = dump_yaml(spec)
             directory = prepare_job(spec, config, original, spec_base_dir=spec_base_dir)
             if args.command == "prepare":
                 json_print(prepared_result(directory))

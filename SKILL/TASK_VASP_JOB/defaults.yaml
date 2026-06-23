@@ -41,12 +41,15 @@ profile:
   # Explicit quick-screening profile. Use only when the user asks for screening,
   # quick comparison, rough triage, or geometry sanity checks across candidates.
   # Do not use this as the default for actual submitted calculations.
+  # k-point density (kspacing) is kept at the refinement value 0.30 on purpose:
+  # screening saves cost through encut/ediff/nelm/nsw/ediffg, not by coarsening
+  # k-points (0.45 was too coarse for metals).
   screening:
     common:
       encut: 350
       ediff: 1.0e-4
       nelm: 120
-      kspacing: 0.45
+      kspacing: 0.30
     task:
       bulk:   { nsw: 120, ediffg: -8.0e-2, potim: 0.2 }
       slab:   { nsw: 120, ediffg: -8.0e-2, potim: 0.2 }
@@ -63,9 +66,9 @@ profile:
 #     magnetic (Fe/Co/Ni/  -> ispin 2 + magmom (per-atom initial moments;
 #       Mn/Cr/...)              REQUIRED when ispin 2)
 #   k-points
-#     default actual calculation is kspacing 0.30. Explicit screening uses
-#     profile.screening.common.kspacing 0.45. Use an explicit vasp.kpts only
-#     when a fixed mesh is needed (then omit kspacing/kgamma for that job).
+#     both actual calculation and screening use kspacing 0.30 (screening does not
+#     coarsen k-points). Use an explicit vasp.kpts only when a fixed mesh is
+#     needed (then omit kspacing/kgamma for that job).
 #     gas-phase molecules in 15 Å boxes -> vasp.kpts [1,1,1] and
 #       vasp.gamma true; omit kspacing/kgamma.
 #

@@ -17,16 +17,22 @@ Use `vasp-job` after this skill for calculation setup.
 
 ## Charge and Spin Boundary
 
-This skill does not support charge or spin policy:
+This skill builds a **neutral** geometry and does not infer charge. It does,
+however, provide a **spin-multiplicity reference** so downstream `vasp-job` can
+set spin correctly without guessing:
 
-- no charge option;
-- no multiplicity option;
-- no spin-state inference;
-- no `magmom` generation;
-- no charged-cell or dipole-correction policy.
+- charge is never inferred (neutral cell only);
+- spin multiplicity (2S+1) defaults to a closed-shell singlet (1); set
+  `--spin-multiplicity` for open-shell references (e.g. `--spin-multiplicity 3`
+  for an O2 triplet). The formula is not used to guess a multiplicity;
+- the metadata `spin_reference` block reports `recommended_ispin`,
+  `recommended_nupdown`, and `recommended_total_magmom` for `vasp-job` to apply;
+- a `dipole_hint` block flags likely-polar molecules (recommending
+  `ldipol`/`idipol` in the `vasp-job` spec).
 
-If a calculation needs spin or charge settings, set them explicitly in the
-downstream `vasp-job` spec. Do not infer them here.
+`vasp-job` still owns the final INCAR: it reads `spin_reference`/`dipole_hint`
+and writes the actual `ispin`/`nupdown`/`magmom`/`ldipol`/`idipol` values. This
+skill never writes VASP inputs.
 
 ## Quick Start
 
@@ -55,6 +61,7 @@ mamba run -n modeling python scripts/build_gas_phase_model.py \
 | `--species` | yes | Label, alias, raw SMILES, `smiles:<SMILES>`, or name supported by slabuilder's molecule resolver. |
 | `--label` | no | Output label. Defaults to a safe name derived from `--species`. |
 | `--box-size` | no | Cubic cell length in Angstrom. Default: `15.0`. |
+| `--spin-multiplicity` | no | Gas-phase spin multiplicity (2S+1). Default: closed-shell singlet (`1`). |
 | `--min-distance` | no | Minimum intramolecular distance sanity threshold. Default: `0.5`. |
 | `--max-atoms` | no | Atom-count validation threshold. Default: `80`. |
 | `--write-extxyz` | no | Also write an extxyz file. Off by default. |
@@ -78,9 +85,11 @@ Each metadata file records:
 - `kind: gas_molecule`;
 - input species and output label;
 - molecular formula and atom count;
-- cubic box size and cell lengths;
+- cubic box size (default 15 Å) and cell lengths;
 - builder provenance copied from slabuilder;
-- `charge_spin_policy: unsupported`;
+- `charge_spin_policy` (charge not inferred) plus a `spin_reference` block
+  (multiplicity, `recommended_ispin`/`nupdown`/`total_magmom`);
+- `dipole_hint` (likely-polar flag + `ldipol`/`idipol` recommendation);
 - validation checks;
 - POSCAR and optional extxyz paths.
 

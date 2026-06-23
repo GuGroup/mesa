@@ -1,146 +1,216 @@
 ---
 name: surface-reaction-modeling-workflow
-description: Coordinate existing surface-modeling skills for catalyst reaction setup. Use when Codex needs an end-to-end or multi-step workflow involving reaction pathway species, gas-phase reference structures, slab generation, termination screening, adsorption-site inspection, adsorbate placement, structure validation, or cost-aware VASP dry-runs/submission for CO2RR, NOxRR, HER, HOR, OER, ORR, AOR, NRR, or related surface reaction modeling.
+description: Autonomous router for catalyst surface reaction modeling. Use to drive end-to-end or multi-step setup — reaction species, gas references, bulk acquisition, slab generation with termination screening, adsorption-site/adsorbate placement, low-level-DFT screening then DFT refinement, and convergence/anomaly-gated result analysis — for CO2RR, NOxRR, HER, HOR, OER, ORR, AOR, NRR and related surface reactions. Proceeds with deterministic decision rules and no human stops except true escalation.
 ---
 
 # Surface Reaction Modeling Workflow
 
 ## Purpose
 
-Use this as the router skill for surface reaction modeling. It does not replace
-the lower-level skills; it forces the right order and gate checks before any
-expensive calculation.
+Router skill for surface reaction modeling. It does not replace the lower-level
+skills; it forces the right order, makes the branch decisions **automatically**,
+and gates expensive calculations on verifiable evidence so the pipeline runs
+**unattended**.
 
-## Skill Chain
+## Operating principles
 
-1. `reaction-pathway-balancing`
-   - Use first when the user gives a reaction family, net reaction, elementary
-     step, or adsorbed intermediates.
-   - Stop with balanced species and named intermediates; do not build structures
-     before the species list is clear.
-2. `build-gas-phase-models`
-   - Use for gas reservoirs, gas products, and isolated molecular references.
-   - Build neutral molecule POSCAR files only; charge, spin, relax, static, and
-     frequency settings belong downstream in `vasp-job`.
-3. `build-slab-models`
-   - Use for clean slabs.
-   - For multicomponent surfaces, oxides, nitrides, oxynitrides, carbides,
-     sulfides, perovskites, polar directions, or ambiguous terminations, run
-     termination screening before selecting a slab.
-4. `inspect-surface-sites`
-   - Use read-only before broad placement when the site landscape matters.
-   - Inspect exposed species and candidate site types on the selected
-     termination.
-5. `place-surface-adsorbates`
-   - Use only after a clean slab and intended site policy exist.
-   - Use single-adsorbate scans or multi-adsorbate placement depending on the
-     user's intent.
-6. `vasp-job`
-   - Use last. For actual VASP calculations, default to refinement settings on
-     a small selected candidate set. Use screening settings only when the user
-     explicitly asks for quick comparison, rough triage, or geometry sanity
-     checks. Always run `prepare` before submit.
+1. **Autonomous progress.** Every branch is a deterministic decision rule with an
+   explicit tie-break. Do not stop to ask the user except for the few escalation
+   conditions at the end. "Ambiguous" is resolved by the rules below, not by a
+   prompt.
+2. **Screening first, refine few.** Use low-level DFT (vasp-job screening
+   profile) as the first filter for terminations and sites; promote only a small
+   selected set to refinement DFT.
+3. **UMA is opt-in.** Do not use UMA/MLIP unless the user explicitly asks.
+   Geometry is cleaned by build → low-level DFT relax, not by UMA preopt.
+4. **Gate on evidence.** After any relaxation, run
+   `calculation-result-analyzer` and branch on its `verdict`
+   (pass/warn/fail) — never trust an endpoint by eye in unattended mode.
+5. **Reuse, don't re-type.** Use vasp-job `extends` (common_refinement.yml /
+   common_screening.yml) so jobs differ only by structure + a few overrides.
+6. **One folder convention.** All artifacts follow the layout in
+   "Folder & naming convention"; pass explicit `--outdir`/`project`/`job_name`.
 
-## Required Gates
+## Two-phase order
 
-Do not skip these gates unless the user explicitly chooses a shortcut.
+Decide the surface before doing anything on it.
 
-### Gate 1: Reaction species
+- **Phase 1 — determine the surface.** Generate every termination and screen them
+  **all** with low-level DFT (the termination DFT screening loop). Rank by surface
+  energy and pick the single most promising termination. No adsorbates or
+  refinement happen in Phase 1.
+- **Phase 2 — model on the chosen surface.** Take that one most-promising surface
+  and proceed: site inspection → adsorbate placement → low-level DFT screening of
+  candidates → refinement DFT of the best few, each analyzer-gated.
 
-Pass when:
+Do not start Phase 2 on multiple terminations in parallel and do not refine
+adsorbates before the surface is fixed.
 
-- reaction family or elementary steps are named;
-- adsorbates/intermediates are resolved to labels, formulas, or SMILES;
-- no DFT energies are claimed from structure generation alone.
+## Skill chain
 
-### Gate 2: Gas-phase references
+1. `reaction-pathway-balancing` — resolve the reaction family / elementary steps
+   into balanced species and named intermediates.
+2. `build-gas-phase-models` — neutral gas references; carries `spin_reference`
+   and `dipole_hint` for vasp-job to apply.
+3. **Bulk acquisition** — fetch from Materials Project (`build-slab-models
+   --formula`) or start from a local/code-generated bulk
+   (`build-slab-models --bulk-file`) when the system is multicomponent and absent
+   from MP.
+4. `build-slab-models` — clean slab from the bulk, with the termination decision
+   below.
+5. `inspect-surface-sites` — read-only site landscape when the surface exposes
+   multiple species/site types.
+6. `place-surface-adsorbates` — bounded automatic placement.
+7. `vasp-job` — low-level DFT screening first, then refinement on the selected
+   set; unattended polling + restart per its SKILL.
+8. `calculation-result-analyzer` — convergence + anomaly verdict after every
+   relaxation; drives accept / restart / drop.
 
-Pass when pathway metadata contains gas reservoirs/products and those references
-are needed for downstream VASP jobs:
+## Decision rules
 
-- gas species are resolved to labels or SMILES;
-- neutral molecule POSCAR and metadata exist for each selected gas reference;
-- metadata records `charge_spin_policy: unsupported`;
-- relax/static/frequency calculations are deferred to `vasp-job`.
+These replace human-gated "stops". Apply them in order; act on the result.
 
-### Gate 3: Bulk and slab termination
+### D1: Reaction species
+Proceed once the family/steps are named and intermediates resolve to
+labels/formulas/SMILES. Never claim energies from structure generation alone.
 
-Pass when:
+### D2: Gas references
+Build a neutral POSCAR for each needed gas reservoir/product. Apply
+`spin_reference` (ispin/nupdown) and `dipole_hint` (ldipol/idipol) downstream in
+vasp-job. No charge inference.
 
-- Materials Project id or selected bulk candidate is known;
-- Miller index is explicit;
-- `termination_summary.json` exists for ambiguous surfaces;
-- `recommended_termination_candidates` has exactly one safe candidate, or the
-  user explicitly chose a `--termination N`;
-- `selection_warnings` have been reported if present.
+### D3: Bulk
+- If an MP id is given, use it. Else if `--bulk-file` is provided/needed
+  (multicomponent not in MP), start from it. Else fetch by formula and select the
+  lowest energy-above-hull candidate.
+- Record `bulk_source` (mp/local). One bulk per material proceeds automatically.
 
-If multiple candidates remain, stop and ask for a termination choice instead of
-placing adsorbates.
+### D4: Termination — fix the surface FIRST by screening every termination
+The surface must be decided before any site/adsorbate/refinement work (see
+"Two-phase order"). Decide it by screening, not by the heuristic alone.
+1. Enumerate **all** terminations with `--all-terminations`; read
+   `termination_summary.json`.
+2. **Single termination** → use it.
+3. **Multiple** → run the **termination DFT screening loop** (below) over **every
+   generated termination** at the lowest practical DFT level and auto-select the
+   single most promising surface by surface energy γ. Do not pre-trim to a few;
+   screen them all (the heuristic `score` only sets the evaluation order, not the
+   shortlist). The only exception is an impractically large termination count —
+   then keep the cheapest level and the heuristically-best subset, and record the
+   cap as an escalation note (not a silent shortcut).
+4. **Polar**: prefer a non-polar candidate. If none exists, pick the
+   least-polar/symmetric candidate and enable dipole correction
+   (`ldipol: true`, `idipol: 3`) for its calculations; record the caveat.
 
-### Gate 4: Surface site policy
+Tie-break order when several remain equal on γ: non-polar → symmetric top/bottom
+→ stoichiometric → closest to `target_n_atoms` → lowest termination index.
 
-Pass when:
+### D5: Sites
+Enumerate the intended site types on the selected termination with a bounded
+count. If the exposed top-layer chemistry conflicts with the intended
+reaction/site, prefer the matching site type automatically; only escalate if no
+compatible site exists.
 
-- the selected clean slab has validation passing;
-- exposed top-layer species are known;
-- site types to enumerate are known, or the user accepted a bounded default;
-- the number of candidates is bounded.
+### D6: Adsorbate placement
+Generate bounded placement candidates with valid POSCAR + metadata and passing
+minimum-distance. Cap the candidate count (see escalation E3).
 
-### Gate 5: Adsorbate placement
+### D7: Calculation handoff
+Screen the candidate set with low-level DFT (screening profile), gate each with
+the analyzer, then promote the best small subset to refinement DFT. Do not
+submit a refinement job for every generated structure.
 
-Pass when:
+## Termination DFT screening loop (Phase 1 — decide the surface)
 
-- each generated structure has POSCAR and metadata;
-- placement site metadata is present;
-- minimum-distance validation passes;
-- the output set is summarized before any calculation handoff.
+Goal: pick the single most promising termination without a human by screening
+**all** of them cheaply, then hand only that surface to Phase 2.
 
-### Gate 6: Calculation handoff
+1. Save **every** generated termination (`--all-terminations`) as separate slabs.
+2. Compute a bulk per-atom energy once: a screening bulk relax (`task: bulk`,
+   `common_screening.yml`).
+3. For **each** termination: screening slab relax (`task: slab`, lowest practical
+   level), then `calculation-result-analyzer`. Discard `fail` candidates.
+4. Surface energy `γ = (E_slab − n_slab · E_bulk_per_atom) / (2A)` where `A` is the
+   in-plane cell area. Compare all surviving terminations on γ.
+5. Auto-select the single lowest-γ termination that is
+   non-polar/symmetric/stoichiometric (D4 tie-break otherwise). Record γ for every
+   termination. **This one surface is the input to Phase 2.**
 
-Pass when:
+Screen all by default — this is the cheap, exhaustive pass that determines the
+surface. Only fall back to a heuristically-best subset if the count is
+computationally impractical, and record that as an escalation note. UMA preopt
+may replace step 3's geometry cleanup **only if the user explicitly enabled UMA**.
 
-- the candidate set is small;
-- the user has selected which structures to calculate;
-- VASP intent is explicit: actual calculation defaults to refinement, while
-  screening is allowed only when explicitly requested for quick comparison or
-  rough triage;
-- `vasp-job prepare` is run before `vasp-job submit`;
-- `freq` is not run unless explicitly requested for selected relaxed endpoints.
+## Calculation policy
 
-## Default Policies
+- **Default = refinement** for the final selected set; **screening** is the
+  first-pass filter for terminations/sites and for broad triage. Both use
+  `kspacing 0.30`.
+- Reuse params with vasp-job `extends`: `common_screening.yml` for screening,
+  `common_refinement.yml` for refinement; the job spec adds only `task` params,
+  system overrides (ismear/sigma, ispin/magmom from gas `spin_reference`), and
+  structure.
+- `freq` only on selected relaxed endpoints and only when explicitly requested.
+- After each relaxation: run `calculation-result-analyzer`. It renders the
+  overlay PNGs and writes `visual_review_request.json`; **open the PNGs, judge
+  whether the structure stayed physically sane, and write `visual_review.json`**,
+  then re-run/ingest so the overall verdict includes the visual gate. Without
+  this step the visual gate stays `pending` and holds the verdict at `warn`.
+- Branch on the overall verdict → `pass` accept; `warn` accept with caveat (treat
+  convergence-`warn` as `fail` when fully unattended); `fail` →
+  `diagnose_vasp_failure.py` → bounded auto-restart (continue from CONTCAR, ALGO
+  switch, POTIM reduce) up to the retry cap, else drop the candidate.
 
-- Prefer structure-generation and metadata validation before VASP.
-- Once entering actual VASP calculation, prefer refinement defaults.
-- Use VASP screening only when the user explicitly asks for quick comparison,
-  rough triage, or low-cost geometry sanity checks; report it as non-final.
-- Prefer explicit termination selection over term0 defaults.
-- Prefer bounded site/adsorbate enumeration over full combinatorial expansion.
-- Prefer metadata-backed decisions over visual guesses.
-- Prefer dry-runs/spec generation before queue submission.
-- Never submit a large VASP matrix just because many POSCAR files exist.
+## Folder & naming convention (enforced)
 
-## Output Contract
+Pass explicit output paths so artifacts are traceable. Use lowercase with
+`_`/`-` only.
 
-For an end-to-end setup, report:
+`<project>` defaults to `./<system-or-reaction-label>` under the current working
+directory (e.g. `./co2rr_cu`), unless the user gives an explicit root. This is the
+fixed default — do not invent ad-hoc folder names like `dft/`, `screening/`, or
+`opt/` outside this layout.
 
+```
+<project>/
+  bulk/<formula>_<mpid|local>/
+  slab/<formula>_<mpid|local>_<hkl>_term<N>/
+  gas/<species>/
+  calc/<stage>/<system>__<task>__<level>/    # stage: screening | refinement
+  analysis/<job_uid>/
+```
+
+- `<level>` = `dft-screen` | `dft-refine` | `uma` (`uma` only when explicitly
+  enabled). `<task>` = `bulk|slab|gas|freq|static`. `<system>` encodes
+  material+facet+adsorbate, e.g. `co_pt111_fcc`.
+- Map to tools: `build-slab-models --outdir <project>/slab/...`,
+  `build-gas-phase-models --outdir <project>/gas/<species>`,
+  `calculation-result-analyzer --outdir <project>/analysis/<job_uid>`.
+- vasp-job: `project: <stage>`, `job_name: <system>__<task>__<level>__NNN`
+  (NNN zero-padded). This binds structure provenance to the job directory 1:1.
+
+## Escalation conditions (the only stops)
+
+Stop and ask only when automatic progress is physically impossible:
+
+- no termination candidate survives screening (all `fail`);
+- bulk acquisition fails (no MP match and no `--bulk-file`);
+- no adsorption site is compatible with the intended reaction;
+- the retry budget is exhausted for every candidate at a required step;
+- an external resource is unavailable (MP/API key, queue, vasp-job CLI).
+
+Multiple viable terminations/sites/adsorbates are NOT a stop — resolve them with
+the decision rules and tie-breaks above.
+
+## Output contract
+
+Report:
 - reaction family and intermediates;
-- gas reference POSCAR/metadata paths when gas species are present;
-- bulk MP id, Miller index, backend, and termination choice;
-- termination warnings and unique surface signatures;
+- gas reference POSCAR/metadata paths (+ applied spin/dipole);
+- bulk source (mp id or local file), Miller index, backend;
+- termination decision: candidates considered, γ per screened candidate, the
+  auto-selected termination, and any polar/asymmetry caveat;
 - selected site types and adsorbate placement count;
-- generated POSCAR/metadata paths;
-- validation status;
-- VASP calculation intent: refinement default for actual jobs, or explicit
-  screening with a stated quick-comparison/triage reason;
-- whether calculation output is only a dry-run/spec or an actual submitted job.
-
-## Stop Conditions
-
-Stop and request a user decision when:
-
-- multiple safe termination candidates remain;
-- only non-stoichiometric or asymmetric candidates are available;
-- exposed surface chemistry conflicts with the intended reaction/site;
-- many adsorbate/site combinations are possible and the user has not bounded
-  the enumeration;
-- the next step would submit VASP jobs for more than a small selected set.
+- generated POSCAR/metadata paths under the folder convention;
+- per-job analyzer `verdict` and any restart/drop actions taken;
+- which results are screening (non-final) vs refinement.

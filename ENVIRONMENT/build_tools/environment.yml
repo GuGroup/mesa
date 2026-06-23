@@ -10,6 +10,14 @@
 # Dependency versions are declared in pyproject.toml (single source of truth).
 # Optional extras: pip install -e ".[opsin]" (chemical-name resolution via
 # OPSIN, also needs Java on PATH), ".[dev]" (tests).
+#
+# Visual result review (TASK_CALCULATION_RESULT_ANALYZER) renders aseview PNGs
+# through a headless browser. The [export] extra pulls playwright; Chromium
+# itself is a one-time post-install download (not a pip package):
+#
+#   mamba env update -f environment.yml --prune                  # from this dir
+#   mamba run -n modeling python -m playwright install chromium  # once, after
+#
 name: modeling
 
 channels:
@@ -20,3 +28,5 @@ dependencies:
   - pip
   - pip:
       - -e .
+      # aseview viewer + headless PNG/GIF export (playwright).
+      - aseview[export]>=0.0.12

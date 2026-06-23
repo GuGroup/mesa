@@ -1,4 +1,4 @@
 interface:
   display_name: "Surface Reaction Modeling Workflow"
-  short_description: "Gate surface modeling skills before VASP"
-  default_prompt: "Use $surface-reaction-modeling-workflow to select slab terminations, adsorption sites, and gas references before VASP; default actual calculations to refinement settings and use screening only if I explicitly ask for quick comparison."
+  short_description: "Autonomously drive surface modeling through gated VASP"
+  default_prompt: "Use $surface-reaction-modeling-workflow to run catalyst surface modeling end-to-end and unattended: resolve species and gas references, acquire the bulk (MP or local), generate the slab and auto-select the termination (DFT-screen ambiguous ones by surface energy), place adsorbates, screen with low-level DFT then refine the best few, and gate every relaxation on the calculation-result-analyzer verdict with bounded auto-restart. Decide branches with the skill's deterministic rules; do not pause for choices unless an escalation condition is hit. Do not use UMA unless I explicitly ask."

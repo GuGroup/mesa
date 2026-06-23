@@ -31,6 +31,30 @@ def safe_name(text: str) -> str:
     return text.strip("_") or "structure"
 
 
+def load_local_bulk_structure(path: Path):
+    """Load a local bulk file into a pymatgen Structure.
+
+    Tries pymatgen first (POSCAR/CIF/...), then falls back to ASE for formats
+    pymatgen cannot read directly (e.g. extxyz). This is the entry point for the
+    "start from a local or code-generated bulk" path, so multicomponent systems
+    that are absent from the Materials Project can still seed slab generation.
+    """
+    from pymatgen.core import Structure
+
+    try:
+        return Structure.from_file(str(path))
+    except Exception:
+        from ase.io import read as ase_read
+        from pymatgen.io.ase import AseAtomsAdaptor
+
+        atoms = ase_read(str(path))
+        if atoms.cell is None or atoms.cell.rank < 3:
+            raise SystemExit(
+                f"--bulk-file {path} has no full 3D cell; a periodic bulk is required."
+            )
+        return AseAtomsAdaptor.get_structure(atoms)
+
+
 def cell_lengths(atoms) -> list[float]:
     return [float(x) for x in atoms.cell.lengths()]
 
@@ -182,7 +206,8 @@ def main() -> int:
         description="Build clean slab models with slabuilder.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--formula", required=True, help="Formula, chemical system, or MP id.")
+    parser.add_argument("--formula", help="Formula, chemical system, or MP id (Materials Project fetch). Mutually exclusive with --bulk-file.")
+    parser.add_argument("--bulk-file", help="Local bulk structure file (POSCAR/CIF/extxyz/...). Starts slab generation from this structure and skips the Materials Project fetch. Mutually exclusive with --formula.")
     parser.add_argument("--miller", nargs=3, type=int, required=True, metavar=("H", "K", "L"), help="Surface Miller index.")
     parser.add_argument("--search-mode", choices=["formula", "material_id", "chemsys", "elements"], default=None, help="Materials Project search mode. If omitted, mp-* inputs use material_id and all others use formula.")
     parser.add_argument("--max-results", type=int, default=5, help="Maximum Materials Project bulk candidates to fetch before sorting.")
@@ -217,17 +242,38 @@ def main() -> int:
             f"Original error: {exc}"
         )
 
-    search_mode = args.search_mode
-    if search_mode is None:
-        search_mode = "material_id" if args.formula.startswith("mp-") else "formula"
+    if bool(args.formula) == bool(args.bulk_file):
+        raise SystemExit("Provide exactly one of --formula or --bulk-file.")
 
-    entries = fetch_bulk_structures(args.formula, max_results=args.max_results, search_mode=search_mode)
-    if not entries:
-        raise SystemExit(f"No bulk structures found for {args.formula!r}.")
-    if args.entry_index < 0 or args.entry_index >= len(entries):
-        raise SystemExit(f"--entry-index {args.entry_index} out of range for {len(entries)} entries.")
+    if args.bulk_file:
+        import types
 
-    entry = entries[args.entry_index]
+        bulk_path = Path(args.bulk_file).expanduser().resolve()
+        if not bulk_path.is_file():
+            raise SystemExit(f"--bulk-file not found: {bulk_path}")
+        structure = load_local_bulk_structure(bulk_path)
+        entry = types.SimpleNamespace(
+            structure=structure,
+            formula=structure.composition.reduced_formula,
+            mpid="local",
+            energy_above_hull=None,
+        )
+        bulk_source = "local"
+        search_mode = "local"
+        args.entry_index = 0
+    else:
+        search_mode = args.search_mode
+        if search_mode is None:
+            search_mode = "material_id" if args.formula.startswith("mp-") else "formula"
+
+        entries = fetch_bulk_structures(args.formula, max_results=args.max_results, search_mode=search_mode)
+        if not entries:
+            raise SystemExit(f"No bulk structures found for {args.formula!r}.")
+        if args.entry_index < 0 or args.entry_index >= len(entries):
+            raise SystemExit(f"--entry-index {args.entry_index} out of range for {len(entries)} entries.")
+
+        entry = entries[args.entry_index]
+        bulk_source = "mp"
     supercell = None
     if args.supercell_na or args.supercell_nb:
         if not (args.supercell_na and args.supercell_nb):
@@ -297,6 +343,8 @@ def main() -> int:
             "slab_formula": atoms.get_chemical_formula(),
             "stoichiometry": stoich,
             "mpid": entry.mpid,
+            "bulk_source": bulk_source,
+            "bulk_file": str(bulk_path) if args.bulk_file else None,
             "bulk_energy_above_hull": getattr(entry, "energy_above_hull", None),
             "miller": list(args.miller),
             "termination": int(term_index),
@@ -394,6 +442,7 @@ def main() -> int:
             "formula": entry.formula,
             "entry_index": args.entry_index,
             "search_mode": search_mode,
+            "bulk_source": bulk_source,
         },
         "miller": list(args.miller),
         "available_termination_count": available_termination_count,
@@ -429,6 +478,7 @@ def main() -> int:
             "formula": entry.formula,
             "entry_index": args.entry_index,
             "search_mode": search_mode,
+            "bulk_source": bulk_source,
         },
         "skipped_nonstoichiometric": skipped_nonstoich,
         "termination_summary": str(termination_summary_path),

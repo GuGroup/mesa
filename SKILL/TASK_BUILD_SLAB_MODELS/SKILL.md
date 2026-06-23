@@ -15,9 +15,28 @@ For end-to-end surface reaction modeling, use this skill as the slab gate in
 `surface-reaction-modeling-workflow`: do not place adsorbates until the bulk,
 Miller index, termination, and validation status are explicit.
 
-## Prerequisite
+## Bulk source: Materials Project or local/code-generated
 
-Bulk structures are fetched from the Materials Project, so an API key must be set as the `MP_API_KEY` or `PMG_MAPI_KEY` environment variable (or in a `.env` file in the working directory). Generation fails immediately without it.
+Slab generation starts from a bulk structure. There are two entry points:
+
+- **`--formula` (Materials Project fetch)**: fetches bulk candidates from MP. An
+  API key must be set as `MP_API_KEY` or `PMG_MAPI_KEY` (or in a `.env` file in
+  the working directory). MP fetch fails immediately without it.
+- **`--bulk-file <POSCAR|CIF|extxyz>` (local or code-generated bulk)**: starts
+  from a bulk structure you already have and **skips the MP fetch entirely**. Use
+  this when the bulk is multicomponent and absent from MP, or when you built the
+  bulk in code. The recorded metadata sets `bulk_source: local`, `mpid: local`,
+  and `bulk_file: <path>`.
+
+`--formula` and `--bulk-file` are mutually exclusive; provide exactly one. With
+`--bulk-file`, the `--search-mode`/`--max-results`/`--entry-index` options are
+ignored.
+
+```bash
+mamba run -n modeling python scripts/build_slab_model.py \
+  --bulk-file path/to/bulk_POSCAR \
+  --miller 1 1 1
+```
 
 ## Quick Start
 
@@ -69,7 +88,8 @@ mamba run -n modeling python scripts/build_slab_model.py \
 
 | Keyword | Required | Meaning |
 | --- | --- | --- |
-| `--formula` | yes | Formula, chemical system, element set, or `mp-*` id to fetch from Materials Project. |
+| `--formula` | one of | Formula, chemical system, element set, or `mp-*` id to fetch from Materials Project. Exactly one of `--formula` / `--bulk-file` is required. |
+| `--bulk-file` | one of | Local/code-generated bulk file (POSCAR/CIF/extxyz/...). Skips the MP fetch. Exactly one of `--formula` / `--bulk-file` is required. |
 | `--miller H K L` | yes | Surface Miller index, e.g. `1 1 1`. |
 | `--search-mode` | no | Materials Project lookup mode: `formula`, `material_id`, `chemsys`, or `elements`; omitted values auto-detect `mp-*` ids. |
 | `--max-results` | no | Number of MP bulk candidates fetched before slabuilder sorting. |
@@ -96,15 +116,19 @@ mamba run -n modeling python scripts/build_slab_model.py \
 ## Workflow
 
 1. Confirm material, Miller index, and DFT-readiness policy.
-2. Fetch/select the bulk. Use a specific MP id when supplied; otherwise select the lowest energy-above-hull candidate returned by slabuilder.
+2. Obtain the bulk. With `--bulk-file`, start from the provided local/code-generated bulk. Otherwise fetch from MP: use a specific MP id when supplied; otherwise select the lowest energy-above-hull candidate returned by slabuilder.
 3. Generate compact slabs with target-based sizing.
 4. Screen terminations before selection when the surface is multicomponent,
    oxide, nitride, oxynitride, carbide, sulfide, perovskite, polar, or otherwise
    chemically ambiguous. Use `--all-terminations` and inspect
-   `termination_summary.json`.
-5. Save exactly one selected termination as `POSCAR` and JSON metadata only
-   after a single safe candidate exists or the user explicitly chooses
-   `--termination N`.
+   `termination_summary.json`. The heuristic `score`/`recommended_termination`
+   here is a safety triage, not an energy ranking — for the autonomous,
+   energy-based choice on ambiguous surfaces, hand the top candidates to
+   `surface-reaction-modeling-workflow`'s **termination DFT screening loop**
+   (low-level DFT surface energy), which selects by γ.
+5. Save exactly one selected termination as `POSCAR` and JSON metadata once a
+   single safe candidate exists, the DFT screening loop has chosen one, or
+   `--termination N` is given.
 6. Validate atom count, cell sanity, minimum distance, tags, and metadata.
 7. Report MP id, Miller index, termination, backend, atom count, lateral lengths, slab thickness, vacuum, fixed atom count, validation status, warnings, and output paths.
 

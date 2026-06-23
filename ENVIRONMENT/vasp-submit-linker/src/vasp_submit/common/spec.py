@@ -20,6 +20,7 @@ SPEC_FIELDS = {
     "structure",
     "vasp",
     "queue",
+    "extends",
 }
 PROJECT_FIELDS = {"name", "job_dir", "overwrite", "root"}
 STRUCTURE_FIELDS = {"format", "content", "path"}
@@ -62,6 +63,81 @@ def merge_common_spec(common: dict[str, Any] | None, spec: dict[str, Any]) -> di
     return deep_merge(common, spec)
 
 
+def _strip_extends(spec: dict[str, Any]) -> dict[str, Any]:
+    out = dict(spec)
+    out.pop("extends", None)
+    return out
+
+
+def resolve_extends(
+    spec: dict[str, Any],
+    base_dir: str | Path,
+    *,
+    _seen: set[str] | None = None,
+) -> dict[str, Any]:
+    """Resolve a spec's in-file ``extends`` references into a single merged spec.
+
+    ``extends`` is a relative path (or list of relative paths, resolved under
+    ``base_dir``) to reusable common spec files. Precedence, weakest first:
+    earlier ``extends`` entry < later ``extends`` entry < the spec itself. A
+    referenced common file may itself use ``extends`` (resolved relative to its
+    own directory); cycles raise an error.
+    """
+    if not isinstance(spec, dict):
+        raise ValueError("spec must be a mapping")
+    extends = spec.get("extends")
+    if extends is None:
+        return _strip_extends(spec)
+    if isinstance(extends, str):
+        extends = [extends]
+    if not isinstance(extends, list) or not all(isinstance(item, str) for item in extends):
+        raise ValueError("extends must be a string or a list of strings")
+
+    base = Path(base_dir)
+    seen = set(_seen or ())
+    merged: dict[str, Any] = {}
+    for rel in extends:
+        rel_path = safe_relative_path(rel, "extends")
+        target = resolve_under(base, rel_path)
+        key = str(target)
+        if key in seen:
+            raise ValueError(f"circular extends reference: {target}")
+        if not target.is_file():
+            raise FileNotFoundError(f"extends file not found: {target}")
+        loaded = load_spec_text(target.read_text(encoding="utf-8"))
+        resolved_parent = resolve_extends(loaded, target.parent, _seen=seen | {key})
+        merged = deep_merge(merged, resolved_parent)
+    return deep_merge(merged, _strip_extends(spec))
+
+
+def load_and_resolve_spec(
+    spec: dict[str, Any],
+    spec_base_dir: str | Path,
+    *,
+    common_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Apply reusable common parameters before normalization.
+
+    Resolves the spec's own ``extends`` first, then overlays an optional external
+    ``--common`` file (the weakest layer, so the job spec always wins). The
+    returned mapping has no ``extends`` key and is ready for ``normalize_spec``.
+    """
+    resolved = resolve_extends(spec, spec_base_dir)
+    if common_path is None:
+        return resolved
+    common_file = Path(common_path).expanduser()
+    if not common_file.is_absolute():
+        common_file = Path.cwd() / common_file
+    common_file = common_file.resolve()
+    if not common_file.is_file():
+        raise FileNotFoundError(f"--common file not found: {common_file}")
+    common = resolve_extends(
+        load_spec_text(common_file.read_text(encoding="utf-8")),
+        common_file.parent,
+    )
+    return merge_common_spec(common, resolved)
+
+
 def reject_unknown_fields(data: dict[str, Any], allowed: set[str], label: str) -> None:
     unknown = sorted(set(data) - allowed)
     if unknown:
@@ -82,6 +158,9 @@ def normalize_spec(
 ) -> dict[str, Any]:
     config = config or {}
     spec = dict(spec)
+    # `extends` is resolved by load_and_resolve_spec before normalization; drop
+    # any residual key so it is never written into the final job spec.
+    spec.pop("extends", None)
     if "potcar" in spec:
         raise ValueError(
             "top-level potcar is not supported; configure POTCAR through "
