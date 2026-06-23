@@ -56,7 +56,7 @@ Default rendering:
 - Overlay **all** sampled frames (every frame visible, not just the first three)
   with MIC-unwrapped, non-rotated coordinates so an adsorbate walking across a
   periodic boundary stays continuous.
-- Render three perspective views — `overlay_top.png`, `overlay_side_a.png`,
+- Render three orthographic views — `overlay_top.png`, `overlay_side_a.png`,
   `overlay_side_b.png` — in the fixed style: Rowan, bonds on, atom size 0.7,
   `showCell` on.
 - `--zoom-frames "0,12,30"` additionally renders `zoom_*.png` for just those
@@ -116,7 +116,7 @@ The script writes:
 | Artifact | Purpose |
 | --- | --- |
 | `analysis_summary.json` | Machine-readable overall `verdict`, `deterministic_verdict`, `visual_validation` (status/paths/review), `convergence` (criterion, converged, NSW), `run_parameters` (EDIFFG/NSW), `anomalies` (dissociation/desorption), diagnosis, warnings, selected frames, and output paths. |
-| `overlay_{top,side_a,side_b}.png` | Uniform≤50-frame overlay perspective views (Rowan style, bonds on, atom size 0.7) for multimodal review. |
+| `overlay_{top,side_a,side_b}.png` | Uniform≤50-frame overlay orthographic views (Rowan style, bonds on, atom size 0.7) for multimodal review. |
 | `zoom_{top,side_a,side_b}.png` | Zoomed overlay of the `--zoom-frames` indices, when requested. |
 | `visual_review_request.json` | What the agent must inspect + the result schema for `visual_review.json`. |
 | `visual_review.json` | (agent-written) The multimodal verdict ingested into the overall verdict. |

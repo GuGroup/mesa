@@ -15,13 +15,13 @@ import numpy as np
 ENERGY_KEYS = ("energy", "free_energy", "E", "Energy", "dft_energy", "potential_energy")
 
 # aseview overlay render style for visual review (bonds on, Rowan style, compact
-# atoms, perspective camera). Kept here so the look is consistent across runs.
+# atoms, orthographic camera). Kept here so the look is consistent across runs.
 VISUAL_STYLE = {
     "colorBy": "Atom",
     "showBond": True,
     "style": "rowan",
     "atomSize": 0.7,
-    "viewMode": "Perspective",
+    "viewMode": "Orthographic",
     "showCell": True,
     "viewFit": 0.64,
     "backgroundColor": "#64748b",
@@ -718,7 +718,7 @@ def unwrap_selected(frames: list[Any], indices: list[int]) -> list[Any]:
 
 
 def camera_views(atoms: Any) -> dict[str, tuple[list[float], list[float]]]:
-    """Top / Side-a / Side-b perspective directions from the cell basis.
+    """Top / Side-a / Side-b view directions from the cell basis.
 
     Falls back to fixed Cartesian axes for non-periodic / degenerate cells."""
     cell = atoms.cell.array if hasattr(atoms, "cell") else None
