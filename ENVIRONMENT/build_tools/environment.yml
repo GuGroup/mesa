@@ -12,9 +12,8 @@
 # OPSIN, also needs Java on PATH), ".[dev]" (tests).
 #
 # Visual result review (TASK_CALCULATION_RESULT_ANALYZER) renders aseview PNGs
-# through a headless browser. aseview is an external sibling checkout at
-# ../../../aseview (i.e. compchem/aseview); its [export] extra pulls playwright.
-# Chromium itself is a one-time post-install download (not a pip package):
+# through a headless browser. The [export] extra pulls playwright; Chromium
+# itself is a one-time post-install download (not a pip package):
 #
 #   mamba env update -f environment.yml --prune                  # from this dir
 #   mamba run -n modeling python -m playwright install chromium  # once, after
@@ -29,6 +28,5 @@ dependencies:
   - pip
   - pip:
       - -e .
-      # aseview viewer + headless PNG/GIF export (playwright). External sibling
-      # editable checkout; keep aseview cloned next to this repo.
-      - -e ../../../aseview[export]
+      # aseview viewer + headless PNG/GIF export (playwright).
+      - aseview[export]>=0.0.12

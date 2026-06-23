@@ -739,27 +739,17 @@ def camera_views(atoms: Any) -> dict[str, tuple[list[float], list[float]]]:
 
 
 def make_overlay_viewer(frames: list[Any], **kwargs: Any):
-    """OverlayViewer with every frame visible.
+    """OverlayViewer with every sampled frame visible.
 
-    Prefers a native all-visible option if aseview exposes one; otherwise patches
-    the template's hardcoded first-three-visible default. (aseview is maintained
-    separately; the native option supersedes the patch once available.)"""
+    aseview >= 0.0.12 exposes a native ``visibleIndices`` setting; make all
+    sampled frames visible so the overlay shows the full trajectory, not just the
+    first few. Falls back to a plain OverlayViewer on older aseview."""
     from aseview import OverlayViewer
 
-    for kw in ({"all_visible": True}, {"visible": "all"}):
-        try:
-            return OverlayViewer(frames, **kw, **kwargs)
-        except TypeError:
-            continue
-
-    class _AllFramesOverlayViewer(OverlayViewer):
-        def _generate_html(self) -> str:
-            html = super()._generate_html()
-            if "visible: index < 3" not in html:
-                raise RuntimeError("aseview all-visible marker not found; expose a native option")
-            return html.replace("visible: index < 3", "visible: true")
-
-    return _AllFramesOverlayViewer(frames, **kwargs)
+    try:
+        return OverlayViewer(frames, visibleIndices=list(range(len(frames))), **kwargs)
+    except TypeError:
+        return OverlayViewer(frames, **kwargs)
 
 
 def render_overlay_pngs(

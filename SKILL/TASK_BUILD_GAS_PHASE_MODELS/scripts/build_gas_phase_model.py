@@ -35,37 +35,20 @@ def safe_name(text: str) -> str:
     return text.strip("_") or "gas_molecule"
 
 
-# Ground-state spin multiplicities (2S+1) for common gas-phase references that
-# are NOT closed-shell singlets. Anything not listed defaults to a singlet.
-# Keyed by ASE Hill-notation chemical formula. These matter for ORR/OER (O2),
-# NOxRR (NO, NO2), and atomic/radical references; a wrong default (ispin 1)
-# gives qualitatively wrong reference energies.
-KNOWN_SPIN_MULTIPLICITY: dict[str, int] = {
-    "H": 2,      # H atom, doublet
-    "C": 3,      # C atom, 3P triplet
-    "N": 4,      # N atom, 4S quartet
-    "O": 3,      # O atom, 3P triplet
-    "O2": 3,     # dioxygen, triplet ground state
-    "NO": 2,     # nitric oxide, doublet
-    "NO2": 2,    # nitrogen dioxide, doublet
-    "HO": 2,     # hydroxyl radical (OH), doublet
-    "HO2": 2,    # hydroperoxyl radical, doublet
-    "CH3": 2,    # methyl radical, doublet
-    "O3": 1,     # ozone is a closed-shell singlet (listed to avoid confusion)
-}
+def resolve_spin_multiplicity(override: int | None) -> dict[str, Any]:
+    """Resolve the gas-phase spin multiplicity and the VASP settings it implies.
 
-
-def lookup_spin_multiplicity(atoms: Atoms, override: int | None) -> dict[str, Any]:
-    """Resolve the gas-phase spin multiplicity and the VASP settings it implies."""
+    Defaults to a closed-shell singlet (multiplicity 1). Open-shell references
+    (e.g. O2, NO, radicals) are the caller's responsibility via
+    ``--spin-multiplicity``; the formula is not used to guess a multiplicity."""
     if override is not None:
         if override < 1:
             raise ValueError("--spin-multiplicity must be >= 1")
         multiplicity = int(override)
         source = "override"
     else:
-        hill = atoms.get_chemical_formula(mode="hill")
-        multiplicity = KNOWN_SPIN_MULTIPLICITY.get(hill, 1)
-        source = "lookup" if hill in KNOWN_SPIN_MULTIPLICITY else "default_singlet"
+        multiplicity = 1
+        source = "default_singlet"
     n_unpaired = multiplicity - 1
     return {
         "spin_multiplicity": multiplicity,
@@ -103,19 +86,6 @@ def dipole_hint(atoms: Atoms) -> dict[str, Any]:
             else "No dipole correction needed (single atom or homonuclear diatomic)."
         ),
     }
-
-
-def auto_box_size(atoms: Atoms, min_vacuum: float, floor: float = 8.0) -> float:
-    """Cubic box side = largest molecular extent + 2*min_vacuum, with a floor.
-
-    Sizing to the molecule (instead of a fixed 15 Å cube) keeps small molecules
-    cheap and gives large molecules enough vacuum. The image separation along the
-    longest axis equals 2*min_vacuum."""
-    if len(atoms) == 0:
-        return max(floor, 2.0 * min_vacuum)
-    spans = atoms.positions.max(axis=0) - atoms.positions.min(axis=0)
-    extent = float(np.max(spans)) if len(atoms) > 1 else 0.0
-    return float(max(floor, extent + 2.0 * min_vacuum))
 
 
 def composition_counts(atoms: Atoms) -> dict[str, int]:
@@ -239,9 +209,8 @@ def main() -> int:
     )
     parser.add_argument("--species", required=True, help="Label, alias, raw SMILES, smiles:<SMILES>, or supported name.")
     parser.add_argument("--label", help="Output label. Defaults to a safe name derived from --species.")
-    parser.add_argument("--box-size", type=float, default=None, help="Fixed cubic box length in Angstrom. Omit to auto-size from the molecule extent + 2*--min-vacuum.")
-    parser.add_argument("--min-vacuum", type=float, default=6.0, help="Minimum vacuum padding per side (Angstrom) used by auto box sizing. Ignored when --box-size is set.")
-    parser.add_argument("--spin-multiplicity", type=int, default=None, help="Override the gas-phase spin multiplicity (2S+1). Default: lookup table, else singlet.")
+    parser.add_argument("--box-size", type=float, default=15.0, help="Cubic box length in Angstrom.")
+    parser.add_argument("--spin-multiplicity", type=int, default=None, help="Gas-phase spin multiplicity (2S+1). Default: closed-shell singlet (1).")
     parser.add_argument("--min-distance", type=float, default=0.5, help="Minimum intramolecular distance threshold in Angstrom.")
     parser.add_argument("--max-atoms", type=int, default=80, help="Maximum atom count accepted by validation.")
     parser.add_argument("--write-extxyz", action="store_true", help="Also write an extxyz copy.")
@@ -261,14 +230,9 @@ def main() -> int:
     with redirect_stdout_to_stderr():
         source_atoms = build_adsorbate_atoms(args.species)
 
-    if args.box_size is not None:
-        box_size = float(args.box_size)
-        box_size_mode = "fixed"
-    else:
-        box_size = auto_box_size(source_atoms, args.min_vacuum)
-        box_size_mode = "auto"
+    box_size = float(args.box_size)
     atoms = center_in_cubic_box(source_atoms, box_size)
-    spin_reference = lookup_spin_multiplicity(atoms, args.spin_multiplicity)
+    spin_reference = resolve_spin_multiplicity(args.spin_multiplicity)
     dipole = dipole_hint(atoms)
     validation = validate_gas_molecule(
         atoms,
@@ -297,8 +261,6 @@ def main() -> int:
         "composition": composition_counts(atoms),
         "n_atoms": len(atoms),
         "box_size": float(box_size),
-        "box_size_mode": box_size_mode,
-        "min_vacuum": float(args.min_vacuum) if box_size_mode == "auto" else None,
         "cell_lengths": cell_lengths(atoms),
         "pbc": [bool(x) for x in atoms.get_pbc()],
         "centered_in_box": True,

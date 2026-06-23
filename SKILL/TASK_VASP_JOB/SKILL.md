@@ -380,7 +380,7 @@ Poll until done, then verify and recover automatically.
 Classify the failure and act, capping restarts (default 3) per structure:
 
 ```bash
-python scripts/diagnose_vasp_failure.py --dir <remote_dir> --max-retries 3 --retry-count <n>
+mamba run -n modeling python scripts/diagnose_vasp_failure.py --dir <remote_dir> --max-retries 3 --retry-count <n>
 ```
 
 Map `recommended_action` to a new job spec, then `vasp-job submit` it:

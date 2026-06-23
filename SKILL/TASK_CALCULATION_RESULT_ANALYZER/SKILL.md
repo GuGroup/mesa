@@ -85,10 +85,11 @@ Gate aggregation (overall = severity max, **downgrade-only**):
 
 ## Quick Start
 
-Script paths are relative to this skill directory.
+Script paths are relative to this skill directory. Run in the `modeling` env
+(the script needs slabuilder/ASE/aseview; bare `python` is not on PATH).
 
 ```bash
-python scripts/analyze_calculation_result.py \
+mamba run -n modeling python scripts/analyze_calculation_result.py \
   --input path/to/run_directory_or_trajectory \
   --outdir analysis/calculation_result
 ```
@@ -96,16 +97,16 @@ python scripts/analyze_calculation_result.py \
 Common inputs:
 
 ```bash
-python scripts/analyze_calculation_result.py --input relax.traj --outdir analysis/uma_relax
-python scripts/analyze_calculation_result.py --input vasprun.xml --outdir analysis/vasp_relax
-python scripts/analyze_calculation_result.py --input OSZICAR --outdir analysis/oszicar_only
+mamba run -n modeling python scripts/analyze_calculation_result.py --input relax.traj --outdir analysis/uma_relax
+mamba run -n modeling python scripts/analyze_calculation_result.py --input vasprun.xml --outdir analysis/vasp_relax
+mamba run -n modeling python scripts/analyze_calculation_result.py --input OSZICAR --outdir analysis/oszicar_only
 ```
 
 Optional smoke/demo run:
 
 ```bash
-python scripts/make_demo_surface_jump.py --output /tmp/demo_surface_jump.extxyz
-python scripts/analyze_calculation_result.py --input /tmp/demo_surface_jump.extxyz --outdir /tmp/demo_surface_jump_analysis
+mamba run -n modeling python scripts/make_demo_surface_jump.py --output /tmp/demo_surface_jump.extxyz
+mamba run -n modeling python scripts/analyze_calculation_result.py --input /tmp/demo_surface_jump.extxyz --outdir /tmp/demo_surface_jump_analysis
 ```
 
 ## Outputs
@@ -163,7 +164,7 @@ investigated.
 Open selected frames with:
 
 ```bash
-aseview selected_frames.extxyz -v overlay --cmap viridis -o aseview_overlay.html
+mamba run -n modeling aseview selected_frames.extxyz -v overlay --cmap viridis -o aseview_overlay.html
 ```
 
 Interpretation:
