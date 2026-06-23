@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 
 from helpers import base_spec, hpc_config, spec_with
 
+from vasp_submit.common.config import dump_yaml
 from vasp_submit.common.schema import JOB_SPEC_SCHEMA
-from vasp_submit.common.spec import merge_common_spec, normalize_spec
+from vasp_submit.common.spec import (
+    load_and_resolve_spec,
+    merge_common_spec,
+    normalize_spec,
+    resolve_extends,
+)
 
 
 class NormalizeSpecContractTests(unittest.TestCase):
@@ -122,6 +130,94 @@ class NormalizeSpecContractTests(unittest.TestCase):
         params = normalize_spec(payload, hpc_config())["vasp"]["parameters"]
         # no server defaults injected, no merge, no ispin->magmom enforcement
         self.assertEqual(params, {"encut": 400, "ismear": 1, "ispin": 2, "ibrion": 2})
+
+
+class ExtendsReuseContractTests(unittest.TestCase):
+    def test_extends_merges_common_file_and_spec_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            (base_dir / "common.yml").write_text(
+                dump_yaml(
+                    {
+                        "project": "refinement",
+                        "vasp": {"xc": "PBE", "parameters": {"encut": 400, "ediff": 1.0e-5}},
+                        "queue": {"preset": "auto", "submit": True},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            spec = {
+                "extends": "common.yml",
+                "job_name": "co_pt111_001",
+                "structure": {"format": "poscar", "content": "Pt\n1.0\n"},
+                "vasp": {"parameters": {"encut": 520}},
+            }
+            resolved = resolve_extends(spec, base_dir)
+
+            self.assertNotIn("extends", resolved)
+            self.assertEqual(resolved["vasp"]["xc"], "PBE")
+            self.assertEqual(resolved["vasp"]["parameters"]["encut"], 520)  # spec wins
+            self.assertEqual(resolved["vasp"]["parameters"]["ediff"], 1.0e-5)  # from common
+            # resolved spec still normalizes cleanly (extends does not leak)
+            normalized = normalize_spec(resolved, hpc_config())
+            self.assertNotIn("extends", normalized)
+
+    def test_extends_list_later_entry_overrides_earlier(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            (base_dir / "a.yml").write_text(
+                dump_yaml({"vasp": {"parameters": {"encut": 300, "nelm": 60}}}), encoding="utf-8"
+            )
+            (base_dir / "b.yml").write_text(
+                dump_yaml({"vasp": {"parameters": {"encut": 450}}}), encoding="utf-8"
+            )
+            spec = {
+                "extends": ["a.yml", "b.yml"],
+                "job_name": "x_001",
+                "structure": {"format": "poscar", "content": "Pt\n1.0\n"},
+            }
+            resolved = resolve_extends(spec, base_dir)
+            self.assertEqual(resolved["vasp"]["parameters"]["encut"], 450)  # b over a
+            self.assertEqual(resolved["vasp"]["parameters"]["nelm"], 60)  # from a
+
+    def test_extends_missing_file_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = {"extends": "nope.yml", "job_name": "x", "structure": {"format": "poscar", "content": "Pt\n"}}
+            with self.assertRaisesRegex(FileNotFoundError, "extends file not found"):
+                resolve_extends(spec, Path(tmp))
+
+    def test_extends_rejects_escaping_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = {"extends": "../secret.yml", "job_name": "x", "structure": {"format": "poscar", "content": "Pt\n"}}
+            with self.assertRaises(ValueError):
+                resolve_extends(spec, Path(tmp))
+
+    def test_extends_cycle_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            (base_dir / "a.yml").write_text(dump_yaml({"extends": "b.yml"}), encoding="utf-8")
+            (base_dir / "b.yml").write_text(dump_yaml({"extends": "a.yml"}), encoding="utf-8")
+            spec = {"extends": "a.yml", "job_name": "x", "structure": {"format": "poscar", "content": "Pt\n"}}
+            with self.assertRaisesRegex(ValueError, "circular extends"):
+                resolve_extends(spec, base_dir)
+
+    def test_load_and_resolve_applies_external_common_weakest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            (base_dir / "shared.yml").write_text(
+                dump_yaml({"vasp": {"parameters": {"encut": 350, "ismear": 1}}}), encoding="utf-8"
+            )
+            spec = {
+                "job_name": "x_001",
+                "structure": {"format": "poscar", "content": "Pt\n1.0\n"},
+                "vasp": {"parameters": {"encut": 500}},
+            }
+            resolved = load_and_resolve_spec(spec, base_dir, common_path=base_dir / "shared.yml")
+            self.assertEqual(resolved["vasp"]["parameters"]["encut"], 500)  # spec wins over common
+            self.assertEqual(resolved["vasp"]["parameters"]["ismear"], 1)  # from common
+
+    def test_schema_documents_extends(self) -> None:
+        self.assertIn("extends", JOB_SPEC_SCHEMA["properties"])
 
 
 if __name__ == "__main__":

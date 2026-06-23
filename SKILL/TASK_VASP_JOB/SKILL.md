@@ -84,6 +84,47 @@ screening mode is being used explicitly.
   `profile.screening.task.<task>`, apply system-specific overrides, and write
   the final merged values explicitly into `vasp.parameters`.
 
+### Reuse common parameters (`extends` / `--common`)
+
+To avoid re-typing the ~16 shared `common` keys for every job, the CLI merges a
+reusable common spec file before the job spec (the job spec always wins on
+conflict; merge is deep/recursive). This is the preferred way to run many jobs
+in one project without hand-assembly drift.
+
+- Bundled reusable blocks: [`common_refinement.yml`](common_refinement.yml) and
+  [`common_screening.yml`](common_screening.yml). Each carries only the
+  task-agnostic `common` block.
+- External file (recommended): `vasp-job prepare spec.yml --common <path>/common_refinement.yml`.
+  `--common` accepts an absolute path or a path relative to the current
+  directory.
+- In-spec: add `extends: common_refinement.yml` to the job spec. `extends` is a
+  relative path (or list of relative paths) resolved **under the spec file's
+  directory** — copy the common file next to the spec first. A list merges left
+  to right (later wins), then the spec wins over all.
+
+With reuse, the job spec only needs `job_name`, `task`, `structure`, the
+`task.<task>` parameters, system overrides (`ismear`/`sigma`,
+`ispin`/`magmom`), and `queue`:
+
+```yaml
+extends: common_refinement.yml   # or pass --common on the CLI
+job_name: co_pt111_001
+task: slab
+structure: { format: poscar, path: POSCAR }
+vasp:
+  parameters:                    # task.slab + system overrides only
+    ibrion: 2
+    isif: 0
+    nsw: 300
+    ediffg: -5.0e-2
+    potim: 0.1
+    algo: Fast
+queue: { preset: auto }
+```
+
+The preserved input record (`input_specs/*.yml`) stores the fully merged spec,
+so a reused job remains self-contained and reproducible.
+
 Example for a default refined `slab` job (top-level common + task.slab, smearing
 left at the metal default):
 
@@ -155,10 +196,10 @@ Parameter rules:
   `structure.content` instead to inline the POSCAR text, but set exactly one of
   `path` or `content`.
 - `vasp.parameters` keys are lowercase vasp-ase keywords, not uppercase INCAR.
-- k-points: use `kspacing` by default. Actual calculation default is
-  `kspacing: 0.30`; explicit screening uses looser settings such as
-  `kspacing: 0.45`. Set explicit `vasp.kpts` only when the user asks for a fixed
-  mesh or the calculation is clearly a one-point Gamma-only job; then omit
+- k-points: use `kspacing` by default. Both actual calculation and explicit
+  screening use `kspacing: 0.30` (screening saves cost via encut/ediff/nelm/nsw,
+  not by coarsening k-points). Set explicit `vasp.kpts` only when the user asks
+  for a fixed mesh or the calculation is clearly a one-point Gamma-only job; then omit
   `kspacing`/`kgamma`. Do not add top-level `vasp.gamma` for ordinary KSPACING
   jobs; `vasp.parameters.kgamma` already controls Gamma-centered KSPACING
   meshes.
@@ -185,10 +226,15 @@ POSCAR and metadata.
 - Use Gamma-only sampling: set `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true`;
   omit `kspacing` and `vasp.parameters.kgamma` for that job.
 - Use molecule/insulator smearing: `ismear: 0`, `sigma: 0.05`.
-- Do not infer charge or spin from the molecule label, SMILES, radical-looking
-  formula, or gas-phase convention. Preserve explicit user-supplied
-  `ispin`/`magmom` in minimal edit mode, otherwise keep `ispin: 1` and report
-  that spin/charge policy was not inferred.
+- Spin: read the `spin_reference` block in the gas metadata from
+  `build-gas-phase-models`. Apply its `recommended_ispin` and, when
+  `recommended_ispin: 2`, set `nupdown: <recommended_nupdown>` (locks the
+  multiplicity for the isolated molecule) and an initial `magmom`. This is the
+  one place spin IS applied from upstream metadata — e.g. O2→ispin 2/nupdown 2,
+  NO→ispin 2/nupdown 1. In minimal edit mode preserve explicit user-supplied
+  `ispin`/`magmom`/`nupdown` instead. Never infer charge.
+- Dipole: if the gas metadata `dipole_hint.likely_polar` is true, set
+  `ldipol: true` and `idipol: 4` for the molecule-in-a-box job.
 
 Example gas relaxation spec:
 
@@ -307,6 +353,51 @@ queue:
 A job is done when `status`/`show` reports `finished: true` (`state: finished` for a
 clean exit, `state: failed` for a non-zero VASP exit code). `state: unknown` means it
 is neither in the queue nor has a completion marker yet — check again shortly.
+
+## Unattended polling, restart, and recovery
+
+For hands-off operation, do not assume one submit equals one converged result.
+Poll until done, then verify and recover automatically.
+
+### Polling
+- After submit, poll `vasp-job status <job_uid>` with **exponential backoff**
+  (e.g. 60s → 120s → 240s, capped ~600s) up to a max wall time, instead of a
+  fixed tight loop.
+- `state: unknown` right after submit is normal — re-check after a short delay;
+  only treat it as a problem if it persists across several polls with no
+  `remote_dir` outputs appearing.
+
+### Verify, then gate
+- When `finished`, run the calculation-result-analyzer (`TASK_CALCULATION_RESULT_ANALYZER`)
+  on `remote_dir` and read its `verdict`:
+  - `pass` → accept the endpoint, continue the workflow.
+  - `warn` → accept only with the recorded caveat (inspect overlay if a human is
+    available); for fully unattended runs, treat a convergence-related `warn`
+    like `fail`.
+  - `fail` → run the recovery step below.
+
+### Recovery (bounded auto-restart)
+Classify the failure and act, capping restarts (default 3) per structure:
+
+```bash
+python scripts/diagnose_vasp_failure.py --dir <remote_dir> --max-retries 3 --retry-count <n>
+```
+
+Map `recommended_action` to a new job spec, then `vasp-job submit` it:
+
+| `recommended_action` | What to do |
+| --- | --- |
+| `continue_from_contcar` | New spec, `structure.path: CONTCAR` from `remote_dir`, same params (raise `nsw` if it was the limiter). |
+| `continue_from_contcar_algo_normal` | Continue from `CONTCAR` and set `algo: Normal` (or `All`) for electronic non-convergence (NELM hit). |
+| `continue_from_contcar_reduce_potim` / `restart_reduce_potim` | Restart with smaller `potim` (e.g. 0.05) and `algo: Normal` (ZBRENT line-search failure). |
+| `restart_algo_normal` / `restart_clean` | Resubmit from the original POSCAR with the adjusted control. |
+| `inspect_structure` | Do NOT blindly resubmit (ZPOTRF/atoms-too-close, no progress); re-check the structure/min-distance first. |
+| `escalate_drop_candidate` | Retry budget exhausted — stop retrying, mark the candidate failed, and move on. |
+
+Always pass the running `--retry-count` so the helper escalates instead of
+looping forever. Reuse common parameters via `extends` (above) so a restart spec
+differs from the original only by `structure.path` and the few recovery
+overrides.
 
 ## Common errors
 

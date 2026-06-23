@@ -1,0 +1,48 @@
+# Reusable REFINEMENT common parameters for vasp-job `extends` (G7 reuse).
+#
+# Carries only the task-agnostic `common` block (refinement-quality). A job spec
+# references it and adds the small task + system-specific pieces; the job spec
+# always wins on conflict.
+#
+# Usage A — external common file (recommended; no copy needed):
+#   vasp-job prepare spec.yml --common /path/to/SKILL/TASK_VASP_JOB/common_refinement.yml
+#
+# Usage B — in-spec extends (copy this file next to spec.yml first; `extends`
+# must be a relative path under the spec directory):
+#   # spec.yml
+#   extends: common_refinement.yml
+#   job_name: co_pt111_001
+#   task: slab
+#   structure: { format: poscar, path: POSCAR }
+#   vasp:
+#     parameters:          # task.slab + system overrides only
+#       ibrion: 2
+#       isif: 0
+#       nsw: 300
+#       ediffg: -5.0e-2
+#       potim: 0.1
+#       algo: Fast
+#   queue: { preset: auto }
+#
+# System-dependent keys to OVERRIDE in the job spec when needed:
+#   gas-phase molecule / insulator -> ismear: 0, sigma: 0.05
+#   magnetic (Fe/Co/Ni/Mn/Cr/...)  -> ispin: 2 + magmom: [...] (REQUIRED when ispin 2)
+
+vasp:
+  parameters:
+    gga: RP
+    prec: Normal
+    encut: 400
+    ediff: 1.0e-5
+    nelm: 200
+    ismear: 1
+    sigma: 0.1
+    ispin: 1
+    ivdw: 12
+    isym: 0
+    ncore: 8
+    lreal: Auto
+    lcharg: false
+    lwave: false
+    kspacing: 0.30
+    kgamma: true

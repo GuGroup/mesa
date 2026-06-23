@@ -17,16 +17,22 @@ Use `vasp-job` after this skill for calculation setup.
 
 ## Charge and Spin Boundary
 
-This skill does not support charge or spin policy:
+This skill builds a **neutral** geometry and does not infer charge. It does,
+however, provide a **spin-multiplicity reference** so downstream `vasp-job` can
+set spin correctly without guessing:
 
-- no charge option;
-- no multiplicity option;
-- no spin-state inference;
-- no `magmom` generation;
-- no charged-cell or dipole-correction policy.
+- charge is never inferred (neutral cell only);
+- spin multiplicity (2S+1) comes from a small ground-state lookup table
+  (e.g. O2 triplet, NO/NO2/OH doublet, atomic O/N/H, CH3) and defaults to a
+  singlet for anything not listed; override with `--spin-multiplicity`;
+- the metadata `spin_reference` block reports `recommended_ispin`,
+  `recommended_nupdown`, and `recommended_total_magmom` for `vasp-job` to apply;
+- a `dipole_hint` block flags likely-polar molecules (recommending
+  `ldipol`/`idipol` in the `vasp-job` spec).
 
-If a calculation needs spin or charge settings, set them explicitly in the
-downstream `vasp-job` spec. Do not infer them here.
+`vasp-job` still owns the final INCAR: it reads `spin_reference`/`dipole_hint`
+and writes the actual `ispin`/`nupdown`/`magmom`/`ldipol`/`idipol` values. This
+skill never writes VASP inputs.
 
 ## Quick Start
 
@@ -54,7 +60,9 @@ mamba run -n modeling python scripts/build_gas_phase_model.py \
 | --- | --- | --- |
 | `--species` | yes | Label, alias, raw SMILES, `smiles:<SMILES>`, or name supported by slabuilder's molecule resolver. |
 | `--label` | no | Output label. Defaults to a safe name derived from `--species`. |
-| `--box-size` | no | Cubic cell length in Angstrom. Default: `15.0`. |
+| `--box-size` | no | Fixed cubic cell length in Angstrom. Omit to auto-size from the molecule extent + 2·`--min-vacuum`. |
+| `--min-vacuum` | no | Minimum vacuum padding per side (Angstrom) for auto box sizing. Default: `6.0`. Ignored when `--box-size` is set. |
+| `--spin-multiplicity` | no | Override the gas-phase spin multiplicity (2S+1). Default: lookup table, else singlet. |
 | `--min-distance` | no | Minimum intramolecular distance sanity threshold. Default: `0.5`. |
 | `--max-atoms` | no | Atom-count validation threshold. Default: `80`. |
 | `--write-extxyz` | no | Also write an extxyz file. Off by default. |
@@ -78,9 +86,11 @@ Each metadata file records:
 - `kind: gas_molecule`;
 - input species and output label;
 - molecular formula and atom count;
-- cubic box size and cell lengths;
+- cubic box size, `box_size_mode` (auto/fixed), `min_vacuum`, and cell lengths;
 - builder provenance copied from slabuilder;
-- `charge_spin_policy: unsupported`;
+- `charge_spin_policy` (charge not inferred) plus a `spin_reference` block
+  (multiplicity, `recommended_ispin`/`nupdown`/`total_magmom`);
+- `dipole_hint` (likely-polar flag + `ldipol`/`idipol` recommendation);
 - validation checks;
 - POSCAR and optional extxyz paths.
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Calculation Result Analyzer"
+  short_description: "Analyze optimization trajectories and convergence"
+  default_prompt: "Use $calculation-result-analyzer to analyze UMA or VASP trajectory results, flag divergence, and generate sampled overlay frames for visual review."

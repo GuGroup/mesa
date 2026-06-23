@@ -1,0 +1,39 @@
+# Reusable SCREENING common parameters for vasp-job `extends` (G7 reuse).
+#
+# Same task-agnostic `common` block as common_refinement.yml but with the
+# screening overlay applied (cheaper encut/ediff/nelm). k-points stay at
+# kspacing 0.30 on purpose — screening does not coarsen k-points.
+#
+# Use only for explicitly requested quick comparison / rough triage / geometry
+# sanity checks. Screening results are NOT final adsorption/surface-energy
+# evidence.
+#
+# Usage:
+#   vasp-job prepare spec.yml --common /path/to/SKILL/TASK_VASP_JOB/common_screening.yml
+# or in-spec:
+#   extends: common_screening.yml
+# then add task params in the job spec, e.g. screening slab:
+#   vasp: { parameters: { ibrion: 2, isif: 0, nsw: 120, ediffg: -8.0e-2, potim: 0.2, algo: Fast } }
+#
+# System-dependent overrides (set in the job spec when needed):
+#   gas-phase molecule / insulator -> ismear: 0, sigma: 0.05
+#   magnetic (Fe/Co/Ni/Mn/Cr/...)  -> ispin: 2 + magmom: [...] (REQUIRED when ispin 2)
+
+vasp:
+  parameters:
+    gga: RP
+    prec: Normal
+    encut: 350
+    ediff: 1.0e-4
+    nelm: 120
+    ismear: 1
+    sigma: 0.1
+    ispin: 1
+    ivdw: 12
+    isym: 0
+    ncore: 8
+    lreal: Auto
+    lcharg: false
+    lwave: false
+    kspacing: 0.30
+    kgamma: true

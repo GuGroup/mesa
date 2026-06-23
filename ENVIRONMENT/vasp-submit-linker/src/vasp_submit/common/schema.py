@@ -12,6 +12,13 @@ PARTIAL_JOB_SPEC_SCHEMA: dict[str, object] = {
     "additionalProperties": False,
     "properties": {
         "schema_version": {"type": "integer", "const": 1},
+        "extends": {
+            "description": "Relative path(s) to reusable common spec file(s), merged before this spec (this spec wins).",
+            "oneOf": [
+                {"type": "string", "pattern": SAFE_RELATIVE_PATH_PATTERN},
+                {"type": "array", "items": {"type": "string", "pattern": SAFE_RELATIVE_PATH_PATTERN}},
+            ],
+        },
         "job_name": {"type": "string", "pattern": SAFE_SEGMENT_PATTERN},
         "task": {"type": "string", "enum": ["bulk", "slab", "freq", "static"]},
         "project": {
