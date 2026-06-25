@@ -21,6 +21,7 @@ dependencies = [
   "opendataloader-pdf>=2.4",
   "paper-qa>=2026.3.18",
   "python-dotenv>=1.0",
+  "tiktoken>=0.4,<0.12",
 ]
 
 [project.optional-dependencies]
