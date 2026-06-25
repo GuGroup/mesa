@@ -1,0 +1,22 @@
+material: RuO2
+reaction: HER
+extra_terms:
+  - rutile
+  - heterointerface
+research:
+  prompt: Compare Ru, RuO2, and Ru/RuO2 interfaces for HER.
+  collaboration_context: Experimental RuO2 samples may contain metallic Ru.
+  decision_criteria:
+    - prioritize DFT-feasible surface and descriptor gaps
+    - separate pure RuO2 behavior from Ru/RuO2 interface effects
+  target_properties:
+    - HER activity
+    - hydrogen adsorption free energy
+    - interface charge transfer
+    - surface and interface stability
+  constraints:
+    - no abstract-only evidence extraction
+  calculation_preferences:
+    - facet-resolved Ru and RuO2 slab models
+    - Ru/RuO2 heterointerface models
+    - delta G_H* and electronic-structure descriptors

@@ -4,6 +4,8 @@ examples/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/**
+!SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/
+!SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/**
 
 # OS
 .DS_Store
