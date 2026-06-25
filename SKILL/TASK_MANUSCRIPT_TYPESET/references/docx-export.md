@@ -13,10 +13,19 @@ paper workspace. DOCX is an exchange artifact, not the source of truth.
 
 It does not require Pandoc.
 
+Recommended invocation:
+
+```bash
+mamba run -n mesa-manuscript python scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --check-only
+```
+
 ## Real Export Mode
 
 Without `--check-only`, the script runs Pandoc to create `manuscript.docx`. If
 Pandoc is unavailable, it exits non-zero with an installation/action message.
+Use the `mesa-manuscript` environment from
+`mesa/ENVIRONMENT/manuscript_tools/environment.yml` so Pandoc and the plotting
+stack are available consistently.
 
 Use `--reference-doc /path/to/reference.docx` when a Nature-family Word style
 template is available. The reference document owns Word styles, fonts,

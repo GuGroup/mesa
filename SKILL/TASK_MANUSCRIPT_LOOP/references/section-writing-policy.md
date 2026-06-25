@@ -27,6 +27,12 @@ Write sections in this order:
 6. Abstract
 7. Title
 
+Before drafting a section, load `references/skill-routing.md` and use
+`SKILL/nature-writing` with target journal set to `nature` for Nature-family
+argument structure. After accepted reviewer issues are resolved and the section
+content is claim-locked, use `SKILL/nature-polishing` for concision, flow,
+terminology, and journal-style refinement.
+
 ## Chunk Policy
 
 Write in flow-sized chunks, such as one Results subsection or one Methods block.
@@ -39,3 +45,7 @@ chunks only for transition context.
 Do not introduce new claims, numbers, calculations, citations, methods, or
 figures in prose. If prose needs a new claim, return to the claim matrix and
 gate review.
+
+Imported writing/polishing skills are style and structure guides only. They may
+not override the claim matrix, figure map, section contract, reviewer issue
+state, or the v1 exclusion on literature search and citation work.

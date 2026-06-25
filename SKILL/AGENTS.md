@@ -48,6 +48,8 @@ SKILL/
 - TASK1/TASK2 expose `run(input_data, context)` and CLI dry-run examples.
 - Many tests load modules by path, call `run(...)`, and separately exercise CLI output writing.
 - Use `mamba run -n modeling` for slab/adsorbate/trajectory workflows that need scientific dependencies.
+- Use `mamba run -n mesa-manuscript` for manuscript figures, imported
+  Nature/catalyst plotting skills, and DOCX export.
 - Preserve the documented standard output envelope when a task defines one.
 - Manuscript work must treat `paper/` as canonical: run the manuscript-loop
   validators before prose edits, and keep generated Word/DOCX outputs
@@ -69,5 +71,5 @@ python TASK2_reaction_energy_evaluation/MYSKILL/reaction_energy_evaluation.py --
 mamba run -n modeling python TASK_BUILD_SLAB_MODELS/scripts/build_slab_model.py --formula Pt --miller 1 1 1
 mamba run -n modeling python TASK_PLACE_SURFACE_ADSORBATES/scripts/place_surface_adsorbates.py --slab structures/Pt_111/POSCAR --adsorbate CO
 python TASK_MANUSCRIPT_LOOP/scripts/init_paper_workspace.py --root /tmp/mesa_paper
-python TASK_MANUSCRIPT_TYPESET/scripts/export_docx.py --paper /tmp/mesa_paper/paper --out /tmp/mesa_docx --check-only
+mamba run -n mesa-manuscript python TASK_MANUSCRIPT_TYPESET/scripts/export_docx.py --paper /tmp/mesa_paper/paper --out /tmp/mesa_docx --check-only
 ```

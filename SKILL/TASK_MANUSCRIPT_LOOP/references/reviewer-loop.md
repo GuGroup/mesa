@@ -61,6 +61,17 @@ Default reviewer loop:
 - R3 coherence and polish-readiness: reviewers check remaining cross-document
   consistency and whether prose can proceed or final polish can begin.
 
+Reviewer agents must load `references/skill-routing.md` and use
+`SKILL/nature-reviewer` for Nature-family referee stance, review axes, and
+report structure. The MESA claim matrix, figure map, result inventory, and
+reviewer issue schema remain the controlling contracts.
+
+Run `chem-figure-reviewer` after any figure asset changes. It must load
+`references/figure-policy.md`, use `SKILL/nature-figure` for figure QA, and
+check catalyst-specific outputs against `SKILL/energy-diagram-plotter`,
+`SKILL/sabatier-volcano-plotter`, or `SKILL/adsorbate-structure-grid` when
+those skills generated the figure.
+
 The editor role is the main manuscript-loop session, not another reviewer. It
 merges raw reviewer files, records synthesis and round events in
 `paper/state/ledger.jsonl`, and decides whether the gate advances. Stop after

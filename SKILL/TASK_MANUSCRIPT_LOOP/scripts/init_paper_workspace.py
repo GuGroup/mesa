@@ -21,8 +21,6 @@ PAPER_DIRS: Final[tuple[str, ...]] = (
     "figures/source",
     "figures/exported",
     "figures/qa",
-    "build/typst",
-    "build/pdf",
     "build/docx",
 )
 

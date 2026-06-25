@@ -29,19 +29,19 @@ Required paper inputs:
 Check and assemble DOCX Markdown without requiring Pandoc:
 
 ```bash
-python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --check-only
+mamba run -n mesa-manuscript python scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --check-only
 ```
 
 Export DOCX when Pandoc is installed:
 
 ```bash
-python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx
+mamba run -n mesa-manuscript python scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx
 ```
 
 Apply a Word style template when one is provided:
 
 ```bash
-python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --reference-doc /path/to/reference.docx
+mamba run -n mesa-manuscript python scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --reference-doc /path/to/reference.docx
 ```
 
 ## Boundaries

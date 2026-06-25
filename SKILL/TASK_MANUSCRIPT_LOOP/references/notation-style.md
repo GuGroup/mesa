@@ -23,5 +23,5 @@ formatting choices.
 
 ## Lint Boundary
 
-This reference defines the contract only. Validator and lint implementation is
-owned by later Todos.
+This reference defines notation expectations. Use
+`scripts/notation_lint.py` before drafting or exporting prose.

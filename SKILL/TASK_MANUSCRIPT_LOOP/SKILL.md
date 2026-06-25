@@ -68,6 +68,8 @@ notation, consistency, and issues tied to explicit locked chunks.
   after all heavy gates pass.
 - Terminology, symbols, and formatting consistency: load
   `references/notation-style.md`.
+- Any reviewer, figure, writing, architecture, or revision work that may use
+  imported Nature/catalyst skills: load `references/skill-routing.md` first.
 
 ## Fixed Agents
 
@@ -75,12 +77,16 @@ Use fixed agents only when their role is needed, and pass exact file paths every
 time. Do not ask agents to infer state from chat.
 
 - `chem-manuscript-architect`: story spine, figure order, and section
-  contracts; no finished prose.
+  contracts using `SKILL/nature-writing`; no finished prose.
 - `chem-significance-reviewer`, `chem-method-reviewer`, and
-  `chem-claim-reviewer`: read-only structured issues for reviewer rounds.
-- `chem-figure-reviewer`: figure QA tied to claim and figure IDs.
-- `chem-section-writer`: one contracted section or patch after the prose lock.
-- `chem-revision-editor`: accepted-issue patches to named chunks only.
+  `chem-claim-reviewer`: read-only structured issues for reviewer rounds using
+  `SKILL/nature-reviewer` as the referee stance guide.
+- `chem-figure-reviewer`: figure QA tied to claim and figure IDs using
+  `SKILL/nature-figure` plus any catalyst-specific source-skill contract.
+- `chem-section-writer`: one contracted section or patch after the prose lock,
+  using `SKILL/nature-writing`.
+- `chem-revision-editor`: accepted-issue patches to named chunks only, using
+  `SKILL/nature-polishing` for polish after evidence locks.
 
 Reviewer round defaults are R1 full critique, R2 changed-files verification,
 and R3 coherence/polish-readiness. Halt rather than fake resolution if any
