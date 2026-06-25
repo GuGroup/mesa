@@ -1,0 +1,4 @@
+interface:
+  display_name: "AdsorbDiff Placement"
+  short_description: "Prepare POSCAR slabs, run AdsorbDiff, and validate candidates with GemNet."
+  default_prompt: "Use $adsorbdiff-placement to prepare my POSCAR slab, choose AdsorbDiff settings automatically, run placement, and validate candidates with pretrained GemNet."

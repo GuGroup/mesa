@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+
+runs/
+outputs/
+cases/**/runs/
+**/candidate_lmdb/
+**/final_struct_lmdb/
+**/adsorbdiff_sampling/
+**/so3_cache/
+**/*.lmdb
+**/*.traj
+**/*.npy
