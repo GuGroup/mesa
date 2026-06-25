@@ -1,0 +1,4 @@
+interface:
+  display_name: "Extract Data from PDF"
+  short_description: "Extract PDF text and figure data"
+  default_prompt: "Use $extract-data-from-pdf to extract DFT-relevant experimental information from a PDF, including figure data."
