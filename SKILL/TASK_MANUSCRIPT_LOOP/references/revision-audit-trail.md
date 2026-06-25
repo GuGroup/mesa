@@ -25,7 +25,7 @@ Use `scripts/init_revision_round.py` to create the directory before running
 reviewer or revision agents:
 
 ```bash
-python3 mesa/SKILL/TASK_MANUSCRIPT_LOOP/scripts/init_revision_round.py --paper paper --round 1
+mamba run -n mesa-manuscript python mesa/SKILL/TASK_MANUSCRIPT_LOOP/scripts/init_revision_round.py --paper paper --round 1
 ```
 
 ## Required Records
