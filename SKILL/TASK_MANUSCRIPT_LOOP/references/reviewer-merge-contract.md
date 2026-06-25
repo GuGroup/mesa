@@ -48,7 +48,7 @@ calculation.
 ## Command
 
 ```bash
-python3 mesa/SKILL/TASK_MANUSCRIPT_LOOP/scripts/merge_reviewer_issues.py \
+mamba run -n mesa-manuscript python mesa/SKILL/TASK_MANUSCRIPT_LOOP/scripts/merge_reviewer_issues.py \
   --output paper/state/reviewer-issues.yaml \
   paper/state/reviewer-issues.*.r1.yaml
 ```
