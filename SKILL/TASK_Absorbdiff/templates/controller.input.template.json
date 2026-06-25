@@ -1,0 +1,11 @@
+{
+  "poscar_path": "POSCAR",
+  "workdir": "runs/adsorbdiff_case",
+  "adsorbate": {
+    "smiles": "*CO"
+  },
+  "surface": {},
+  "placement": {},
+  "sampling": {},
+  "handoff": {}
+}
