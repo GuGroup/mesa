@@ -1,0 +1,41 @@
+version: 1
+sections:
+  - id: results
+    path: paper/manuscript/sections/results.md
+    status: ready-to-draft
+    allowed_claims: [C1, M1]
+    required_figures: [F1]
+    required_sources:
+      - paper/inputs/results/co_pt111_energy.yaml
+      - paper/inputs/structures/CO_on_Pt111_POSCAR
+    required_caveats:
+      - Fixture values are not physical publication claims.
+    blocked_by: []
+    chunk_policy:
+      unit: flow-sized-result-block
+      locked_chunks: []
+  - id: methods
+    path: paper/manuscript/sections/methods.md
+    status: ready-to-draft
+    allowed_claims: [M1]
+    required_figures: []
+    required_sources:
+      - paper/inputs/manifest.yaml
+    required_caveats: []
+    blocked_by: []
+    chunk_policy:
+      unit: method-block
+      locked_chunks: []
+  - id: abstract
+    path: paper/manuscript/sections/abstract.md
+    status: not-ready
+    allowed_claims: [C1]
+    required_figures: []
+    required_sources:
+      - paper/logic/claim-matrix.yaml
+    required_caveats:
+      - Draft last after Results and Discussion are locked.
+    blocked_by: [results, discussion]
+    chunk_policy:
+      unit: abstract
+      locked_chunks: []

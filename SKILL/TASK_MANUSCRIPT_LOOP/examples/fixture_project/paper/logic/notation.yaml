@@ -1,0 +1,18 @@
+version: 1
+systems:
+  - id: S1
+    canonical: CO/Pt(111)
+    aliases: [CO_on_Pt111]
+methods:
+  - id: PBE_D3_slab_fixture
+    canonical: PBE-D3 slab fixture
+energies:
+  - symbol: E_ads
+    meaning: adsorption energy
+    units: eV
+figures:
+  - id: F1
+    label: Figure 1
+abbreviations:
+  - short: QA
+    long: quality assurance

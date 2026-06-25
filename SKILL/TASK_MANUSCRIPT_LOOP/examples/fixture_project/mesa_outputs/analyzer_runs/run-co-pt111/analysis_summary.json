@@ -1,0 +1,21 @@
+{
+  "verdict": "pass",
+  "deterministic_verdict": "pass",
+  "visual_validation": {
+    "status": "completed",
+    "verdict": "pass",
+    "paths": [
+      "visual_review.md"
+    ]
+  },
+  "convergence": {
+    "converged": true,
+    "fmax_threshold": 0.05,
+    "units": "eV/A"
+  },
+  "warnings": [],
+  "output_paths": {
+    "selected_frames": "selected_frames.extxyz",
+    "visual_review": "visual_review.md"
+  }
+}

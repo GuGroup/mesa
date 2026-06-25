@@ -1,0 +1,9 @@
+system_id: CO_on_Pt111
+method_id: PBE_D3_slab_fixture
+status: converged
+quantity: adsorption_energy
+value: -1.42
+units: eV
+reference_state: gas_phase_CO_plus_clean_Pt111
+source_artifact: mesa_outputs/task_envelopes/reaction_energy.json
+notes: Fixture value for contract tests only; not a physical claim.

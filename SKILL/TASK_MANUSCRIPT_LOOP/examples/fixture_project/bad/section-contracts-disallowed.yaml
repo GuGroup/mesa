@@ -1,0 +1,13 @@
+version: 1
+sections:
+  - id: results
+    path: paper/manuscript/sections/results.md
+    status: ready-to-draft
+    allowed_claims: [C404]
+    required_figures: []
+    required_sources: []
+    required_caveats: []
+    blocked_by: []
+    chunk_policy:
+      unit: flow-sized-result-block
+      locked_chunks: []

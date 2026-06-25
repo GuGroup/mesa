@@ -1,0 +1,8 @@
+version: 1
+checks:
+  - id: gate0-fixture-contract
+    status: passed
+    evidence: paper/inputs/manifest.yaml
+  - id: heavy-before-prose
+    status: passed
+    evidence: paper/manuscript/section-contracts.yaml

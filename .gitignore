@@ -1,6 +1,9 @@
 examples/
 !ENVIRONMENT/**/examples/
 !ENVIRONMENT/**/examples/**
+!SKILL/TASK_MANUSCRIPT_LOOP/examples/
+!SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/
+!SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/**
 
 # OS
 .DS_Store

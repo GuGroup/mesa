@@ -1,0 +1,13 @@
+version: 1
+target: nature-family
+claims:
+  - id: C99
+    level: main
+    statement: This unsupported claim must not pass the gate.
+    status: unsupported
+    evidence: []
+    figures: []
+    assumptions: []
+    caveats: []
+    risks: []
+    allowed_sections: [results]
