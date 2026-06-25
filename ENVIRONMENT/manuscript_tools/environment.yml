@@ -13,7 +13,13 @@ dependencies:
   - ase
   - pandoc
   - "greenlet>=3.2,<3.3"
+  - pyzmq
+  - jupyter
+  - ipywidgets
+  - rich
+  - typer
   - playwright
   - pip:
+      - pyzmq<27
       - chemdiagrams>=0.2.0
       - aseview[export]>=0.0.12
