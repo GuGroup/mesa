@@ -15,7 +15,17 @@ from typing import Final
 
 BLOCKED_FIGURE_STATUSES: Final = frozenset({"blocked", "needs-source", "excluded"})
 REQUIRED_NOTATION_KEYS: Final = ("systems", "methods", "energies", "figures", "abbreviations")
-SECTION_ORDER: Final = ("results", "methods", "si", "discussion", "introduction", "abstract")
+SECTION_ORDER: Final = (
+    "abstract",
+    "introduction",
+    "results_and_discussion",
+    "results",
+    "discussion",
+    "computational_methods",
+    "methods",
+    "conclusion",
+    "si",
+)
 
 
 @dataclass(frozen=True)  # noqa: SLOTS_OK -- verifier uses Python 3.9, where dataclass slots are unavailable.
@@ -53,6 +63,7 @@ class FigureRecord:
     figure_id: str
     label: str
     title: str
+    caption: str
     status: str
     source_files: tuple[str, ...]
     exported_files: tuple[str, ...]

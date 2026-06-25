@@ -108,6 +108,7 @@ def parse_figure_block(source: Path, block: tuple[str, ...]) -> FigureRecord:
         required_scalar(block, "id", source),
         required_scalar(block, "label", source),
         required_scalar(block, "title", source),
+        scalar_value(block, "caption"),
         required_scalar(block, "status", source),
         parse_list(block, "source_files"),
         parse_list(block, "exported_files"),

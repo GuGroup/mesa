@@ -12,6 +12,7 @@ figures:
     label: "Figure 1"
     role: main
     title: "Energy landscape for CO on Pt(111)"
+    caption: "Energy landscape for CO adsorption on Pt(111), showing the evaluated states and the corresponding adsorption-energy reference."
     claim_ids: [C1]
     source_files:
       - paper/figures/source/fig1_energy_diagram.spec.yaml
@@ -29,6 +30,10 @@ figures:
 - `label`: manuscript-facing label.
 - `role`: `main`, `extended-data`, `si`, or `candidate`.
 - `title`: short working title without embedded caption text.
+- `caption`: Nature-style caption body without the leading label. The DOCX
+  exporter renders this as `**Figure N |** caption`, with the label and pipe
+  bold only. Use `title` only as a fallback when a caption is not yet
+  available.
 - `claim_ids`: claim IDs from `paper/logic/claim-matrix.yaml`.
 - `source_files`: script, data, or spec files under `paper/figures/source/`.
 - `exported_files`: figure outputs under `paper/figures/exported/`.
@@ -45,3 +50,4 @@ figures:
 - No section contract may require a figure whose status is `blocked`,
   `needs-source`, or `excluded`.
 - Captions are prose artifacts and must not be embedded in image files.
+- Captions must not contain exported-file paths or QA notes.

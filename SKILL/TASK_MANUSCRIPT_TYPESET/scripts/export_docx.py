@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from typeset_common import TypesetError, assemble_docx_markdown
+from word_styles import apply_default_word_styles
 
 
 @dataclass(frozen=True)  # noqa: SLOTS_OK -- verifier uses Python 3.9, where dataclass slots are unavailable.
@@ -71,6 +72,7 @@ def run_export(config: ExportArgs) -> int:
     )
     if completed.returncode != 0:
         raise TypesetError(f"pandoc export failed with exit {completed.returncode}:\n{completed.stderr.strip()}")
+    apply_default_word_styles(docx)
     print(f"docx: {docx}")
     print(f"qa: {result.qa_path}")
     return 0

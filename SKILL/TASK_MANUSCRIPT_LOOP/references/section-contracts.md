@@ -29,15 +29,21 @@ A section is `ready-to-draft` only when all allowed claims are supported or
 qualified, all required figures have passed QA, and all blocker issues tied to
 the section are closed.
 
-## Required Sections
+## Manuscript Display Order
 
-Nature-family v1 expects at least:
+Nature-family v1 exports sections in this manuscript-facing order:
 
 - `abstract`
 - `introduction`
-- `results`
-- `discussion`
-- `methods`
+- `results_and_discussion` or paired `results` / `discussion` content exported
+  under "Results and Discussion"
+- `computational_methods` or `methods`; detailed procedures may move to SI
+- `conclusion`
+- `si`
+
+Methods may be compact in the main manuscript or moved largely to SI when the
+target journal and manuscript strategy allow it. Do not let drafting order
+override the exported manuscript order.
 
 Supplementary information may include:
 
@@ -51,7 +57,8 @@ Supplementary information may include:
 - A section cannot use a claim outside `allowed_claims`.
 - A section cannot cite a figure outside `required_figures` or optional figures
   explicitly listed for the section.
-- Drafting order is Results, Methods, SI, Discussion, Introduction, Abstract,
-  then Title.
+- Prose drafting can still start from Results/Discussion chunks for evidence
+  control, but export order is Abstract, Introduction, Results and Discussion,
+  Computational Methods/Methods, Conclusion, then SI.
 - Abstract and title may use only claims already locked in Results and
   Discussion contracts.
