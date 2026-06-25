@@ -61,7 +61,9 @@ notation, consistency, and issues tied to explicit locked chunks.
 - Figure planning or QA: load `references/figure-map-schema.md` and
   `references/figure-policy.md`.
 - Reviewer rounds: load `references/reviewer-loop.md` and
-  `references/reviewer-merge-contract.md`; merge reviewer outputs with
+  `references/reviewer-merge-contract.md` and
+  `references/revision-audit-trail.md`; initialize a round with
+  `scripts/init_revision_round.py`, then merge reviewer outputs with
   `scripts/merge_reviewer_issues.py`.
 - Section planning: load `references/section-contracts.md`.
 - Section drafting or revision: load `references/section-writing-policy.md`
@@ -86,7 +88,8 @@ time. Do not ask agents to infer state from chat.
 - `chem-section-writer`: one contracted section or patch after the prose lock,
   using `SKILL/nature-writing`.
 - `chem-revision-editor`: accepted-issue patches to named chunks only, using
-  `SKILL/nature-polishing` for polish after evidence locks.
+  `SKILL/nature-polishing` for polish after evidence locks and recording
+  responses, change plans, diffs, and verification under `paper/revisions/`.
 
 Reviewer round defaults are R1 full critique, R2 changed-files verification,
 and R3 coherence/polish-readiness. Halt rather than fake resolution if any

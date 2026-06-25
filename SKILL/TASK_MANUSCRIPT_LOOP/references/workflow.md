@@ -30,6 +30,8 @@ paper/
 │   ├── reviewer-issues.yaml
 │   ├── revision-plan.yaml
 │   └── qa-checks.yaml
+├── revisions/
+│   └── round-001/
 ├── manuscript/
 │   ├── outline.md
 │   ├── section-contracts.yaml
@@ -67,6 +69,14 @@ paper/
 next action. `paper/state/ledger.jsonl` is append-only and records stage events,
 decisions, inputs, and outputs. A stage may advance only when the current gate
 has no unresolved blockers.
+
+## Revision History
+
+Every reviewer/revision round must create a `paper/revisions/round-NNN/`
+directory with raw comments, merged issues, author responses, change plans,
+patch diffs, changed-file indexes, optional snapshots, and verification notes.
+Load `references/revision-audit-trail.md` before starting a round and create the
+round with `scripts/init_revision_round.py`.
 
 ## Heavy-Before-Prose Invariant
 

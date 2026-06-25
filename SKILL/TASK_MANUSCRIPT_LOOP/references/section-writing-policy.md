@@ -40,6 +40,11 @@ Do not send the whole manuscript as context unless the named issue requires it.
 When revising, patch only the chunk named by an accepted issue and read adjacent
 chunks only for transition context.
 
+For revision work, load `references/revision-audit-trail.md` first. The
+revision editor must update `author-response.yaml`, `change-plan.yaml`,
+`changed-files.md`, `verification.md`, and one or more unified diffs under
+`patches/` before a round is considered closed.
+
 ## Non-Invention Rules
 
 Do not introduce new claims, numbers, calculations, citations, methods, or

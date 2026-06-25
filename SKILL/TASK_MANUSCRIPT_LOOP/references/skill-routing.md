@@ -26,6 +26,10 @@ source-of-truth boundaries.
   `SKILL/nature-polishing` only after section claims, figures, and reviewer
   resolutions are locked. Polishing may improve flow, concision, and terminology
   but must not add claims or citations.
+- `chem-revision-editor` must also use
+  `references/revision-audit-trail.md` and record author responses, change
+  plans, unified diffs, changed-file indexes, and verification notes for the
+  active round.
 
 ## Reviewer Agents
 

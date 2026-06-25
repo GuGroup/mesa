@@ -27,6 +27,12 @@ Each reviewer writes a round-scoped raw issue file such as
 merges raw files into `paper/state/reviewer-issues.yaml` using
 `references/reviewer-merge-contract.md`.
 
+For every round, also create `paper/revisions/round-NNN/` with
+`scripts/init_revision_round.py`. Store raw reviewer outputs under
+`paper/revisions/round-NNN/reviewer-comments.raw/`, copy or write the merged
+round issue state to `paper/revisions/round-NNN/reviewer-issues.merged.yaml`,
+and record gate decisions in `paper/revisions/round-NNN/verification.md`.
+
 Merged review issues are stored in `paper/state/reviewer-issues.yaml`:
 
 ```yaml
@@ -87,3 +93,5 @@ resolution.
 - Reviewers may mark missing inputs as blockers; they may not fill the gap by
   guessing.
 - Revision editors may patch only the chunks named by accepted issues.
+- Revision editors must write point-by-point responses, change plans, and
+  unified diffs under the active `paper/revisions/round-NNN/` directory.

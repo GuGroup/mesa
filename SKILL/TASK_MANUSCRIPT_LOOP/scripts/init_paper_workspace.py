@@ -16,6 +16,7 @@ PAPER_DIRS: Final[tuple[str, ...]] = (
     "inputs/references",
     "logic",
     "state",
+    "revisions",
     "manuscript/sections",
     "manuscript/si",
     "figures/source",
@@ -55,6 +56,7 @@ abbreviations: []
     "state/reviewer-issues.yaml": "version: 1\nissues: []\n",
     "state/revision-plan.yaml": "version: 1\ndecisions: []\n",
     "state/qa-checks.yaml": "version: 1\nchecks: []\n",
+    "revisions/README.md": "# Revision History\n\nCreate one subdirectory per manuscript review or revision round.\n",
     "manuscript/outline.md": "# Manuscript Outline\n\n",
     "manuscript/section-contracts.yaml": """version: 1
 sections:

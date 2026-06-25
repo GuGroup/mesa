@@ -27,6 +27,7 @@ class WorkspaceInitTests(unittest.TestCase):
             self.assertTrue((paper / "inputs" / "structures").is_dir())
             self.assertTrue((paper / "logic" / "claim-matrix.yaml").is_file())
             self.assertTrue((paper / "logic" / "figure-map.yaml").is_file())
+            self.assertTrue((paper / "revisions" / "README.md").is_file())
             self.assertTrue((paper / "manuscript" / "sections" / "results.md").is_file())
             self.assertIn("stage: intake", (paper / "state" / "current-stage.yaml").read_text())
 

@@ -15,5 +15,7 @@ Core commands:
 - `notation_lint.py`: check declared notation against manuscript sections.
 - `merge_reviewer_issues.py`: merge fixed-reviewer issue files
   deterministically.
+- `init_revision_round.py`: create a file-backed review/revision audit
+  directory for round comments, responses, diffs, and verification.
 
 Run any command with `--help` for the required inputs and expected outputs.
