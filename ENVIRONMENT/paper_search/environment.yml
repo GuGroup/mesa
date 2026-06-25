@@ -7,7 +7,7 @@ dependencies:
   - python=3.11
   - pip
   - uv
-  - greenlet
+  - greenlet>=3.2,<3.3
   - cxx-compiler
   - pip:
       - -e .[mcp,local-embeddings]
