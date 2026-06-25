@@ -6,11 +6,14 @@ channels:
 dependencies:
   - python=3.11
   - pip
-  - numpy
+  - "numpy>=2.0,<2.3"
+  - scipy
   - matplotlib
   - pillow
   - ase
   - pandoc
+  - "greenlet>=3.2,<3.3"
+  - playwright
   - pip:
       - chemdiagrams>=0.2.0
       - aseview[export]>=0.0.12
