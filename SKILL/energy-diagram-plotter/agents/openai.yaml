@@ -1,0 +1,4 @@
+interface:
+  display_name: "Energy Diagram Plotter"
+  short_description: "Plot reaction energy profiles."
+  default_prompt: "Use $energy-diagram-plotter to create a reaction energy diagram from my energies and labels."

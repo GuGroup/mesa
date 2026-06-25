@@ -1,0 +1,40 @@
+{
+  "panel_label": "Figure S1",
+  "caption": "Optimized structures of the alkaline-HER intermediates and transition state on Ru, RuO₂, and Ru/RuO₂ for each system. The adsorbed H₂O*, OH*, and H* states and the water-dissociation transition state (TS) are shown.",
+  "base_dir": ".",
+  "defaults": {
+    "view": "side_a",
+    "style": { "viewFit": 0.72 }
+  },
+  "cols": [
+    { "label": "* (slab)" },
+    { "label": "H₂O*" },
+    { "label": "HHO* (TS)" },
+    { "label": "OH*" },
+    { "label": "H*" }
+  ],
+  "rows": [
+    { "label": "Ru/RuO₂\n(island)" },
+    { "label": "RuO₂" },
+    { "label": "Ru" }
+  ],
+  "cells": [
+    { "row": 0, "col": 0, "structure": "structures/ru_ruo2/slab.traj" },
+    { "row": 0, "col": 1, "structure": "structures/ru_ruo2/h2o.traj" },
+    { "row": 0, "col": 2, "structure": "structures/ru_ruo2/ts.traj" },
+    { "row": 0, "col": 3, "structure": "structures/ru_ruo2/oh.traj" },
+    { "row": 0, "col": 4, "structure": "structures/ru_ruo2/h.traj" },
+
+    { "row": 1, "col": 0, "structure": "structures/ruo2/slab.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 1, "col": 1, "structure": "structures/ruo2/h2o.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 1, "col": 2, "empty": true },
+    { "row": 1, "col": 3, "structure": "structures/ruo2/oh.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 1, "col": 4, "structure": "structures/ruo2/h.traj", "view": "top", "repeat": [2, 2, 1] },
+
+    { "row": 2, "col": 0, "structure": "structures/ru/slab.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 2, "col": 1, "structure": "structures/ru/h2o.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 2, "col": 2, "structure": "structures/ru/ts.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 2, "col": 3, "structure": "structures/ru/oh.traj", "view": "top", "repeat": [2, 2, 1] },
+    { "row": 2, "col": 4, "structure": "structures/ru/h.traj", "view": "top", "repeat": [2, 2, 1] }
+  ]
+}

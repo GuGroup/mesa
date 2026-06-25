@@ -1,8 +1,0 @@
-{
-  "csv_path": "no3rr_diagram.csv",
-  "reaction_type": "NO3RR",
-  "experiment": {
-    "NiCoO2": 0.2
-  },
-  "report_path": "SKILL/TASK2_reaction_energy_evaluation/examples/report.generated.md"
-}

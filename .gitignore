@@ -69,8 +69,19 @@ temp/
 # Misc
 *.bak
 *.tmp
+AGENTS.md
+**/AGENTS.md
+SKILL/**/assets/
+SKILL/**/tests/
+
+# Local manuscript review trials
+SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/
+**/draft.txt
+**/draft*.txt
 
 # Nested local environment artifacts
 ENVIRONMENT/**/.git/
 ENVIRONMENT/**/.venv/
 ENVIRONMENT/**/__pycache__/
+ENVIRONMENT/paper_search/docs/
+ENVIRONMENT/paper_search/tests/

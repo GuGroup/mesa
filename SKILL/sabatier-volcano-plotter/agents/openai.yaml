@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sabatier Volcano Plotter"
+  short_description: "Plot publication-ready volcano curves."
+  default_prompt: "Use $sabatier-volcano-plotter to create a volcano plot from my descriptor and activity data."

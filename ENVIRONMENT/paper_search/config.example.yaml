@@ -1,0 +1,115 @@
+email: ${oc.env:PAPER_SEARCH_EMAIL,""}
+
+semantic_scholar:
+  api_key: ${oc.env:SEMANTIC_SCHOLAR_API_KEY,""}
+  # Semantic Scholar allows only ~1 request/second (cumulative, even with a key)
+  # and is the search bottleneck (one 429 costs a multi-second backoff).
+  min_request_interval: 1.5      # space requests above 1s to pre-empt 429s
+  max_queries_per_round: 4       # S2 runs only the first N queries; Crossref/
+                                 # OpenAlex cover the rest. 0 = no cap.
+
+elsevier:
+  # ScienceDirect full-text API. With a key (and institutional entitlement —
+  # on-network IP or an inst token) the api.elsevier.com TDM links that Crossref
+  # surfaces for Elsevier articles return full article XML instead of a
+  # metadata-only coredata stub. Leave blank to skip (no Elsevier auth).
+  api_key: ${oc.env:ELSEVIER_API_KEY,""}
+  inst_token: ${oc.env:ELSEVIER_INSTTOKEN,""}
+
+scihub:
+  # Last-resort fallback. The parse node retries Sci-Hub once for any paper
+  # still without usable full text (no primary link, downloaded stub, or failed
+  # parse). On by default; set false to disable where its use is not legal or
+  # appropriate for you.
+  enabled: true
+
+search:
+  per_query_limit: 10
+  max_papers: 30
+
+http:
+  timeout: 30
+  retry:
+    max_attempts: 4
+    backoff_seconds: [5, 15, 60]
+    retry_statuses: [429, 500, 502, 503, 504]
+    respect_retry_after: true
+    max_sleep_seconds: 120
+
+execution:
+  resume: true
+  checkpoint: false           # opt-in LangGraph checkpointer (streaming/inspection)
+
+parsers:
+  # Reject parses whose extracted body text is shorter than this (chars):
+  # title-only / metadata stubs (e.g. an unauthenticated Elsevier coredata
+  # response) are marked full_text_unavailable instead of passing as full text.
+  # Set to 0 to disable the gate. Calibrated for full-text bodies: a coredata
+  # stub is ~120 chars and a bare abstract ~1.6k, while real article bodies run
+  # to tens of thousands, so 2000 cleanly separates them.
+  min_full_text_chars: 2000
+  grobid:
+    url: ${oc.env:PAPER_SEARCH_GROBID_URL,""}
+    start_cmd: ${oc.env:PAPER_SEARCH_GROBID_START_CMD,""}
+    startup_timeout: 120
+    shutdown_timeout: 10
+  opendataloader:
+    cmd: ${oc.env:PAPER_SEARCH_OPENDATALOADER_CMD,"opendataloader-pdf {input} {output_dir}"}
+
+llm:
+  # none -> deterministic rule-based mode (no API keys needed).
+  # anthropic / openai / openai-oauth -> full agent mode (PaperQA + LLM reasoning).
+  provider: ${oc.env:PAPER_SEARCH_PROVIDER,"none"}
+  model: ${oc.env:PAPER_SEARCH_MODEL,""}  # default per provider, e.g. claude-sonnet-4-6 / gpt-5.4-mini
+  base_url: ${oc.env:OPENAI_BASE_URL,""}  # openai-oauth defaults to http://127.0.0.1:10531/v1
+  api_key_env:       # optional env var name for OpenAI-compatible endpoints
+  temperature: 0
+  max_tokens: 4096
+  cache:
+    response_cache: true        # SQLite cache of prompt->completion (free re-runs)
+    response_cache_path:        # default <out>/llm_cache.db
+    prompt_cache: true          # Anthropic ephemeral cache_control / OpenAI auto-prefix
+
+agent:
+  max_search_rounds: 3          # bounded gap-driven re-search loop (1 = single pass)
+  min_new_papers_to_continue: 1 # stop when a round adds fewer new relevant papers
+  relevance_filter: lenient     # strict | lenient (topical + keep-if-unsure) | off
+  field_scope: reaction         # off | reaction | reaction+family
+  # How far beyond the target material to search/keep. "reaction" also pulls
+  # same-reaction papers on other systems (transferable descriptor/method
+  # evidence, tagged relation_to_target); "reaction+family" also broadens to
+  # catalyst families. Broader = more search + PaperQA cost. "off" = target only.
+
+paperqa:
+  enabled: true                 # used only when llm.provider != none
+  agentic: true                 # use PaperQA agent_query (multi-step gather) for validation
+  agent_evidence_n: 5
+  search_count: 8
+  agent_timesteps:              # null = PaperQA default
+  llm:                          # litellm model string; default derived from llm.*
+  summary_llm:
+  # embedding default auto-selects: text-embedding-3-small when
+  # OPENAI_EMBEDDING_KEY is set, otherwise a local sentence-transformers model.
+  # For keyless Anthropic/openai-oauth setups, set e.g.
+  # embedding: st-multi-qa-MiniLM-L6-cos-v1
+  embedding:
+  temperature: 0
+  evidence_k: 10
+  answer_max_sources: 5
+  validation_max_queries: 25  # one PaperQA query per unique surface, capped
+
+research:
+  prompt:
+  collaboration_context:
+  decision_criteria:
+    - prioritize surfaces where literature has activity evidence but missing descriptors
+    - identify data gaps that can be closed with tractable atomistic calculations
+  target_properties:
+    - activity
+    - descriptor
+    - stability
+  constraints:
+    - no abstract-only evidence extraction
+  calculation_preferences:
+    - adsorption/free-energy descriptors
+    - surface stability under reaction-relevant conditions

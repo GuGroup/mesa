@@ -1,0 +1,86 @@
+site_name: SearchAgent
+site_description: Full-text LangGraph literature agent for catalyst/material surface-modeling proposals.
+site_url: https://kangmg.github.io/SearchAgent/
+repo_name: kangmg/SearchAgent
+repo_url: https://github.com/kangmg/SearchAgent
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - User:
+      - CLI usage: user/cli.md
+      - Full agent mode: user/full-agent.md
+      - Writing the research prompt: user/research-prompt.md
+      - Outputs: user/outputs.md
+      - LangGraph Studio: user/studio.md
+  - Architecture:
+      - Agent graph: architecture/agent-graph.md
+  - Admin:
+      - Setup & configuration: admin/setup.md
+      - Repository review: admin/repository-review.md
+      - Development: admin/development.md
+      - Deployment: admin/deployment.md
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ko
+          name: 한국어
+          build: true
+          nav_translations:
+            Home: 홈
+            Quickstart: 빠른 시작
+            User: 사용자
+            CLI usage: CLI 사용
+            Full agent mode: 풀 에이전트 모드
+            Writing the research prompt: 연구 프롬프트 작성
+            Outputs: 출력물
+            LangGraph Studio: LangGraph Studio
+            Architecture: 아키텍처
+            Agent graph: 에이전트 그래프
+            Admin: 관리자
+            Setup & configuration: 설치 & 설정
+            Repository review: 저장소 리뷰
+            Development: 개발
+            Deployment: 배포
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true

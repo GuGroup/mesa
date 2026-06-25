@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.env
+.env.local
+.env.*.local
+data/
+dist/
+build/
+site/
+*.egg-info/
+.claude/settings.local.json
+# Local (non-template) config and editor swap files
+config.yaml
+*.sw[op]
+runs/
+# LangGraph dev server local runtime data
+.langgraph_api/

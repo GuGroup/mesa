@@ -1,0 +1,16 @@
+name: mesa-manuscript
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - matplotlib
+  - pillow
+  - ase
+  - pandoc
+  - pip:
+      - chemdiagrams>=0.2.0
+      - aseview[export]>=0.0.12

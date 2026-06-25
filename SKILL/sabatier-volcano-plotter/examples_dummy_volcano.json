@@ -1,0 +1,26 @@
+{
+  "points": [
+    {"label": "Pt", "descriptor": -0.08, "activity": 0.98, "family": "noble", "highlight": true},
+    {"label": "Pd", "descriptor": -0.22, "activity": 0.78, "family": "noble"},
+    {"label": "Ru", "descriptor": -0.39, "activity": 0.53, "family": "noble"},
+    {"label": "Ni", "descriptor": -0.63, "activity": 0.30, "family": "base"},
+    {"label": "Co", "descriptor": -0.51, "activity": 0.42, "family": "base"},
+    {"label": "Fe", "descriptor": -0.78, "activity": 0.18, "family": "base"},
+    {"label": "Au", "descriptor": 0.30, "activity": 0.44, "family": "weak"},
+    {"label": "Ag", "descriptor": 0.50, "activity": 0.18, "family": "weak"},
+    {"label": "Cu", "descriptor": 0.13, "activity": 0.70, "family": "weak", "highlight": true}
+  ],
+  "curve": {
+    "mode": "piecewise",
+    "peak_x": 0.0,
+    "peak_y": 1.05,
+    "left_slope": 1.18,
+    "right_slope": -1.45,
+    "x_min": -0.9,
+    "x_max": 0.6
+  },
+  "xlabel": "$\\Delta G_{\\mathrm{H*}}$ (eV)",
+  "ylabel": "HER activity (a.u.)",
+  "optimum_label": "Optimum",
+  "legend_loc": "auto"
+}
