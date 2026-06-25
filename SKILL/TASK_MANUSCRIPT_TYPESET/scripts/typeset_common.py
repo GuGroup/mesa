@@ -10,17 +10,17 @@ from __future__ import annotations
 import argparse
 
 from models import TypesetError
-from renderers import assemble_docx_markdown, assemble_typst
+from renderers import assemble_docx_markdown
 
-__all__ = ("TypesetError", "assemble_docx_markdown", "assemble_typst")
+__all__ = ("TypesetError", "assemble_docx_markdown")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Small public import surface for TASK_MANUSCRIPT_TYPESET scripts. Import "
-            "TypesetError, assemble_typst, and assemble_docx_markdown from this module; "
-            "use build_typst.py or export_docx.py for command-line builds."
+            "TypesetError and assemble_docx_markdown from this module; use "
+            "export_docx.py for command-line exports."
         )
     )
     parser.parse_args()

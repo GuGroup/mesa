@@ -24,6 +24,7 @@ class ExportArgs:
     out: Path
     check_only: bool
     pandoc_bin: str
+    reference_doc: Path | None
 
 
 def parse_args(argv: tuple[str, ...]) -> ExportArgs:
@@ -32,8 +33,14 @@ def parse_args(argv: tuple[str, ...]) -> ExportArgs:
     parser.add_argument("--out", type=Path, default=Path("docx-export"), help="Output export directory.")
     parser.add_argument("--check-only", action="store_true", help="Validate and assemble Markdown without invoking Pandoc.")
     parser.add_argument("--pandoc-bin", default="pandoc", help="Pandoc executable name or path.")
+    parser.add_argument(
+        "--reference-doc",
+        type=Path,
+        default=None,
+        help="Optional Word .docx template that controls DOCX styles, fonts, spacing, and numbering.",
+    )
     args = parser.parse_args(argv)
-    return ExportArgs(args.paper, args.out, args.check_only, args.pandoc_bin)
+    return ExportArgs(args.paper, args.out, args.check_only, args.pandoc_bin, args.reference_doc)
 
 
 def run_export(config: ExportArgs) -> int:
@@ -49,8 +56,14 @@ def run_export(config: ExportArgs) -> int:
         )
     docx = result.manuscript_path.with_suffix(".docx")
     bibliography = result.workspace.root / "manuscript" / "references.bib"
+    command = [pandoc, str(result.manuscript_path), "--bibliography", str(bibliography), "-o", str(docx)]
+    if config.reference_doc is not None:
+        reference_doc = config.reference_doc.resolve()
+        if not reference_doc.is_file():
+            raise TypesetError(f"reference DOCX does not exist or is not a file: {config.reference_doc}")
+        command.extend(("--reference-doc", str(reference_doc)))
     completed = subprocess.run(
-        [pandoc, str(result.manuscript_path), "--bibliography", str(bibliography), "-o", str(docx)],
+        command,
         check=False,
         capture_output=True,
         text=True,

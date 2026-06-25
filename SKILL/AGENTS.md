@@ -37,7 +37,7 @@ SKILL/
 | Surface adsorbates | `TASK_PLACE_SURFACE_ADSORBATES/` | Downstream of selected clean slab termination. |
 | Result analysis | `TASK_CALCULATION_RESULT_ANALYZER/` | Read-only analyzer plus visual-review artifacts. |
 | Manuscript loop | `TASK_MANUSCRIPT_LOOP/` | Post-computation manuscript workspace, claim/figure/reviewer gates, and prose-lock validators. |
-| Manuscript typeset | `TASK_MANUSCRIPT_TYPESET/` | Typst/PDF and DOCX export assembly from the canonical `paper/` workspace. |
+| Manuscript typeset | `TASK_MANUSCRIPT_TYPESET/` | Word/DOCX export assembly from the canonical `paper/` workspace. |
 | Imported Nature writing | `nature-writing/`, `nature-polishing/`, `nature-reviewer/` | Catalyst-library guidance for Nature-family drafting, polishing, and pre-submission review. |
 | Imported figure skills | `nature-figure/`, `energy-diagram-plotter/`, `sabatier-volcano-plotter/`, `adsorbate-structure-grid/` | Publication figure guidance plus catalyst-specific plotting/rendering helpers. |
 | UMA/MLIP handoff | `TASK_UMA/`, `TASK_UMA_traj/`, `TASK_UMA_vib/` | Dry-run/local/qsub boundaries in README/controllers. |
@@ -50,7 +50,8 @@ SKILL/
 - Use `mamba run -n modeling` for slab/adsorbate/trajectory workflows that need scientific dependencies.
 - Preserve the documented standard output envelope when a task defines one.
 - Manuscript work must treat `paper/` as canonical: run the manuscript-loop
-  validators before prose edits, and keep Typst/PDF/DOCX outputs disposable.
+  validators before prose edits, and keep generated Word/DOCX outputs
+  disposable.
 - Imported Nature/catalyst skills are standalone helpers for writing, reviewer
   simulation, polishing, and figures. Literature search and citation skills are
   intentionally not imported into MESA at this stage.
@@ -68,5 +69,5 @@ python TASK2_reaction_energy_evaluation/MYSKILL/reaction_energy_evaluation.py --
 mamba run -n modeling python TASK_BUILD_SLAB_MODELS/scripts/build_slab_model.py --formula Pt --miller 1 1 1
 mamba run -n modeling python TASK_PLACE_SURFACE_ADSORBATES/scripts/place_surface_adsorbates.py --slab structures/Pt_111/POSCAR --adsorbate CO
 python TASK_MANUSCRIPT_LOOP/scripts/init_paper_workspace.py --root /tmp/mesa_paper
-python TASK_MANUSCRIPT_TYPESET/scripts/build_typst.py --paper /tmp/mesa_paper/paper --out /tmp/mesa_typeset --check-only
+python TASK_MANUSCRIPT_TYPESET/scripts/export_docx.py --paper /tmp/mesa_paper/paper --out /tmp/mesa_docx --check-only
 ```

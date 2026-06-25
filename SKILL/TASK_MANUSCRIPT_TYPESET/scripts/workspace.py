@@ -117,20 +117,6 @@ def digest_sources(paths: tuple[Path, ...]) -> str:
     return digest.hexdigest()
 
 
-def assert_fresh_generated_state(output: Path, source_digest: str) -> None:
-    manifest = output / "build-manifest.json"
-    pdf = output / "manuscript.pdf"
-    if not manifest.is_file() or not pdf.exists():
-        return
-    try:
-        previous = json.loads(manifest.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise TypesetError(f"existing build manifest is malformed: {manifest}") from exc
-    previous_digest = previous.get("source_digest")
-    if previous_digest != source_digest:
-        raise TypesetError("existing manuscript.pdf is stale relative to current paper sources; rebuild without --check-only")
-
-
 def write_json_manifest(request: ManifestRequest) -> None:
     workspace = request.workspace
     data = {
@@ -150,7 +136,7 @@ def main() -> int:
         description=(
             "Workspace loading, cross-reference checks, source digesting, and manifest "
             "writing helpers for TASK_MANUSCRIPT_TYPESET. Import this module from "
-            "build/export code; use build_typst.py or export_docx.py for executable CLIs."
+            "Word export code; use export_docx.py for the executable CLI."
         )
     )
     parser.parse_args()

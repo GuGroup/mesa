@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_support import BUILD_SCRIPT, EXPORT_SCRIPT, copy_fixture
+from test_support import EXPORT_SCRIPT, copy_fixture
 
 
 class TestTypesetPathSafety(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestTypesetPathSafety(unittest.TestCase):
             out = Path(tmp) / "out"
 
             completed = subprocess.run(
-                [sys.executable, str(BUILD_SCRIPT), "--paper", str(paper), "--out", str(out), "--check-only"],
+                [sys.executable, str(EXPORT_SCRIPT), "--paper", str(paper), "--out", str(out), "--check-only"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -35,7 +35,7 @@ class TestTypesetPathSafety(unittest.TestCase):
 
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn("path escapes paper root", completed.stderr)
-            manuscript = out / "manuscript.typ"
+            manuscript = out / "manuscript.md"
             if manuscript.exists():
                 self.assertNotIn("outside paper secret", manuscript.read_text(encoding="utf-8"))
 
@@ -60,7 +60,7 @@ class TestTypesetPathSafety(unittest.TestCase):
             out = Path(tmp) / "out"
 
             completed = subprocess.run(
-                [sys.executable, str(BUILD_SCRIPT), "--paper", str(paper), "--out", str(out), "--check-only"],
+                [sys.executable, str(EXPORT_SCRIPT), "--paper", str(paper), "--out", str(out), "--check-only"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -68,7 +68,7 @@ class TestTypesetPathSafety(unittest.TestCase):
 
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn("path escapes paper root", completed.stderr)
-            manuscript = out / "manuscript.typ"
+            manuscript = out / "manuscript.md"
             if manuscript.exists():
                 self.assertNotIn("outside symlink secret", manuscript.read_text(encoding="utf-8"))
 

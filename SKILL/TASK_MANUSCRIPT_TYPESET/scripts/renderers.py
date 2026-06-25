@@ -8,15 +8,12 @@
 from __future__ import annotations
 
 import argparse
-import re
-import shutil
 from pathlib import Path
 from typing import Final
 
-from models import AssemblyResult, PaperWorkspace, SECTION_ORDER, TEMPLATE_PATH, SectionRecord
+from models import AssemblyResult, PaperWorkspace, SECTION_ORDER, SectionRecord
 from workspace import (
     ManifestRequest,
-    assert_fresh_generated_state,
     digest_sources,
     load_workspace,
     resolve_paper_path,
@@ -24,29 +21,8 @@ from workspace import (
 )
 
 
-TYPST_LITERAL_SAFE_CHARS: Final = frozenset(
-    " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:/_-"
-)
 DEFAULT_TITLE: Final = "MESA manuscript draft"
-DEFAULT_SUBTITLE: Final = "Nature-family build stub"
-
-
-def assemble_typst(paper: Path, out: Path) -> AssemblyResult:
-    workspace = load_workspace(paper)
-    output = out.resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    assets = output / "assets"
-    assets.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(TEMPLATE_PATH, assets / "nature-mesa.typ")
-    manuscript_path = output / "manuscript.typ"
-    qa_path = output / "qa" / "crossref-qa.txt"
-    manifest_path = output / "build-manifest.json"
-    source_digest = digest_sources(workspace.source_files)
-    assert_fresh_generated_state(output, source_digest)
-    write_text(manuscript_path, render_typst(workspace))
-    write_text(qa_path, render_crossref_qa(workspace))
-    write_json_manifest(ManifestRequest(manifest_path, workspace, source_digest, "typst"))
-    return AssemblyResult(workspace, source_digest, manuscript_path, qa_path, manifest_path)
+WORD_EXPORT_NOTICE: Final = "<!-- Generated Word/DOCX export artifact; edit paper/ sources instead. -->"
 
 
 def assemble_docx_markdown(paper: Path, out: Path) -> AssemblyResult:
@@ -68,25 +44,8 @@ def write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def render_typst(workspace: PaperWorkspace) -> str:
-    title = typst_string_literal(DEFAULT_TITLE)
-    subtitle = typst_string_literal(DEFAULT_SUBTITLE)
-    lines = [
-        '#import "assets/nature-mesa.typ": nature-family, nature-title, nature-section, figure-note',
-        "#show: nature-family",
-        f"#set document(title: {title})",
-        f"#nature-title({title}, subtitle: {subtitle})",
-        "",
-    ]
-    for section in ordered_sections(workspace):
-        content = read_text(resolve_paper_path(workspace.root, section.path))
-        lines.extend((f"#nature-section({typst_string_literal(section.section_id.title())},", raw_markdown(content), ")", ""))
-    lines.extend(render_figure_notes(workspace))
-    return "\n".join(lines)
-
-
 def render_markdown_export(workspace: PaperWorkspace) -> str:
-    lines = ["# MESA manuscript draft", "", "<!-- Generated export artifact; edit paper/ sources instead. -->", ""]
+    lines = [f"# {DEFAULT_TITLE}", "", WORD_EXPORT_NOTICE, ""]
     for section in ordered_sections(workspace):
         lines.extend((f"## {section.section_id.title()}", "", read_text(resolve_paper_path(workspace.root, section.path)), ""))
     lines.extend(("## Figure Inventory", ""))
@@ -104,36 +63,6 @@ def ordered_sections(workspace: PaperWorkspace) -> tuple[SectionRecord, ...]:
     ordered = [by_id[section_id] for section_id in SECTION_ORDER if section_id in by_id]
     ordered.extend(section for section in workspace.sections if section.section_id not in SECTION_ORDER)
     return tuple(ordered)
-
-
-def raw_markdown(text: str) -> str:
-    longest = max((len(match.group(0)) for match in re.finditer(r"`+", text)), default=0)
-    fence = "`" * max(3, longest + 1)
-    return f"{fence}md\n{text.rstrip()}\n{fence}"
-
-
-def render_figure_notes(workspace: PaperWorkspace) -> list[str]:
-    lines: list[str] = []
-    for figure in workspace.figures:
-        exported = ", ".join(figure.exported_files)
-        lines.append(
-            "#figure-note("
-            f"{typst_string_literal(figure.label)}, "
-            f"{typst_string_literal(figure.title)}, "
-            f"{typst_string_literal(exported)}"
-            ")"
-        )
-    return lines
-
-
-def typst_string_literal(text: str) -> str:
-    return '"' + "".join(typst_literal_char(char) for char in text) + '"'
-
-
-def typst_literal_char(char: str) -> str:
-    if char in TYPST_LITERAL_SAFE_CHARS:
-        return char
-    return f"\\u{{{ord(char):x}}}"
 
 
 def render_crossref_qa(workspace: PaperWorkspace) -> str:
@@ -157,8 +86,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Rendering helpers for TASK_MANUSCRIPT_TYPESET. Import this module to assemble "
-            "Typst, Markdown, manifest, and cross-reference QA artifacts; use build_typst.py "
-            "or export_docx.py for the executable CLI."
+            "Word-export Markdown, manifest, and cross-reference QA artifacts; use "
+            "export_docx.py for the executable CLI."
         )
     )
     parser.parse_args()

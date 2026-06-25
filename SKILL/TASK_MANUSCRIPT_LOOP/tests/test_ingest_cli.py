@@ -11,7 +11,7 @@ TASK_ROOT = Path(__file__).resolve().parents[1]
 INIT_SCRIPT = TASK_ROOT / "scripts" / "init_paper_workspace.py"
 INGEST_SCRIPT = TASK_ROOT / "scripts" / "ingest_mesa_outputs.py"
 FIXTURE_OUTPUTS = TASK_ROOT / "examples" / "fixture_project" / "mesa_outputs"
-TYPESET_SCRIPT = TASK_ROOT.parents[0] / "TASK_MANUSCRIPT_TYPESET" / "scripts" / "build_typst.py"
+TYPESET_SCRIPT = TASK_ROOT.parents[0] / "TASK_MANUSCRIPT_TYPESET" / "scripts" / "export_docx.py"
 VALIDATORS = (
     ("validate_claim_matrix.py", "logic/claim-matrix.yaml"),
     ("validate_figure_map.py", "logic/figure-map.yaml"),

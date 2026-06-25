@@ -16,8 +16,6 @@ from typing import Final
 BLOCKED_FIGURE_STATUSES: Final = frozenset({"blocked", "needs-source", "excluded"})
 REQUIRED_NOTATION_KEYS: Final = ("systems", "methods", "energies", "figures", "abbreviations")
 SECTION_ORDER: Final = ("results", "methods", "si", "discussion", "introduction", "abstract")
-TASK_ROOT: Final = Path(__file__).resolve().parents[1]
-TEMPLATE_PATH: Final = TASK_ROOT / "assets" / "templates" / "nature-mesa.typ"
 
 
 @dataclass(frozen=True)  # noqa: SLOTS_OK -- verifier uses Python 3.9, where dataclass slots are unavailable.
@@ -96,7 +94,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Shared immutable data models and constants for TASK_MANUSCRIPT_TYPESET. "
-            "Import this module from build/export helpers; it does not run a build directly."
+            "Import this module from Word export helpers; it does not run an export directly."
         )
     )
     parser.parse_args()

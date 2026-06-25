@@ -1,13 +1,14 @@
 ---
 name: mesa-manuscript-typeset
-description: Build Nature-family Typst/PDF and DOCX export artifacts from a canonical MESA paper workspace without changing manuscript source files.
+description: Build Nature-family Word/DOCX export artifacts from a canonical MESA paper workspace without changing manuscript source files.
 ---
 
-# MESA Manuscript Typeset
+# MESA Manuscript Word Export
 
 Use this skill after the manuscript loop has produced a canonical `paper/`
 workspace. The source of truth is still Markdown, YAML, BibTeX, and figure files
-under `paper/`; PDF, Typst, and DOCX files are disposable export artifacts.
+under `paper/`; generated Markdown and DOCX files are disposable export
+artifacts.
 
 ## Inputs
 
@@ -23,19 +24,7 @@ Required paper inputs:
 - `paper/logic/notation.yaml`
 - figure source, exported, and QA files named by `figure-map.yaml`
 
-## Commands
-
-Check and assemble Typst without requiring external tools:
-
-```bash
-python3 scripts/build_typst.py --paper /path/to/paper --out /tmp/mesa_typeset --check-only
-```
-
-Build PDF when Typst is installed:
-
-```bash
-python3 scripts/build_typst.py --paper /path/to/paper --out /tmp/mesa_typeset
-```
+## Command
 
 Check and assemble DOCX Markdown without requiring Pandoc:
 
@@ -49,6 +38,12 @@ Export DOCX when Pandoc is installed:
 python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx
 ```
 
+Apply a Word style template when one is provided:
+
+```bash
+python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx --reference-doc /path/to/reference.docx
+```
+
 ## Boundaries
 
 - Do not run calculations, literature search, citation verification, or
@@ -60,6 +55,7 @@ python3 scripts/export_docx.py --paper /path/to/paper --out /tmp/mesa_docx
 
 ## Routing
 
-- Typst/PDF assembly: load `references/typst-build.md`.
 - DOCX export: load `references/docx-export.md`.
+- Word formatting, section styles, equations, and subscript/superscript
+  conventions: load `references/word-style.md`.
 - Cross-reference and stale-artifact checks: load `references/crossref-qa.md`.
