@@ -16,6 +16,14 @@ SKILL/
 |-- TASK_CALCULATION_RESULT_ANALYZER/
 |-- TASK_UMA*/
 |-- TASK_VASP_JOB/
+|-- _shared/                         # Imported Nature-family shared material.
+|-- nature-writing/
+|-- nature-polishing/
+|-- nature-reviewer/
+|-- nature-figure/
+|-- energy-diagram-plotter/
+|-- sabatier-volcano-plotter/
+|-- adsorbate-structure-grid/
 `-- ToBe*/
 ```
 
@@ -30,6 +38,8 @@ SKILL/
 | Result analysis | `TASK_CALCULATION_RESULT_ANALYZER/` | Read-only analyzer plus visual-review artifacts. |
 | Manuscript loop | `TASK_MANUSCRIPT_LOOP/` | Post-computation manuscript workspace, claim/figure/reviewer gates, and prose-lock validators. |
 | Manuscript typeset | `TASK_MANUSCRIPT_TYPESET/` | Typst/PDF and DOCX export assembly from the canonical `paper/` workspace. |
+| Imported Nature writing | `nature-writing/`, `nature-polishing/`, `nature-reviewer/` | Catalyst-library guidance for Nature-family drafting, polishing, and pre-submission review. |
+| Imported figure skills | `nature-figure/`, `energy-diagram-plotter/`, `sabatier-volcano-plotter/`, `adsorbate-structure-grid/` | Publication figure guidance plus catalyst-specific plotting/rendering helpers. |
 | UMA/MLIP handoff | `TASK_UMA/`, `TASK_UMA_traj/`, `TASK_UMA_vib/` | Dry-run/local/qsub boundaries in README/controllers. |
 | VASP jobs | `TASK_VASP_JOB/` | Has child instructions because job submission is high risk. |
 
@@ -41,6 +51,9 @@ SKILL/
 - Preserve the documented standard output envelope when a task defines one.
 - Manuscript work must treat `paper/` as canonical: run the manuscript-loop
   validators before prose edits, and keep Typst/PDF/DOCX outputs disposable.
+- Imported Nature/catalyst skills are standalone helpers for writing, reviewer
+  simulation, polishing, and figures. Literature search and citation skills are
+  intentionally not imported into MESA at this stage.
 
 ## ANTI-PATTERNS
 - Do not let one task compensate for an unresolved upstream gate; return to the owning task.

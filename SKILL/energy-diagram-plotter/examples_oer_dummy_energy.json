@@ -1,0 +1,25 @@
+{
+  "data": {
+    "NiFeOOH": [0.0, 0.34, 0.71, 0.28, 0.0],
+    "CoOOH": [0.0, 0.58, 1.03, 0.61, 0.0],
+    "MnOx": [0.0, 0.21, 0.86, 0.44, 0.0]
+  },
+  "x_labels": [
+    "*",
+    "*OH",
+    "*O",
+    "*OOH",
+    "O2 + *"
+  ],
+  "colors": {
+    "NiFeOOH": "#0F4D92",
+    "CoOOH": "#B64342",
+    "MnOx": "#2E7D6F"
+  },
+  "ylabel": "$\\Delta G$ (eV)",
+  "xlabel": "OER Coordinate",
+  "figsize": [5.2, 3.5],
+  "x_number_min_max": [0.5, 3.5],
+  "zero_label_positions": [0, 4],
+  "legend_loc": "upper left"
+}
