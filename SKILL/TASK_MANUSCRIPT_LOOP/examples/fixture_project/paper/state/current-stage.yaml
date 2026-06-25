@@ -1,5 +1,0 @@
-version: 1
-stage: section_drafting
-status: ready
-blockers: []
-next_action: Draft only the sections marked ready-to-draft from locked contracts.

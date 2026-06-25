@@ -1,9 +1,6 @@
 examples/
 !ENVIRONMENT/**/examples/
 !ENVIRONMENT/**/examples/**
-!SKILL/TASK_MANUSCRIPT_LOOP/examples/
-!SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/
-!SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/**
 
 # OS
 .DS_Store
@@ -75,6 +72,7 @@ temp/
 AGENTS.md
 **/AGENTS.md
 SKILL/**/assets/
+SKILL/**/tests/
 
 # Local manuscript review trials
 SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/

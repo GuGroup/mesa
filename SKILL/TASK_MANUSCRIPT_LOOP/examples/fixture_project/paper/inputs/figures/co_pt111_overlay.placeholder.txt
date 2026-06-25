@@ -1,3 +1,0 @@
-Placeholder for analyzer overlay images copied from completed MESA analysis.
-Later ingestion code should preserve source paths and not synthesize scientific
-content from this placeholder.
