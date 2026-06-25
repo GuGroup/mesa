@@ -4,8 +4,6 @@ examples/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/
 !SKILL/TASK_MANUSCRIPT_LOOP/examples/fixture_project/**
-!SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/
-!SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/**
 
 # OS
 .DS_Store
@@ -76,6 +74,7 @@ temp/
 *.tmp
 AGENTS.md
 **/AGENTS.md
+SKILL/**/assets/
 
 # Local manuscript review trials
 SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/
@@ -86,3 +85,5 @@ SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/
 ENVIRONMENT/**/.git/
 ENVIRONMENT/**/.venv/
 ENVIRONMENT/**/__pycache__/
+ENVIRONMENT/paper_search/docs/
+ENVIRONMENT/paper_search/tests/

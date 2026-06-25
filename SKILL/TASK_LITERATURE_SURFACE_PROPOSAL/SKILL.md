@@ -25,20 +25,10 @@ research:
     - prioritize DFT-feasible surface and descriptor gaps
 ```
 
-An example is available at
-`mesa/SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/search-input.example.yaml`.
-
 ## Runtime
 
-Run from the MESA repository root:
-
-```bash
-cd ENVIRONMENT/paper_search
-uv run --frozen paper-search run --input ../../SKILL/TASK_LITERATURE_SURFACE_PROPOSAL/examples/search-input.example.yaml --provider openai-oauth
-```
-
-For a real run, pass the caller's YAML path and choose an explicit output
-directory:
+Run from the MESA repository root with the caller's YAML path and an explicit
+output directory:
 
 ```bash
 cd ENVIRONMENT/paper_search
