@@ -1,0 +1,13 @@
+interface:
+  display_name: "Search Papers With MCP"
+  short_description: "Find catalyst papers in three lanes"
+  default_prompt: "Use $search-papers-with-mcp with target task and material domain to return Domain Foundation, Computational Proof-Strategy, and Legacy Anchor papers."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "paper_search"
+      description: "Academic paper search, read, and download tools exposed as mcp__paper_search."
+
+policy:
+  allow_implicit_invocation: true

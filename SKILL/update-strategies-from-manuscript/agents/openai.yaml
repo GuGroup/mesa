@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Strategies From Manuscript"
+  short_description: "Revise strategy plans from manuscript results"
+  default_prompt: "Use $update-strategies-from-manuscript to update a computational strategy plan after a completed strategy manuscript."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Decompose Chemistry Paper PDF"
+  short_description: "Decompose computational chemistry papers"
+  default_prompt: "Use $decompose-chemistry-paper-pdf to extract a computational chemistry paper PDF into the required Python dictionary."
