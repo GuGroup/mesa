@@ -1,0 +1,4 @@
+interface:
+  display_name: "MESA Init"
+  short_description: "Check MESA repo bootstrap readiness"
+  default_prompt: "Use $mesa-init to check this fresh MESA clone for Codex config, API keys, MCP, and runtime readiness."

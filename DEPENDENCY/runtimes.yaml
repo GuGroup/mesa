@@ -1,0 +1,208 @@
+version: 1
+
+runtimes:
+  mesa-general:
+    kind: uv-project
+    description: Lightweight common Python runtime for stdlib OpenAI wrappers, JSON/YAML utilities, and simple deterministic scripts.
+    cwd: DEPENDENCY/general
+    run_prefix: uv run
+    install:
+      - uv sync
+    update:
+      - uv sync --upgrade
+    check_tools:
+      - uv
+      - python
+    smoke:
+      - uv run python -c "import dotenv, requests, yaml; print('mesa-general ok')"
+    env_optional:
+      - OPENAI_API_KEY
+      - OPENAI_MODEL
+
+  mesa-modeling:
+    kind: conda-env
+    description: Structure modeling runtime for slabuilder, ASE, pymatgen, RDKit, Materials Project access, and result analysis.
+    cwd: ENVIRONMENT/build_tools
+    spec: ENVIRONMENT/build_tools/environment.yml
+    run_prefix: mamba run -n modeling
+    install:
+      - mamba env create -f environment.yml
+    update:
+      - mamba env update -f environment.yml --prune
+      - mamba run -n modeling python -m playwright install chromium
+    check_tools:
+      - mamba
+      - python
+    smoke:
+      - mamba run -n modeling python -c "import ase, pymatgen, rdkit, slabuilder; print('mesa-modeling ok')"
+    env_optional:
+      - MP_API_KEY
+      - PMG_MAPI_KEY
+
+  mesa-manuscript:
+    kind: conda-env
+    description: Manuscript, figure, document export, Pandoc, Playwright, aseview, and publication plotting runtime.
+    cwd: ENVIRONMENT/manuscript_tools
+    spec: ENVIRONMENT/manuscript_tools/environment.yml
+    run_prefix: mamba run -n mesa-manuscript
+    install:
+      - mamba env create -f environment.yml
+    update:
+      - mamba env update -f environment.yml --prune
+      - mamba run -n mesa-manuscript python -m playwright install chromium
+    check_tools:
+      - mamba
+      - python
+      - pandoc
+    smoke:
+      - mamba run -n mesa-manuscript python -c "import numpy, scipy, matplotlib, ase; print('mesa-manuscript ok')"
+
+  mesa-paper-search:
+    kind: uv-project
+    description: Local SearchAgent LangGraph and PaperQA literature workflow runtime.
+    cwd: ENVIRONMENT/paper_search
+    spec: ENVIRONMENT/paper_search/pyproject.toml
+    lock: ENVIRONMENT/paper_search/uv.lock
+    run_prefix: uv run --frozen
+    install:
+      - uv sync --frozen --extra mcp --extra local-embeddings
+    update:
+      - uv sync --extra mcp --extra local-embeddings
+    check_tools:
+      - uv
+      - python
+    smoke:
+      - uv run --frozen python -c "import paper_search, langgraph; print('mesa-paper-search ok')"
+    env_optional:
+      - PAPER_SEARCH_EMAIL
+      - PAPER_SEARCH_PROVIDER
+      - PAPER_SEARCH_MODEL
+      - OPENAI_API_KEY
+      - OPENAI_BASE_URL
+      - OPENAI_EMBEDDING_KEY
+      - ANTHROPIC_API_KEY
+      - SEMANTIC_SCHOLAR_API_KEY
+      - ELSEVIER_API_KEY
+      - ELSEVIER_INSTTOKEN
+      - PAPER_SEARCH_GROBID_URL
+      - PAPER_SEARCH_GROBID_START_CMD
+      - PAPER_SEARCH_OPENDATALOADER_CMD
+
+  paper-search-mcp:
+    kind: uv-project
+    description: External paper-search MCP server/client runtime, kept separate from mesa-paper-search to avoid command and dependency collisions.
+    cwd: EXTERNAL/paper-search-mcp
+    spec: EXTERNAL/paper-search-mcp/pyproject.toml
+    lock: EXTERNAL/paper-search-mcp/uv.lock
+    run_prefix: uv run
+    install:
+      - uv sync --frozen
+    update:
+      - uv sync
+    check_tools:
+      - uv
+      - python
+    smoke:
+      - uv run python -c "import paper_search_mcp; print('paper-search-mcp ok')"
+    env_optional:
+      - PAPER_SEARCH_MCP_UNPAYWALL_EMAIL
+      - PAPER_SEARCH_MCP_CORE_API_KEY
+      - PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY
+      - PAPER_SEARCH_MCP_GOOGLE_SCHOLAR_PROXY_URL
+      - PAPER_SEARCH_MCP_DOAJ_API_KEY
+      - PAPER_SEARCH_MCP_ZENODO_ACCESS_TOKEN
+      - PAPER_SEARCH_MCP_OPENAIRE_API_KEY
+      - PAPER_SEARCH_MCP_CITESEERX_API_KEY
+      - PAPER_SEARCH_MCP_IEEE_API_KEY
+      - PAPER_SEARCH_MCP_ACM_API_KEY
+
+  mesa-vasp-submit:
+    kind: uv-tool
+    description: HPC login-node VASP job preparation/submission tool. Install as a uv tool, not as a shared project venv.
+    cwd: ENVIRONMENT/vasp-submit-linker
+    spec: ENVIRONMENT/vasp-submit-linker/pyproject.toml
+    run_prefix: vasp-job
+    install:
+      - uv tool install --python 3.11 . --constraint constraints.txt --force
+    update:
+      - uv tool install --python 3.11 . --constraint constraints.txt --force
+    check_tools:
+      - uv
+      - vasp-job
+      - qsub
+    smoke:
+      - vasp-job schema
+    env_optional:
+      - VASP_SUBMIT_CONFIG_DIR
+
+  mesa-uma:
+    kind: external-manual
+    description: FAIRChem/UMA runtime for MLIP single-point, relaxation trajectory, and finite-displacement vibration tasks.
+    cwd: DEPENDENCY/uma
+    spec: DEPENDENCY/uma/runtime.md
+    run_prefix: python
+    install:
+      - See DEPENDENCY/uma/runtime.md
+    check_tools:
+      - python
+      - qsub
+    smoke:
+      - python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
+    env_optional:
+      - MESA_UMA_DEVICE
+      - CUDA_VISIBLE_DEVICES
+
+  mesa-adsorbdiff:
+    kind: external-manual
+    description: AdsorbDiff runtime for candidate adsorbate placement, diffusion sampling, LMDB conversion, and optional MLFF relaxation.
+    cwd: DEPENDENCY/adsorbdiff
+    spec: DEPENDENCY/adsorbdiff/runtime.md
+    run_prefix: python
+    install:
+      - See DEPENDENCY/adsorbdiff/runtime.md
+    check_tools:
+      - python
+    smoke:
+      - python -c "import ase, lmdb, torch, yaml; print('mesa-adsorbdiff ok')"
+    env_optional:
+      - CUDA_VISIBLE_DEVICES
+
+  no-runtime:
+    kind: instruction-only
+    description: Text-only or orchestration skills that do not own a Python runtime.
+    run_prefix: none
+    install:
+      - No runtime install required.
+
+skills:
+  TASK_EXTRACT_DATA_FROM_PDF: mesa-general
+  decompose-chemistry-paper-pdf: mesa-general
+  extract-general-insight-pdf: mesa-general
+  generate-strategies: mesa-general
+  update-strategies-from-manuscript: mesa-general
+  TASK_balance_reaction_pathway: mesa-general
+  TASK1_experimental_information_extraction: mesa-general
+  TASK2_reaction_energy_evaluation: mesa-general
+  TASK_BUILD_SLAB_MODELS: mesa-modeling
+  TASK_BUILD_GAS_PHASE_MODELS: mesa-modeling
+  TASK_PLACE_SURFACE_ADSORBATES: mesa-modeling
+  ToBeReplaced_INSPECT_SURFACE_SITES: mesa-modeling
+  TASK_CALCULATION_RESULT_ANALYZER: mesa-modeling
+  TASK_CONSTRUCT_ENERGY_DIAGRAM: mesa-modeling
+  TASK_MANUSCRIPT_LOOP: mesa-manuscript
+  TASK_MANUSCRIPT_TYPESET: mesa-manuscript
+  energy-diagram-plotter: mesa-manuscript
+  sabatier-volcano-plotter: mesa-manuscript
+  adsorbate-structure-grid: mesa-manuscript
+  nature-figure: mesa-manuscript
+  TASK_LITERATURE_SURFACE_PROPOSAL: mesa-paper-search
+  search-papers-with-mcp: paper-search-mcp
+  TASK_VASP_JOB: mesa-vasp-submit
+  TASK_UMA: mesa-uma
+  TASK_UMA_traj: mesa-uma
+  TASK_UMA_vib: mesa-uma
+  TASK_Absorbdiff: mesa-adsorbdiff
+  ToBeAmended_SURFACE_REACTION_MODELING_WORKFLOW: no-runtime
+  nature-writing: no-runtime
+  nature-polishing: no-runtime
+  nature-reviewer: no-runtime

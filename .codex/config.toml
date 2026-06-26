@@ -1,0 +1,34 @@
+# Project-scoped Codex configuration for MESA.
+#
+# Codex loads this file only after the repository is trusted. Keep secrets out of
+# this file; use DEPENDENCY/.env.example as the template for local .env values.
+
+[mcp_servers.paper_search]
+enabled = true
+required = false
+command = "uv"
+args = ["run", "--frozen", "-m", "paper_search_mcp.server"]
+cwd = "../EXTERNAL/paper-search-mcp"
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+default_tools_approval_mode = "auto"
+
+# Forward shell-exported values. This lets users source .env before launching
+# Codex, or rely on CI/host-level secret injection.
+env_vars = [
+  "PAPER_SEARCH_MCP_UNPAYWALL_EMAIL",
+  "PAPER_SEARCH_MCP_CORE_API_KEY",
+  "PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY",
+  "PAPER_SEARCH_MCP_DOAJ_API_KEY",
+  "PAPER_SEARCH_MCP_ZENODO_ACCESS_TOKEN",
+  "PAPER_SEARCH_MCP_GOOGLE_SCHOLAR_PROXY_URL",
+  "PAPER_SEARCH_MCP_OPENAIRE_API_KEY",
+  "PAPER_SEARCH_MCP_CITESEERX_API_KEY",
+  "PAPER_SEARCH_MCP_IEEE_API_KEY",
+  "PAPER_SEARCH_MCP_ACM_API_KEY",
+]
+
+# The MCP server can read repository-root .env through this explicit path.
+# Because cwd is EXTERNAL/paper-search-mcp, ../../.env resolves to repo/.env.
+[mcp_servers.paper_search.env]
+PAPER_SEARCH_MCP_ENV_FILE = "../../.env"
