@@ -1,5 +1,0 @@
-run,accepted_for_adsorbates,energy_eV,final_fmax_eV_per_A,converged,analyzer_verdict,fail_reasons,warn_reasons,ni_count,min_Ni_Ni_A,min_Ni_surface_A
-S6_Ni2_edge_cluster_interface_clean_gpu,True,-315.41621670299,0.04916666528569264,True,warn,[],['3 new bond(s) vs initial'],2,2.464216830980017,2.113473924873027
-S6_Ni4_edge_cluster_interface_clean_gpu,False,-321.1676158132782,0.1223751009411979,False,fail,['final fmax 0.122 > 0.050 eV/Å (cli --fmax-threshold) — not converged'],"['energy is not monotonically decreasing', 'multiple significant minima — endpoint may be path-dependent', '2 bond(s) broke vs initial (possible dissociation)', '8 new bond(s) vs initial']",4,2.4154922773043714,2.044059355495001
-S6_Svac_Ni2_edge_interface_clean_gpu,True,-306.6572198044737,0.04599687380071326,True,warn,[],"['1 bond(s) broke vs initial (possible dissociation)', '3 new bond(s) vs initial']",2,2.245903706904004,2.232039115006455
-S6_local_1Tlike_Ni14_edge_proxy_clean_gpu,True,-300.71316377741323,0.04626298684923776,True,pass,[],[],1,,2.182804843133909

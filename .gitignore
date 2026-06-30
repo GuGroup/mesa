@@ -62,6 +62,7 @@ htmlcov/
 data/
 tmp/
 temp/
+project/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -69,8 +70,6 @@ temp/
 # Misc
 *.bak
 *.tmp
-AGENTS.md
-**/AGENTS.md
 SKILL/**/assets/
 SKILL/**/tests/
 
