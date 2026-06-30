@@ -1,0 +1,294 @@
+{
+  "strategy_id": "S1",
+  "title": "Alkaline bifunctional Ni-S-edge mechanism: Ni lowers water activation while adjacent MoS2 sites complete H2 formation",
+  "problem": {
+    "question": "Does Ni enhance alkaline HER on MoS2 because it directly lowers the water dissociation barrier at Ni-S edge motifs, or because it only tunes H adsorption and site density?",
+    "unexplained_phenomenon": "Optimized Ni-doped MoS2 shows much lower alkaline overpotential and Tafel slope than undoped MoS2, but prior Ni-MoS2 calculations mainly reported H adsorption free energies and did not explicitly compute alkaline water dissociation barriers.",
+    "context": "This is a strong strategy because the target task is explicitly alkaline HER, and the extraction artifacts identify water dissociation as the missing mechanistic proof for Ni-MoS2.",
+    "references": [
+      {
+        "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/wang2018_decomposition.py",
+        "extraction_type": "paper_decomposition",
+        "inherited_source": null,
+        "supporting_statement": "The DFT evidence supports H adsorption thermodynamics and Ni site preference, but does not fully resolve alkaline HER kinetics because water-dissociation barriers were not reported.",
+        "decision_role": "risk"
+      },
+      {
+        "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+        "extraction_type": "general_insight",
+        "inherited_source": null,
+        "supporting_statement": "Alkaline HER involves water adsorption, water dissociation, OH^- interactions, interfacial electric fields, solvation, and pH-dependent kinetics, which are more complex than simple \u0394G_H screening.",
+        "decision_role": "mechanism"
+      }
+    ]
+  },
+  "axioms": {
+    "items": [
+      {
+        "statement": "Alkaline HER requires explicit treatment of water activation in addition to H adsorption.",
+        "source": {
+          "authors": "J. Zhang, T. Wang, P. Liu, S. Liu, R. Dong, X. Zhuang, M. Chen, and X. Feng",
+          "year": 2016,
+          "journal": "Energy & Environmental Science",
+          "title": "Engineering water dissociation sites in MoS2 nanosheets for accelerated electrocatalytic hydrogen production",
+          "claim_used": "Water dissociation sites on MoS2 are mechanistically important for accelerating HER."
+        },
+        "references": [
+          {
+            "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/wang2018_decomposition.py",
+            "extraction_type": "paper_decomposition",
+            "inherited_source": {
+              "authors": "J. Zhang, T. Wang, P. Liu, S. Liu, R. Dong, X. Zhuang, M. Chen, and X. Feng",
+              "year": 2016,
+              "journal": "Energy & Environmental Science",
+              "title": "Engineering water dissociation sites in MoS2 nanosheets for accelerated electrocatalytic hydrogen production",
+              "claim_used": "Water dissociation sites on MoS2 are mechanistically important for accelerating HER."
+            },
+            "supporting_statement": "Engineering water dissociation sites in MoS2 nanosheets is important for accelerating hydrogen production, particularly under alkaline conditions where Hads must be generated from water.",
+            "decision_role": "axiom"
+          }
+        ]
+      },
+      {
+        "statement": "Single Ni atoms can anchor through Ni-S coordination at S-edge and basal motifs and tune H adsorption on neighboring sulfur sites toward thermoneutrality.",
+        "source": null,
+        "references": [
+          {
+            "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/wang2018_decomposition.py",
+            "extraction_type": "paper_decomposition",
+            "inherited_source": null,
+            "supporting_statement": "After anchoring a single Ni atom at the S-edge, the calculated \u0394GH for nearby H adsorption becomes 0.1 eV; Ni adsorption is favored at the A site of the S-edge and possible at basal T and H sites, whereas substitution is less favorable.",
+            "decision_role": "axiom"
+          }
+        ]
+      },
+      {
+        "statement": "The experimentally optimized catalyst benchmark is an alkaline Ni-doped MoS2 material with a low overpotential and low Tafel slope relative to undoped MoS2.",
+        "source": null,
+        "references": [
+          {
+            "extraction_artifact": "project/mos_0629_2/strategy_generation/experimental_extraction/extraction_report.md",
+            "extraction_type": "experimental_extraction",
+            "inherited_source": null,
+            "supporting_statement": "M300N10_5 h exhibits ~91 mV at 10 mA cm^-2 and ~62.4 mV dec^-1 Tafel slope, whereas MoS2 shows ~227 mV at 10 mA cm^-2 and M100 shows ~119.1 mV dec^-1.",
+            "decision_role": "benchmark_constraint"
+          }
+        ]
+      }
+    ]
+  },
+  "hypothesis": {
+    "statement": "Proposed hypothesis: isolated Ni-S motifs at MoS2 S-edges enhance alkaline HER by creating a bifunctional pocket in which Ni polarizes and dissociates H2O/OH-H while adjacent sulfur or Mo-edge sites bind H* near thermoneutrally and complete Heyrovsky or Tafel H2 formation.",
+    "derived_from_axioms": [
+      "Alkaline HER needs water dissociation calculations, not \u0394G_H alone.",
+      "Ni single atoms at S-edges tune H adsorption toward thermoneutrality.",
+      "The target material exposes edge-rich MoS2 and shows improved alkaline HER benchmarks."
+    ],
+    "proposed_mechanism_or_prediction": "Competing hypotheses to distinguish are: H1, Ni creates a bifunctional water-dissociation plus H* conversion site; H2, Ni only improves \u0394G_H and the water step remains similar to pristine MoS2; H3, the apparent improvement is caused by 1T conductivity or increased edge density rather than intrinsic Ni chemistry. The decisive test is a potential- and solvation-corrected comparison of H2O dissociation, OH removal, H adsorption, and H2 formation barriers on matched pristine and Ni-edge models.",
+    "references": [
+      {
+        "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+        "extraction_type": "general_insight",
+        "inherited_source": null,
+        "supporting_statement": "Ni may lower the water-dissociation barrier, while other dopants or sulfur sites may tune H* binding; computational proof should explicitly test water adsorption, water dissociation, OH^- interactions, charge transfer, phase stability, and competing Ni site motifs.",
+        "decision_role": "synthesis_basis"
+      },
+      {
+        "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/wang2018_decomposition.py",
+        "extraction_type": "paper_decomposition",
+        "inherited_source": null,
+        "supporting_statement": "Ni single atoms make S-edge H adsorption nearly thermoneutral with \u0394GH = 0.1 eV, but no water-dissociation barrier calculations were reported.",
+        "decision_role": "synthesis_basis"
+      }
+    ]
+  },
+  "experiment": {
+    "computational": {
+      "models": [
+        "Pristine 2H-MoS2 S-edge and Mo-edge slabs with alkaline H2O/OH/H coverages.",
+        "Ni adatom at S-edge A site and basal H/T motifs following the Ni single-atom motifs in the decomposition artifact.",
+        "Ni substitution at Mo-edge and S-edge as a competing structural hypothesis.",
+        "Mixed 1T/2H edge model with and without Ni as a phase-control model.",
+        "Explicit interfacial H2O cluster plus implicit solvation; include KOH-relevant H2O/OH coadsorption motifs without modeling any experimental electrolyte workflow."
+      ],
+      "methods": [
+        "Use UMA relaxations as the calculation engine and generate VASP-compatible POSCAR/INCAR/KPOINTS-style inputs for traceability, without submitting VASP jobs.",
+        "Compute adsorption free energies for H*, H2O*, OH*, and H2* on matched pristine and Ni-modified sites.",
+        "Compute minimum-energy paths for alkaline Volmer water dissociation H2O + e- + * -> H* + OH- using CI-NEB or constrained reaction-coordinate scans.",
+        "Compute Heyrovsky H2 formation from H* plus H2O and Tafel recombination where feasible.",
+        "Apply computational hydrogen electrode and alkaline pH corrections, then test sensitivity to implicit solvation, explicit water count, and electrode-potential correction.",
+        "Perform causal intervention calculations by removing Ni from the same relaxed edge pocket, replacing Ni with Mo in a fixed geometry, freezing the Ni-induced geometry while neutralizing local charge, and comparing to a geometry-relaxed pristine edge."
+      ],
+      "dft_details": {
+        "code": "UMA relaxations with VASP-compatible input-file generation; VASP-equivalent accuracy assumed for writing per task note",
+        "functional": "Use PBE for direct continuity with Wang 2018, with RPBE+D3 sensitivity checks for kinetic barriers because Hanslin 2024 used RPBE+D3 for electrochemical transition-state modeling",
+        "pseudopotentials_or_paw": "PAW-compatible element setups for Mo, S, Ni, H, O, and K if K counterions are included",
+        "plane_wave_cutoff": "Start from 520 eV for PBE continuity with Wang 2018; run 400 eV RPBE+D3 sensitivity only if using the Hanslin-style protocol",
+        "k_point_mesh": "3 x 3 x 1 for small monolayer or edge supercells, with larger supercells checked by k-point convergence",
+        "convergence_criteria": "Relax minima to forces below 0.01 eV/\u00c5 for adsorption energetics; relax NEB images to at least 0.05 eV/\u00c5 or tighter for transition states",
+        "dispersion_correction": "Include D3 in kinetic and explicit-water sensitivity calculations; compare no-D3 PBE adsorption energies as a legacy descriptor baseline",
+        "slab_model": "MoS2 monolayer basal and periodic edge slabs with at least 20 to 30 \u00c5 vacuum; edge models should include S-edge and Mo-edge terminations and matched pristine/Ni-modified supercells",
+        "adsorption_sites": [
+          "H on pristine S-edge sulfur",
+          "H on pristine Mo-edge sulfur or Mo0-edge metal site",
+          "H near Ni at S-edge A site",
+          "H near Ni at basal H/T site",
+          "H2O coordinated to Ni",
+          "H2O bridging Ni and adjacent S or Mo",
+          "OH bound to Ni",
+          "OH bound to Mo or S adjacent to Ni",
+          "H2* on Ni-adjacent edge motifs"
+        ],
+        "transition_state_method": "CI-NEB for H2O dissociation and H2 formation; if CI-NEB is unstable, use constrained O-H distance scans followed by dimer refinement",
+        "thermodynamic_corrections": "Use \u0394G = \u0394E + ZPE - T\u0394S for adsorbates; reference H via the computational hydrogen electrode; include pH correction for alkaline conditions; report potential-dependent free-energy diagrams",
+        "other_settings": [
+          "Spin-polarize all Ni-containing calculations.",
+          "Use implicit solvation for all electrochemical barriers and compare explicit 3 to 6 water molecules around the reactive site.",
+          "Report Bader charge, spin moment, projected density of states, Ni d-band features, S p-band center, and H2O activation geometry.",
+          "Minimum publishable proof package: four matched slabs, H2O dissociation barriers, H adsorption free energies, OH removal energies, one H2 formation barrier, and one causal Ni-removal intervention.",
+          "Falsification condition: if Ni-edge models do not lower the H2O dissociation free-energy barrier or the potential-limiting alkaline step relative to matched pristine edges after solvation and potential corrections, the bifunctional Ni-water-activation claim is seriously weakened."
+        ]
+      },
+      "procedures": [
+        "Build pristine S-edge, pristine Mo-edge, Ni-S-edge adatom, and Ni-substitution edge cells with identical cell dimensions where possible.",
+        "Relax dry slabs, then H2O/OH/H-covered slabs under UMA.",
+        "Compute H2O adsorption and O-H cleavage NEB paths on each site.",
+        "Compute \u0394G_H at the post-water-dissociation H* site and the OH binding or desorption penalty.",
+        "Construct alkaline free-energy diagrams at U = 0 V and at relevant negative potentials.",
+        "Run the causal intervention: remove Ni but keep the Ni-shaped cavity fixed for one single-point/partial relaxation; compare barrier and charge redistribution.",
+        "Decisive distinction: H1 is supported only if Ni lowers the water step and improves the combined Volmer-Heyrovsky/Tafel limiting barrier; H2 is supported if only \u0394G_H improves; H3 is supported if Ni-free 1T or high-edge-density controls give comparable barriers.",
+        "Minimum publishable proof package is the smallest set of calculations needed to show barrier lowering, free-energy consistency, charge-transfer origin, and falsification against Ni-free controls."
+      ],
+      "references": [
+        {
+          "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/wang2018_decomposition.py",
+          "extraction_type": "paper_decomposition",
+          "inherited_source": null,
+          "supporting_statement": "Wang 2018 used spin-polarized VASP/PBE/PAW, 520 eV cutoff, 3 x 3 x 1 k-points, 30 \u00c5 vacuum, and \u0394GH = \u0394EH + 0.29 eV for Ni-decorated MoS2 adsorption calculations.",
+          "decision_role": "method"
+        },
+        {
+          "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/hanslin2024_decomposition.py",
+          "extraction_type": "paper_decomposition",
+          "inherited_source": null,
+          "supporting_statement": "Hanslin 2024 used RPBE, PAW, 400 eV, 3 x 3 x 1 k-points, D3, implicit solvation, explicit Eigen cation water clusters, grand-canonical activation energies, and CI-NEB transition-state calculations.",
+          "decision_role": "method"
+        }
+      ]
+    }
+  },
+  "results": {
+    "expected_computational_results": [
+      {
+        "statement": "Expected proposed result: Ni-S-edge motifs will lower the alkaline water-dissociation barrier and produce a lower potential-limiting free-energy span than pristine S-edge or basal-plane MoS2 while maintaining near-thermoneutral H* binding.",
+        "status": "proposed expectation, not established",
+        "references": [
+          {
+            "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+            "extraction_type": "general_insight",
+            "inherited_source": null,
+            "supporting_statement": "For alkaline HER, Ni may lower the water-dissociation barrier, while \u0394G_H remains useful but incomplete.",
+            "decision_role": "mechanism"
+          }
+        ]
+      }
+    ],
+    "computational_benchmark_comparisons": [
+      {
+        "statement": "Benchmark comparison to compute: the site-weighted kinetic improvement should be directionally consistent with the experimental shift from ~227 mV for MoS2 to ~91 mV for optimized Ni-doped MoS2 and the Tafel-slope decrease from ~119.1 to ~62.4 mV dec^-1.",
+        "status": "benchmark comparison to compute, not established",
+        "references": [
+          {
+            "extraction_artifact": "project/mos_0629_2/strategy_generation/experimental_extraction/extraction_report.md",
+            "extraction_type": "experimental_extraction",
+            "inherited_source": null,
+            "supporting_statement": "Measured properties report ~91 mV for M300N10_5 h versus ~227 mV for MoS2 and Tafel slopes of ~62.4 mV dec^-1 versus ~119.1 mV dec^-1.",
+            "decision_role": "benchmark_constraint"
+          }
+        ]
+      }
+    ],
+    "computational_tests_to_run": {
+      "mechanism_and_descriptor_tests": [
+        {
+          "statement": "Compute \u0394G_H, H2O dissociation barriers, OH binding, Ni d-state occupancy, S p-band center, and charge transfer for pristine versus Ni-edge structures to test whether water activation and H binding are coupled by the same Ni-induced electronic perturbation.",
+          "status": "calculation to run",
+          "references": [
+            {
+              "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+              "extraction_type": "general_insight",
+              "inherited_source": null,
+              "supporting_statement": "Use p-band center, charge transfer, d-band states, and local strain as interpretable descriptors for doped MoS2.",
+              "decision_role": "descriptor"
+            }
+          ]
+        }
+      ],
+      "selectivity_and_competing_pathway_tests": [
+        {
+          "statement": "Compute both Volmer-Heyrovsky and Volmer-Tafel/Tafel routes to determine whether Ni changes the rate-limiting step or only lowers the initial Volmer barrier.",
+          "status": "calculation to run",
+          "references": [
+            {
+              "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/strategy/hanslin2024_decomposition.py",
+              "extraction_type": "paper_decomposition",
+              "inherited_source": {
+                "authors": "Y. Huang, R. J. Nielsen, W. A. I. Goddard, M. P. Soriaga",
+                "year": 2015,
+                "journal": "Journal of the American Chemical Society",
+                "title": null,
+                "claim_used": "Theoretical HER studies showed that barriers, not only hydrogen adsorption free energies, determine activity at MoS2 sites."
+              },
+              "supporting_statement": "Sites with similar near-thermoneutral H adsorption free energies can have very different HER overpotentials because activation barriers and H2*-like complexes differ.",
+              "decision_role": "computational_test"
+            }
+          ]
+        }
+      ],
+      "stability_and_surface_state_tests": [
+        {
+          "statement": "Check whether the Ni-S-edge water-activation motif remains intact after OH adsorption and after short AIMD or repeated relaxation cycles with explicit water.",
+          "status": "calculation to run",
+          "references": [
+            {
+              "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+              "extraction_type": "general_insight",
+              "inherited_source": null,
+              "supporting_statement": "Model solvent, electric-field, and hydroxide effects explicitly for Ni-doped MoS2 to reduce the gap between vacuum DFT descriptors and alkaline HER overpotentials.",
+              "decision_role": "computational_test"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "conclusion": {
+    "causal_mechanism": "If supported, the paper-level claim would be that Ni doping enhances alkaline HER through a bifunctional Ni-S-edge pocket that lowers water activation while preserving favorable H* conversion on adjacent MoS2 sites.",
+    "design_principle": "For alkaline Ni-MoS2, optimize motifs that simultaneously weaken the H2O O-H bond, avoid OH poisoning, and keep H adsorption near thermoneutral.",
+    "scope_or_limitations": "Falsification condition: if solvation- and potential-corrected barriers show no Ni-specific lowering of water dissociation or the limiting alkaline HER step, then Ni-induced enhancement must be reassigned to phase, conductivity, morphology, or active-site-density effects rather than a bifunctional chemical mechanism.",
+    "references": [
+      {
+        "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+        "extraction_type": "general_insight",
+        "inherited_source": null,
+        "supporting_statement": "Do not rely on \u0394G_H alone to argue that Ni-doped MoS2 improves alkaline HER.",
+        "decision_role": "risk"
+      }
+    ]
+  },
+  "decision_trace": [
+    {
+      "decision": "Prioritize explicit water-dissociation and OH-management calculations over a \u0394G_H-only study.",
+      "why_it_matters_for_target_task": "The target is alkaline HER, where water rather than solvated protons supplies H*, so \u0394G_H-only evidence would be mechanistically incomplete.",
+      "references": [
+        {
+          "extraction_artifact": "project/mos_0629_2/strategy_generation/paper_extraction/domain/liu2025_review_general_insight.py",
+          "extraction_type": "general_insight",
+          "inherited_source": null,
+          "supporting_statement": "Alkaline HER involves water adsorption, water dissociation, OH^- interactions, interfacial electric fields, solvation, and pH-dependent kinetics.",
+          "decision_role": "prioritization"
+        }
+      ]
+    }
+  ]
+}

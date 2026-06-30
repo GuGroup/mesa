@@ -1,0 +1,74 @@
+{
+  "reactant": {
+    "run": "S2_Ni_sub_S44_edge_H2O_candidate_0002_gpu",
+    "energy_eV": -319.20720427517693
+  },
+  "rows": [
+    {
+      "product_run": "S2_S44_prod_H45_to_S40_gpu",
+      "reactant_h2o_run": "S2_Ni_sub_S44_edge_H2O_candidate_0002_gpu",
+      "product_energy_eV": -318.2901300716857,
+      "reactant_h2o_energy_eV": -319.20720427517693,
+      "product_minus_h2o_eV": 0.9170742034912109,
+      "converged": true,
+      "final_fmax_eV_per_A": 0.047632578667089503,
+      "analyzer_verdict": "pass",
+      "analyzer_warn_reasons": [],
+      "oh_short_A": 0.9760542570277797,
+      "oh_long_A": 2.050683385945828,
+      "o_ni_A": 1.7926224546944691,
+      "o_surface_A": 1.7926224546944691,
+      "h_min_surface_A": 1.3843112177854182,
+      "h_surface_contacts": [
+        {
+          "h_index": 45,
+          "nearest_surface_index": 40,
+          "nearest_surface_symbol": "S",
+          "distance_A": 1.3843112177854182
+        },
+        {
+          "h_index": 46,
+          "nearest_surface_index": 44,
+          "nearest_surface_symbol": "Ni",
+          "distance_A": 2.371607914434496
+        }
+      ],
+      "final_adsorbate_state": "dissociated_H_OH_like"
+    },
+    {
+      "product_run": "S2_S44_prod_H46_to_S41_gpu",
+      "reactant_h2o_run": "S2_Ni_sub_S44_edge_H2O_candidate_0002_gpu",
+      "product_energy_eV": -318.05799334530633,
+      "reactant_h2o_energy_eV": -319.20720427517693,
+      "product_minus_h2o_eV": 1.1492109298706055,
+      "converged": true,
+      "final_fmax_eV_per_A": 0.04750643103114947,
+      "analyzer_verdict": "warn",
+      "analyzer_warn_reasons": [
+        "energy is not monotonically decreasing",
+        "1 bond(s) broke vs initial (possible dissociation)"
+      ],
+      "oh_short_A": 0.9745870520763636,
+      "oh_long_A": 4.831307234166393,
+      "o_ni_A": 1.7719402734731127,
+      "o_surface_A": 1.7719402734731127,
+      "h_min_surface_A": 1.3580581250876245,
+      "h_surface_contacts": [
+        {
+          "h_index": 45,
+          "nearest_surface_index": 44,
+          "nearest_surface_symbol": "Ni",
+          "distance_A": 2.3649569380420696
+        },
+        {
+          "h_index": 46,
+          "nearest_surface_index": 41,
+          "nearest_surface_symbol": "S",
+          "distance_A": 1.3580581250876245
+        }
+      ],
+      "final_adsorbate_state": "dissociated_H_OH_like"
+    }
+  ],
+  "best_product_minus_h2o_eV": 0.9170742034912109
+}

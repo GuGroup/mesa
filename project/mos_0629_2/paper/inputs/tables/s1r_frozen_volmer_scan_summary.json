@@ -1,0 +1,39 @@
+{
+  "settings": {
+    "model": "uma-s-1p1",
+    "task_name": "omat",
+    "device": "cuda"
+  },
+  "scan_type": "frozen linear interpolation between accepted H2O* reactant and relaxed H*+OH* product endpoints; proxy for relative Volmer barrier, not a NEB transition state",
+  "surfaces": [
+    {
+      "surface": "pristine",
+      "reactant_path": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/uma_runs/S1_pristine_H2O_candidate_0004_gpu/relaxed/POSCAR",
+      "product_path": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/uma_runs/S1R_pristine_prod_H45_to_S41_gpu/relaxed/POSCAR",
+      "reactant_energy_eV": -320.9278022767753,
+      "product_energy_eV": -320.8381254197807,
+      "product_minus_reactant_eV": 0.0896768569946289,
+      "frozen_scan_max_relative_eV": 2.0801944732666016,
+      "frozen_scan_max_image": 5,
+      "frozen_scan_max_lambda": 0.5
+    },
+    {
+      "surface": "Ni_sedge",
+      "reactant_path": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/uma_runs/S1_Ni_H2O_candidate_0002_fairchem/relaxed/POSCAR",
+      "product_path": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/uma_runs/S1R_Ni_prod_H47_to_Ni45_gpu/relaxed/POSCAR",
+      "reactant_energy_eV": -325.9205312604014,
+      "product_energy_eV": -325.32639597597756,
+      "product_minus_reactant_eV": 0.5941352844238281,
+      "frozen_scan_max_relative_eV": 3.314551830291748,
+      "frozen_scan_max_image": 7,
+      "frozen_scan_max_lambda": 0.7000000000000001
+    }
+  ],
+  "Ni_minus_pristine_product_delta_eV": 0.5044584274291992,
+  "Ni_minus_pristine_frozen_scan_max_eV": 1.2343573570251465,
+  "outputs": {
+    "csv": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/s1r_volmer_scan/s1r_frozen_volmer_scan.csv",
+    "pristine_extxyz": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/s1r_volmer_scan/pristine_frozen_scan.extxyz",
+    "Ni_sedge_extxyz": "/home/mesa/mesa/project/mos_0629_2/strategy_execution/modeling/s1r_volmer_scan/Ni_sedge_frozen_scan.extxyz"
+  }
+}

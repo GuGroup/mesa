@@ -1,0 +1,5 @@
+case,product_minus_H2O_eV,status
+S1R_pristine,0.0896768569946289,accepted_warn
+S6_Ni2_interface_best,0.2920775413513752,accepted_warn
+S1R_compact_Ni,0.5941352844238281,accepted_warn
+S2_Ni_sub_S44,0.9170742034912109,accepted_from_S2

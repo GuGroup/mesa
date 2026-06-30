@@ -1,0 +1,10 @@
+---
+claim_ids: [C1, C2, C4, C5, C6, C7]
+---
+Alkaline hydrogen evolution on MoS2 depends on more than hydrogen adsorption. A catalyst that binds H* near thermoneutrality can still fail if water dissociation is unfavorable, if OH* blocks the active site, or if H~2~ formation is not competitive after water-derived intermediates form. This distinction is especially important for doped MoS2, where a metal dopant may improve one descriptor while worsening another step in the alkaline reaction sequence.
+
+Ni modification provides a useful stress test for this problem. A compact Ni-substituted or Ni-decorated edge site can shift H* binding toward the ideal HER value and can increase water affinity, but those two changes do not by themselves establish improved alkaline HER activity. The relevant computational question is whether a Ni-containing MoS2 model can remain competitive with pristine MoS2 after explicit H~2~O*, H*+OH*, OH*, and H-removal endpoints are considered under a consistent screening protocol.
+
+We therefore treated the Ni-doped MoS2 claim as a sequence of increasingly strict computational tests. First, we compared pristine and compact Ni-modified S-edge proxies by H* and H~2~O adsorption descriptors. Second, we repaired that descriptor-level test with explicit dissociated H*+OH* products. Third, we screened isolated Ni edge and near-edge motifs. Finally, we tested broader interface-like and phase-perturbed proxies, then repaired the most promising Ni2 interface with standalone H* and OH* endpoints plus an H-removal thermodynamic proxy.
+
+The present manuscript reports the outcome of that completed sequence, not an additional strategy cycle. The strongest result is not a proof of enhanced Ni-doped MoS2 activity. Instead, the calculations show that the simple Ni descriptor advantage is fragile: a Ni2 edge-cluster/interface is the best Ni-containing model identified, but it still does not outperform pristine MoS2 for the key H~2~O* to H*+OH* product benchmark and may suffer from strong OH retention.

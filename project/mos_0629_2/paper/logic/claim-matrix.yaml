@@ -1,0 +1,138 @@
+version: 1
+target: nature-family
+claims:
+  - id: C1
+    level: main
+    statement: "Ni modification of the compact MoS2 S-edge proxy improves the HER hydrogen-binding descriptor relative to pristine MoS2."
+    status: qualified
+    evidence:
+      - id: E1
+        source_id: s1-descriptor-summary
+        path: paper/inputs/tables/s1_descriptor_summary.json
+        relation: direct
+        summary: "DeltaG_H_est changes from +0.557 eV on pristine MoS2 to +0.050 eV on the Ni-modified S-edge proxy."
+    figures: []
+    assumptions: ["UMA endpoints are treated as VASP-accurate for this test", "DeltaG_H_est uses DeltaE_H plus a common 0.24 eV HER correction"]
+    caveats: ["This supports descriptor-level HER enhancement, not a complete alkaline HER mechanism", "The model is a compact MoS2(100) S-edge proxy rather than a full edge ensemble"]
+    risks: ["R1"]
+    allowed_sections: [results, discussion, methods]
+  - id: C2
+    level: supporting
+    statement: "Ni modification strengthens H2O adsorption on the compact MoS2 S-edge proxy."
+    status: qualified
+    evidence:
+      - id: E2
+        source_id: s1-descriptor-summary
+        path: paper/inputs/tables/s1_descriptor_summary.json
+        relation: direct
+        summary: "DeltaE_H2O_ads changes from -1.040 eV on pristine MoS2 to -1.385 eV on the Ni-modified S-edge proxy."
+    figures: []
+    assumptions: ["Endpoint adsorption energy is used as a water-affinity descriptor"]
+    caveats: ["S1R did not confirm a lower compact-proxy water-dissociation barrier after requiring a dissociated H*+OH* final state"]
+    risks: ["R2"]
+    allowed_sections: [results, discussion]
+  - id: C3
+    level: method
+    statement: "The S1, S1R, S2, S6, and S6R calculation sets prepared VASP-compatible inputs but did not submit VASP jobs."
+    status: supported
+    evidence:
+      - id: E3
+        source_id: s1-vasp-prepare-manifest
+        path: paper/inputs/results/s1_vasp_prepare_manifest.json
+        relation: direct
+        summary: "Eight S1 VASP prepare jobs succeeded with submit disabled; non-POTCAR prepared files were mirrored under the project."
+      - id: E4
+        source_id: s1r-vasp-prepare-manifest
+        path: paper/inputs/results/s1r_vasp_prepare_manifest.json
+        relation: direct
+        summary: "Four S1R product VASP prepare jobs succeeded with submit disabled; non-POTCAR prepared files were mirrored under the project."
+      - id: E6
+        source_id: s2-vasp-prepare-manifest
+        path: paper/inputs/results/s2_vasp_prepare_manifest.json
+        relation: direct
+        summary: "Ten S2 VASP prepare jobs succeeded with submit disabled; non-POTCAR prepared files were mirrored under the project."
+      - id: E9
+        source_id: s6-vasp-prepare-manifest
+        path: paper/inputs/results/s6_vasp_prepare_manifest.json
+        relation: direct
+        summary: "Ten S6 VASP prepare jobs succeeded with submit disabled; non-POTCAR prepared files were mirrored under the project."
+      - id: E12
+        source_id: s6r-vasp-prepare-manifest
+        path: paper/inputs/results/s6r_vasp_prepare_manifest.json
+        relation: direct
+        summary: "Three S6R VASP prepare jobs succeeded with submit disabled; non-POTCAR prepared files were mirrored under the project."
+    figures: []
+    assumptions: []
+    caveats: ["POTCAR files were intentionally not copied into the project tree"]
+    risks: []
+    allowed_sections: [methods]
+  - id: C4
+    level: supporting
+    statement: "The S1R compact-proxy repair does not support lower alkaline Volmer H2O* to H*+OH* energetics on Ni-modified MoS2."
+    status: supported
+    evidence:
+      - id: E5
+        source_id: s1r-repair-summary
+        path: paper/inputs/tables/s1r_repair_summary.json
+        relation: direct
+        summary: "The lowest accepted dissociated Ni product is +0.594 eV above H2O*, whereas the pristine product is +0.090 eV; the frozen scan maximum is also higher on Ni by +1.234 eV."
+    figures: []
+    assumptions: ["The S1R product comparison uses accepted dissociated H*+OH* endpoint geometries, not recombined water-like endpoints"]
+    caveats: ["Frozen linear interpolation is a barrier proxy, not a CI-NEB transition state", "This is a compact edge proxy and does not exclude a different Ni configuration being active"]
+    risks: ["R4"]
+    allowed_sections: [results, discussion]
+  - id: C5
+    level: supporting
+    statement: "The S2 Ni active-site ensemble test did not identify a Ni motif that lowers alkaline Volmer H2O* to H*+OH* thermodynamics."
+    status: supported
+    evidence:
+      - id: E7
+        source_id: s2-h2o-relaxation-summary
+        path: paper/inputs/tables/s2_h2o_relaxation_summary.json
+        relation: direct
+        summary: "Only the Ni-sub-S44 motif retained a direct Ni-bound molecular H2O state after relaxation; its DeltaE_H2O_ads is -0.862 eV."
+      - id: E8
+        source_id: s2-s44-product-summary
+        path: paper/inputs/tables/s2_s44_product_summary.json
+        relation: direct
+        summary: "The best accepted Ni-sub-S44 H*+OH* product is +0.917 eV above H2O*, which is less favorable than the S1R pristine product (+0.090 eV) and compact Ni product (+0.594 eV)."
+    figures: []
+    assumptions: ["S2 compares endpoint thermodynamics for accepted molecular H2O* and dissociated H*+OH* final states using UMA as VASP-accurate for this test"]
+    caveats: ["S2 is not a CI-NEB barrier calculation", "Only four isolated Ni edge or near-edge motifs were tested", "Negative S2 evidence does not exclude interface, phase, support, or electrolyte-mediated Ni effects"]
+    risks: ["R5"]
+    allowed_sections: [results, discussion]
+  - id: C6
+    level: supporting
+    statement: "The S6 Ni2 edge cluster/interface partially rescues Ni-containing alkaline Volmer thermodynamics but does not yet prove enhancement over pristine MoS2."
+    status: qualified
+    evidence:
+      - id: E10
+        source_id: s6-h2o-relaxation-summary
+        path: paper/inputs/tables/s6_h2o_relaxation_summary.json
+        relation: direct
+        summary: "The S6 Ni2 edge cluster/interface retains direct Ni-bound molecular H2O with DeltaE_H2O_ads = -1.073 eV and O-Ni = 2.03 A."
+      - id: E11
+        source_id: s6-ni2-product-summary
+        path: paper/inputs/tables/s6_ni2_product_summary.json
+        relation: direct
+        summary: "The best S6 Ni2 H*+OH* product is +0.292 eV above H2O*, better than S1R compact Ni (+0.594 eV) and S2 Ni-sub-S44 (+0.917 eV), but worse than the S1R pristine benchmark (+0.090 eV)."
+    figures: []
+    assumptions: ["The Ni2 cluster is treated as an interface-like computational proxy, not an experimentally assigned structure", "UMA endpoints are treated as VASP-accurate for this test"]
+    caveats: ["S6 remains endpoint thermodynamics, not CI-NEB kinetics", "The best S6 Ni2 interface product still does not beat pristine MoS2", "Off-site S6 water endpoints are excluded from primary positive evidence"]
+    risks: ["R6"]
+    allowed_sections: [results, discussion]
+  - id: C7
+    level: supporting
+    statement: "The S6R repaired Ni2-interface endpoint set improves mechanistic completeness but still does not prove alkaline HER enhancement over pristine MoS2."
+    status: qualified
+    evidence:
+      - id: E13
+        source_id: s6r-descriptor-summary
+        path: paper/inputs/tables/s6r_descriptor_summary.json
+        relation: direct
+        summary: "S6R gives a favorable H-removal proxy from Ni2 H*+OH* to OH* + 1/2 H2 (-0.182 eV) and best Ni2 DeltaG_H_est = -0.132 eV, but the best Ni2 H2O* -> H*+OH* product remains +0.292 eV above H2O*, worse than pristine (+0.090 eV)."
+    figures: []
+    assumptions: ["UMA endpoints are treated as VASP-accurate for this test", "The H2-release proxy is a thermodynamic endpoint difference rather than a kinetic barrier"]
+    caveats: ["The accepted Ni2 OH endpoint suggests strong OH retention", "The S6R H endpoints carry analyzer topology warnings", "The S6/S6R Ni2 interface is a computational proxy, not an experimentally assigned structure"]
+    risks: ["R7"]
+    allowed_sections: [results, discussion]

@@ -1,0 +1,71 @@
+{
+  "reference": {
+    "gas_h2o_energy_eV": -13.92580693062482
+  },
+  "rows": [
+    {
+      "case": "S6_Ni2_edge_cluster_interface",
+      "clean_run": "S6_Ni2_edge_cluster_interface_clean_gpu",
+      "h2o_run": "S6_Ni2_edge_cluster_interface_H2O_candidate_0006_gpu",
+      "clean_energy_eV": -315.41621670299,
+      "h2o_adsorbed_energy_eV": -330.4150321709074,
+      "gas_h2o_energy_eV": -13.92580693062482,
+      "deltaE_H2O_ads_eV": -1.0730085372925622,
+      "h2o_converged": true,
+      "h2o_final_fmax_eV_per_A": 0.041908708544247615,
+      "h2o_analyzer_verdict": "pass",
+      "h2o_warn_reasons": [],
+      "final_adsorbate_state": "molecular_H2O",
+      "active_site_contact": "direct_Ni_bound",
+      "oh_short_A": 0.9737873732563538,
+      "oh_long_A": 0.9741552671853881,
+      "o_ni_A": 2.030214767784332,
+      "o_surface_A": 2.030214767784332,
+      "h_min_surface_A": 2.556896199990475
+    },
+    {
+      "case": "S6_Svac_Ni2_edge_interface",
+      "clean_run": "S6_Svac_Ni2_edge_interface_clean_gpu",
+      "h2o_run": "S6_Svac_Ni2_edge_interface_H2O_candidate_0006_gpu",
+      "clean_energy_eV": -306.6572198044737,
+      "h2o_adsorbed_energy_eV": -326.7825634162738,
+      "gas_h2o_energy_eV": -13.92580693062482,
+      "deltaE_H2O_ads_eV": -6.199536681175257,
+      "h2o_converged": true,
+      "h2o_final_fmax_eV_per_A": 0.04920631392539357,
+      "h2o_analyzer_verdict": "warn",
+      "h2o_warn_reasons": [
+        "4 bond(s) broke vs initial (possible dissociation)"
+      ],
+      "final_adsorbate_state": "molecular_H2O",
+      "active_site_contact": "weak_or_desorbed",
+      "oh_short_A": 0.9773746595603445,
+      "oh_long_A": 0.9812169334869887,
+      "o_ni_A": 4.759302443722865,
+      "o_surface_A": 2.8649506657134807,
+      "h_min_surface_A": 2.2834003216718166
+    },
+    {
+      "case": "S6_local_1Tlike_Ni14_edge_proxy",
+      "clean_run": "S6_local_1Tlike_Ni14_edge_proxy_clean_gpu",
+      "h2o_run": "S6_local_1Tlike_Ni14_edge_proxy_H2O_candidate_0003_gpu",
+      "clean_energy_eV": -300.71316377741323,
+      "h2o_adsorbed_energy_eV": -315.1980470172422,
+      "gas_h2o_energy_eV": -13.92580693062482,
+      "deltaE_H2O_ads_eV": -0.5590763092041264,
+      "h2o_converged": true,
+      "h2o_final_fmax_eV_per_A": 0.04991519521505604,
+      "h2o_analyzer_verdict": "warn",
+      "h2o_warn_reasons": [
+        "1 bond(s) broke vs initial (possible dissociation)"
+      ],
+      "final_adsorbate_state": "molecular_H2O",
+      "active_site_contact": "weak_or_desorbed",
+      "oh_short_A": 0.9722765063806744,
+      "oh_long_A": 0.9741182987448682,
+      "o_ni_A": 5.26960957172615,
+      "o_surface_A": 3.6592008290030402,
+      "h_min_surface_A": 2.9187488953182497
+    }
+  ]
+}

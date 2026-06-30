@@ -1,0 +1,68 @@
+version: 1
+sections:
+  - id: abstract
+    path: paper/manuscript/sections/abstract.md
+    status: drafted
+    allowed_claims: [C1, C2, C3, C4, C5, C6, C7]
+    required_figures: []
+    required_sources: [paper/logic/claim-matrix.yaml, paper/inputs/tables/s6r_descriptor_summary.json]
+    required_caveats: ["present results do not prove enhanced alkaline HER over pristine MoS2"]
+    blocked_by: []
+    chunk_policy:
+      unit: abstract
+      locked_chunks: []
+  - id: introduction
+    path: paper/manuscript/sections/introduction.md
+    status: drafted
+    allowed_claims: [C1, C2, C4, C5, C6, C7]
+    required_figures: []
+    required_sources: [paper/logic/claim-matrix.yaml]
+    required_caveats: ["the manuscript is a computational present-result report, not an experimental validation"]
+    blocked_by: []
+    chunk_policy:
+      unit: introduction
+      locked_chunks: []
+  - id: results
+    path: paper/manuscript/sections/results.md
+    status: drafted
+    allowed_claims: [C1, C2, C4, C5, C6, C7]
+    required_figures: []
+    required_sources: [paper/inputs/tables/s1_descriptor_summary.json, paper/inputs/tables/s1_endpoint_energies.csv, paper/inputs/tables/s1r_repair_summary.json, paper/inputs/tables/s1r_product_endpoints.csv, paper/inputs/tables/s2_h2o_relaxation_summary.json, paper/inputs/tables/s2_s44_product_summary.json, paper/inputs/tables/s6_h2o_relaxation_summary.json, paper/inputs/tables/s6_ni2_product_summary.json, paper/inputs/tables/s6r_descriptor_summary.json]
+    required_caveats: ["descriptor-level support retained", "S1R compact-proxy Volmer repair is negative", "S2 isolated Ni motifs are negative", "S6/S6R Ni2 interface partially rescues Ni but remains worse than pristine", "endpoint comparisons are not NEB barriers"]
+    blocked_by: []
+    chunk_policy:
+      unit: result-block
+      locked_chunks: []
+  - id: methods
+    path: paper/manuscript/sections/methods.md
+    status: drafted
+    allowed_claims: [C3]
+    required_figures: []
+    required_sources: [paper/inputs/results/s1_vasp_prepare_manifest.json, paper/inputs/results/s1r_vasp_prepare_manifest.json, paper/inputs/results/s2_vasp_prepare_manifest.json, paper/inputs/results/s6_vasp_prepare_manifest.json, paper/inputs/results/s6r_vasp_prepare_manifest.json]
+    required_caveats: ["VASP inputs prepared but not submitted"]
+    blocked_by: []
+    chunk_policy:
+      unit: method-block
+      locked_chunks: []
+  - id: discussion
+    path: paper/manuscript/sections/discussion.md
+    status: drafted
+    allowed_claims: [C1, C2, C4, C5, C6, C7]
+    required_figures: []
+    required_sources: [paper/inputs/tables/s1_descriptor_summary.json, paper/inputs/tables/s1r_repair_summary.json, paper/inputs/tables/s2_s44_product_summary.json, paper/inputs/tables/s6_ni2_product_summary.json, paper/inputs/tables/s6r_descriptor_summary.json]
+    required_caveats: ["Ni2 interface is a computational proxy", "S6R H endpoints carry topology warnings", "OH retention may poison Ni2 sites", "no VASP jobs were submitted"]
+    blocked_by: []
+    chunk_policy:
+      unit: discussion-block
+      locked_chunks: []
+  - id: conclusion
+    path: paper/manuscript/sections/conclusion.md
+    status: drafted
+    allowed_claims: [C1, C2, C3, C4, C5, C6, C7]
+    required_figures: []
+    required_sources: [paper/logic/claim-matrix.yaml]
+    required_caveats: ["present evidence supports a bounded negative conclusion for the full enhancement claim"]
+    blocked_by: []
+    chunk_policy:
+      unit: conclusion
+      locked_chunks: []

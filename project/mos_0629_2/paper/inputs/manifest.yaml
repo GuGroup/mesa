@@ -1,0 +1,209 @@
+version: 1
+items:
+  - id: s1-descriptor-summary
+    kind: table
+    path: paper/inputs/tables/s1_descriptor_summary.json
+    source_task: descriptor_analysis
+    status: primary
+    provenance: Accepted UMA endpoint energies and gas references collected for S1.
+    units: eV
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1-endpoint-energies
+    kind: table
+    path: paper/inputs/tables/s1_endpoint_energies.csv
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: Endpoint energy, convergence, and analyzer verdict table for S1.
+    units: eV and eV/A
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1-vasp-prepare-manifest
+    kind: mesa-envelope
+    path: paper/inputs/results/s1_vasp_prepare_manifest.json
+    source_task: vasp-job prepare
+    status: supporting
+    provenance: Non-submitted VASP input preparation manifest; POTCAR excluded from project copy.
+    units: not_applicable
+    claim_role: method-detail
+    blockers: []
+  - id: s1-selected-strategy
+    kind: note
+    path: paper/inputs/prior-notes/S1_strategy_detail.json
+    source_task: select-next-strategy
+    status: supporting
+    provenance: Selected S1 scope and claims from strategy-selection stage.
+    units: not_applicable
+    claim_role: context
+    blockers: []
+  - id: s1-result-artifact
+    kind: result
+    path: paper/manuscript/sections/results.md
+    source_task: mesa-manuscript-loop
+    status: primary
+    provenance: Bounded manuscript-like S1 result artifact written after evidence readiness.
+    units: not_applicable
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1r-repair-summary
+    kind: table
+    path: paper/inputs/tables/s1r_repair_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S1R accepted dissociated H*+OH* product endpoints, frozen Volmer scan, and endpoint geometry gate.
+    units: eV and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1r-product-endpoints
+    kind: table
+    path: paper/inputs/tables/s1r_product_endpoints.csv
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S1R product endpoint energies and final geometry classification.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1r-frozen-volmer-scan
+    kind: table
+    path: paper/inputs/tables/s1r_frozen_volmer_scan.csv
+    source_task: manual_uma_singlepoint_scan
+    status: supporting
+    provenance: Frozen linear interpolation UMA single-point scan between accepted H2O* reactants and dissociated H*+OH* products.
+    units: eV
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s1r-vasp-prepare-manifest
+    kind: mesa-envelope
+    path: paper/inputs/results/s1r_vasp_prepare_manifest.json
+    source_task: vasp-job prepare
+    status: supporting
+    provenance: Non-submitted S1R VASP input preparation manifest; POTCAR excluded from project copy.
+    units: not_applicable
+    claim_role: method-detail
+    blockers: []
+  - id: s2-h2o-relaxation-summary
+    kind: table
+    path: paper/inputs/tables/s2_h2o_relaxation_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S2 H2O endpoint relaxation and active-site contact summary for isolated Ni motifs.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s2-s44-product-summary
+    kind: table
+    path: paper/inputs/tables/s2_s44_product_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S2 Ni-sub-S44 H*+OH* product endpoint summary.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s2-vasp-prepare-manifest
+    kind: mesa-envelope
+    path: paper/inputs/results/s2_vasp_prepare_manifest.json
+    source_task: vasp-job prepare
+    status: supporting
+    provenance: Non-submitted S2 VASP input preparation manifest; POTCAR excluded from project copy.
+    units: not_applicable
+    claim_role: method-detail
+    blockers: []
+  - id: s6-clean-gate-summary
+    kind: table
+    path: paper/inputs/tables/s6_clean_gate_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S6 clean proxy convergence and analyzer gate summary.
+    units: eV and eV/A
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6-h2o-relaxation-summary
+    kind: table
+    path: paper/inputs/tables/s6_h2o_relaxation_summary.json
+    source_task: mesa-uma-traj, adsorbdiff-placement, and calculation-result-analyzer
+    status: primary
+    provenance: S6 H2O endpoint relaxation summary for accepted proxy surfaces.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6-ni2-product-summary
+    kind: table
+    path: paper/inputs/tables/s6_ni2_product_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S6 Ni2-interface H*+OH* product endpoint summary.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6-vasp-prepare-manifest
+    kind: mesa-envelope
+    path: paper/inputs/results/s6_vasp_prepare_manifest.json
+    source_task: vasp-job prepare
+    status: supporting
+    provenance: Non-submitted S6 VASP input preparation manifest; POTCAR excluded from project copy.
+    units: not_applicable
+    claim_role: method-detail
+    blockers: []
+  - id: s6r-descriptor-summary
+    kind: table
+    path: paper/inputs/tables/s6r_descriptor_summary.json
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: primary
+    provenance: S6R integrated H binding, OH retention, H2-release proxy, and product-gap decision table.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6r-h-binding
+    kind: table
+    path: paper/inputs/tables/s6r_h_binding.csv
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: supporting
+    provenance: S6R standalone H* endpoint descriptor details.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6r-oh-retention
+    kind: table
+    path: paper/inputs/tables/s6r_oh_retention.csv
+    source_task: mesa-uma-traj and calculation-result-analyzer
+    status: supporting
+    provenance: S6R standalone OH* endpoint descriptor details.
+    units: eV, eV/A, and Angstrom
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6r-h2-release-proxy
+    kind: table
+    path: paper/inputs/tables/s6r_h2_release_proxy.csv
+    source_task: mesa-uma-traj and manual endpoint thermodynamics
+    status: supporting
+    provenance: S6R thermodynamic proxy for removing H* as 1/2 H2 while retaining OH*.
+    units: eV
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6r-product-gaps
+    kind: table
+    path: paper/inputs/tables/s6r_product_gaps.csv
+    source_task: mesa-uma-traj and manual endpoint thermodynamics
+    status: supporting
+    provenance: S6R H2O* to H*+OH* product-gap benchmark table.
+    units: eV
+    claim_role: candidate-evidence
+    blockers: []
+  - id: s6r-vasp-prepare-manifest
+    kind: mesa-envelope
+    path: paper/inputs/results/s6r_vasp_prepare_manifest.json
+    source_task: vasp-job prepare
+    status: supporting
+    provenance: Non-submitted S6R VASP input preparation manifest; POTCAR excluded from project copy.
+    units: not_applicable
+    claim_role: method-detail
+    blockers: []
+  - id: s6r-result-artifact
+    kind: result
+    path: paper/inputs/results/S6R_result_artifact.md
+    source_task: mesa-manuscript-loop
+    status: primary
+    provenance: Bounded S6R result artifact written after endpoint evidence readiness.
+    units: not_applicable
+    claim_role: candidate-evidence
+    blockers: []
