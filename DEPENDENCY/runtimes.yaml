@@ -179,6 +179,7 @@ skills:
   decompose-chemistry-paper-pdf: mesa-general
   extract-general-insight-pdf: mesa-general
   generate-strategies: mesa-general
+  select-next-strategy: mesa-general
   update-strategies-from-manuscript: mesa-general
   TASK_balance_reaction_pathway: mesa-general
   TASK1_experimental_information_extraction: mesa-general

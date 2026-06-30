@@ -1,4 +1,0 @@
-interface:
-  display_name: "Inspect Surface Sites"
-  short_description: "Analyze surface sites and fragments"
-  default_prompt: "Use $inspect-surface-sites to inspect occupied adsorption sites and nearby site graph connectivity for a saved adsorbed structure."

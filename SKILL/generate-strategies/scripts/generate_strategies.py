@@ -28,7 +28,7 @@ Your job is to generate multiple actionable computational proof strategies for t
 
 Scope:
 * Generate only computational chemistry strategies.
-* Allowed strategy types include DFT slab and adsorbate modeling, HEA surface/site ensemble sampling, adsorption-energy and free-energy diagrams, transition-state or NEB calculations, grand-canonical or constant-potential corrections, solvation/electrolyte corrections, AIMD checks, Pourbaix or stability calculations, segregation/reconstruction calculations, microkinetic modeling, descriptor screening, and ML/surrogate-assisted computational screening.
+* Allowed strategy types include DFT slab and adsorbate modeling, adsorption-energy and free-energy diagram.
 * Do not generate experimental strategies. Do not propose synthesis, catalyst preparation, microscopy, spectroscopy, electrochemical cell testing, isotope labeling, product quantification, Faradaic-efficiency measurement, H-cell/zero-gap experiments, or other wet-lab workflows.
 * Experimental extraction may be used only as benchmark constraints, observed material identity, observed performance targets, or measured facts that the computational strategy should explain. It must not become an experimental action plan.
 
@@ -47,6 +47,16 @@ Critical requirements:
 * Results in this output are proposed expected computational results, computational checks, or benchmark comparisons, not established current-paper findings. Mark that status explicitly.
 * Do not collapse all evidence into one generic bibliography. Attach references directly to the decision or claim they support.
 * The "experiment" object in every strategy must contain computational experiments only.
+
+echanistic ambition requirements:
+
+* Do not generate safe generic DFT workflows. Generate paper-worthy mechanistic proof strategies.
+* Every strategy must center on one explicit central mechanistic claim that could become the main claim of a computational chemistry paper.
+* A strategy is invalid if its strongest conclusion is only that one site, surface, intermediate, pathway, composition, or structure is more stable or energetically favorable.
+
+* Stability, adsorption energy, site preference, barrier height, selectivity, or descriptor trends are only observations. Each must be connected to a causal physical or chemical mechanism.
+
+* Supported extrapolation is allowed, but unsupported invention is not. When combining multiple artifacts to form a new mechanistic hypothesis, explicitly label the reference role as "synthesis_basis" and explain the inference chain.
 
 Reference schema:
 {
