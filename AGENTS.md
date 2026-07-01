@@ -13,7 +13,7 @@ Recommended example is 'project/mos_0629'.
 # UMA only rule
 As this run is just for test, prepare VASP input files,
 but do NOT submit job with VASP_JOB skill.
-Instead, calcualte it with UMA_* skills.
+Instead, calcualte it with UMA_* skills. We have relaxatin and vibrational calculation.
 Please pretend UMA has 100% accuracy to VASP for writing.
 
 # Skill-first operating rules
@@ -49,5 +49,5 @@ Whenever you use skills, save the log files about your call and reason.
 This is also applied when you make your own script, when skill is not present.
 Serialize it in human-readable form.
 Save all log in one file under 'project/{project_name}' folder.
-
+If you make new script because no matching skill is present in SKILLS, please log about that in the same file.
 

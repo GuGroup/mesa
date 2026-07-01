@@ -1,6 +1,6 @@
 ---
 name: calculation-result-analyzer
-description: Analyze UMA/MLIP and VASP calculation result trajectories for optimization divergence, non-monotonic energy behavior, multi-minima relaxation, RMSD jumps, force spikes, and visual-review frame selection. Use when Codex needs to inspect relax.traj, ASE traj/extxyz/xyz, VASP vasprun.xml, OUTCAR, XDATCAR, or OSZICAR outputs and produce JSON/CSV diagnostics plus sampled aseview overlay artifacts before trusting a relaxed structure or calculation endpoint.
+description: Analyze UMA/MLIP and VASP calculation result trajectories for optimization divergence, non-monotonic energy behavior, multi-minima relaxation, RMSD jumps, force spikes, and visual-review frame selection; aggregate many analyzer outputs into project-level evidence readiness gates. Use when Codex needs to inspect relax.traj, ASE traj/extxyz/xyz, VASP vasprun.xml, OUTCAR, XDATCAR, or OSZICAR outputs, produce JSON/CSV diagnostics plus sampled aseview overlay artifacts, or classify many endpoints as accepted, accepted-with-caveat, failed, or excluded before downstream energetics/manuscript claims.
 ---
 
 # Calculation Result Analyzer
@@ -8,11 +8,14 @@ description: Analyze UMA/MLIP and VASP calculation result trajectories for optim
 ## Scope
 
 Use this skill after a UMA/MLIP or VASP calculation has produced result files.
-The skill reads trajectories and logs, computes convergence diagnostics, selects
-frames that need visual inspection, and writes analysis artifacts.
+The single-run analyzer reads trajectories and logs, computes convergence
+diagnostics, selects frames that need visual inspection, and writes analysis
+artifacts. The batch evidence gate reads many `analysis_summary.json` files and
+turns them into project-level endpoint acceptance records.
 
 Do not use this skill to run UMA, run VASP, optimize structures, or repair a bad
-trajectory. It is a read-only analyzer and visual-review preparer.
+trajectory. It is a read-only analyzer, visual-review preparer, and evidence
+gate over existing analyzer outputs.
 
 ## Automated verdict (for unattended gating)
 
@@ -109,9 +112,26 @@ mamba run -n modeling python scripts/make_demo_surface_jump.py --output /tmp/dem
 mamba run -n modeling python scripts/analyze_calculation_result.py --input /tmp/demo_surface_jump.extxyz --outdir /tmp/demo_surface_jump_analysis
 ```
 
+After all per-endpoint `analysis_summary.json` files exist and visual reviews
+are completed, aggregate them into downstream evidence readiness:
+
+```bash
+python scripts/gate_calculation_evidence.py \
+  --analysis-root analysis/final_relaxations \
+  --batch-summary analysis/final_relaxations/analysis_batch_summary.json \
+  --registry path/to/final_relaxation_registry.json \
+  --outdir analysis/final_relaxations/evidence_gate \
+  --project-root /path/to/project-root
+```
+
+Use `--allow-incomplete-visual` only for exploratory bookkeeping. For manuscript
+or downstream free-energy work, keep the default strict visual gate so endpoints
+with `pending`, `unavailable`, or `invalid` visual validation do not pass
+silently.
+
 ## Outputs
 
-The script writes:
+The single-run analyzer writes:
 
 | Artifact | Purpose |
 | --- | --- |
@@ -124,6 +144,23 @@ The script writes:
 | `selected_frames.extxyz` | Event/uniform sampled frames for overlay review when structures are available. Includes per-atom `analysis_disp_to_initial` and `analysis_disp_step` arrays for displacement coloring when the viewer supports scalar properties. |
 | `visual_review.md` | Human-readable interpretation and aseview commands. |
 | `aseview_trajectory.html` / `aseview_overlay.html` | Optional HTML viewers (`--no-html` to skip). |
+
+The batch evidence gate writes:
+
+| Artifact | Purpose |
+| --- | --- |
+| `evidence_readiness_summary.json` | Project-level counts and records for accepted, accepted-with-caveat, failed, and excluded endpoints. |
+| `endpoint_triage.csv` / `endpoint_triage.json` | Flat endpoint table with verdicts, visual status, final energy/fmax, caveats, and source paths. |
+| `visual_review_queue.md` | Human-readable queue of endpoints still needing visual/evidence review or marked failed. |
+
+Acceptance policy:
+
+- `pass` with completed/skipped visual validation -> `accepted`.
+- `warn` with completed/skipped visual validation -> `accepted-with-caveat`.
+- `fail`, missing summaries, or incomplete visual validation under the default
+  strict gate -> `failed`.
+- Registry records already marked `excluded` remain `excluded`; do not replace
+  missing evidence with a geometry-only proxy.
 
 ## Diagnostic Policy
 
@@ -192,4 +229,6 @@ Interpretation:
   trajectory coordinates.
 - Do not discard a calculation solely because one metric flags; inspect the
   sampled overlay frames first.
+- Do not let the batch evidence gate upgrade a per-endpoint analyzer verdict;
+  it can only preserve or downgrade endpoint usability.
 - Do not overwrite calculation outputs.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Missing Evidence Recorder"
+  short_description: "Record unresolved evidence without proxies"
+  default_prompt: "Use $missing-evidence-recorder to document missing required artifacts and create explicit excluded or unresolved evidence records without proxy substitution."

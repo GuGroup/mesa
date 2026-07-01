@@ -1,0 +1,4 @@
+interface:
+  display_name: "Recipe Execution Gate"
+  short_description: "Validate recipe-local execution manifests"
+  default_prompt: "Use $recipe-execution-gate to verify recipe-local execution folders, manifests, shared artifacts, and orphan outputs before downstream evidence use."

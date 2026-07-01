@@ -777,10 +777,48 @@ def render_overlay_pngs(
             viewer = make_overlay_viewer(selected, viewDirection=direction, viewUp=up, **VISUAL_STYLE)
             path = outdir / f"{prefix}_{name}.png"
             viewer.save_png(str(path), **save_kwargs)
+            if png_is_all_black(path):
+                save_viewer_page_screenshot(viewer, path, width, height, chrome_path)
             result["paths"][name] = str(path)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
     return result
+
+
+def png_is_all_black(path: Path) -> bool:
+    try:
+        from PIL import Image, ImageStat
+
+        image = Image.open(path).convert("RGB")
+        extrema = ImageStat.Stat(image).extrema
+        return all(lo == 0 and hi == 0 for lo, hi in extrema)
+    except Exception:
+        return False
+
+
+def save_viewer_page_screenshot(
+    viewer: Any,
+    path: Path,
+    width: int,
+    height: int,
+    chrome_path: str | None,
+) -> None:
+    """Fallback for aseview versions whose export API returns a blank canvas."""
+    from playwright.sync_api import sync_playwright
+
+    launch_options: dict[str, Any] = {"headless": True}
+    if chrome_path:
+        launch_options["executable_path"] = chrome_path
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(**launch_options)
+        try:
+            page = browser.new_page(viewport={"width": width, "height": height})
+            page.set_content(viewer.get_html(), wait_until="networkidle", timeout=30000)
+            page.wait_for_function("() => document.querySelector('canvas') !== null", timeout=30000)
+            page.wait_for_timeout(1500)
+            page.screenshot(path=str(path), full_page=False)
+        finally:
+            browser.close()
 
 
 def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: Path | None, colormap: str) -> None:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Alkaline HER Bookkeeper"
+  short_description: "Build bounded alkaline HER descriptors"
+  default_prompt: "Use $alkaline-her-free-energy-bookkeeper to assemble bounded alkaline HER free-energy descriptors from relaxed/vibrated endpoint records."
