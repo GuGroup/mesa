@@ -1,0 +1,4 @@
+interface:
+  display_name: "Title, Abstract, Keywords, Conclusion Writer"
+  short_description: "Write title, abstract, keywords, and conclusion from a manuscript DOCX."
+  default_prompt: "Write title, abstract, keywords, and conclusion from this manuscript DOCX."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Results Section Writer"
+  short_description: "Write Results from evidence."
+  default_prompt: "Write Results and Discussion from a results evidence digest and manuscript context."

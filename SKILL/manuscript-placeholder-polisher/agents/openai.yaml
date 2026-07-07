@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript Placeholder Polisher"
+  short_description: "Remove or replace unresolved placeholders."
+  default_prompt: "Remove or replace unresolved placeholders in this manuscript DOCX."

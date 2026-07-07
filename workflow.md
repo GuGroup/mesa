@@ -231,86 +231,413 @@ Maintain the skill-first rule and choose the narrowest task-specific skill. Neve
 
 # Manuscript
 
-Manuscript workflow starts only after computational/result artifacts exist. Manuscript skills do not run VASP, UMA, DFT, qsub, literature search, citation verification, or reference export.
+Manuscript generation starts only after computational/result artifacts exist.
+Manuscript skills do not run VASP, UMA, DFT, qsub, new literature search, or
+new calculations. They assemble, write, cite, insert, and polish only from
+accepted evidence and project-local source libraries.
 
-1. Evidence readiness
-  - Use `TASK_CALCULATION_RESULT_ANALYZER`.
-  - Use `TASK_CONSTRUCT_ENERGY_DIAGRAM` only when the available data model fits.
-  - Continue only with accepted result artifacts, trusted structures, tables, and figure inputs.
+The current manuscript workflow is evidence-first and section-based. It does
+not depend on the old `TASK_MANUSCRIPT_LOOP` path.
 
-2. Paper workspace intake
-  - Use `mesa-manuscript-loop`.
-  - Create/verify canonical `paper/`.
-  - Stop if the manuscript topic does not match `paper/` evidence.
+## Manuscript Inputs
 
-3. Claim logic
-  - Use `mesa-manuscript-loop`.
-  - Create/update `paper/logic/claim-matrix.yaml`.
-  - Decide allowed claims before any prose.
+Required inputs for a full manuscript run:
 
-4. Plot and figure plan
-  - Use `mesa-manuscript-loop`.
-  - Build the figure plan from accepted calculation results and claim logic.
-  - Create/update `paper/logic/figure-map.yaml`.
-  - Map each planned figure to claim IDs.
+- selected strategy:
+  `project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json`;
+- accepted calculation and analysis artifacts under the completed strategy
+  execution folders;
+- realized or realizable figure inputs;
+- citation source library from local project papers;
+- manuscript skeleton DOCX, usually under `RESOURCE/`;
+- optional project writing profile:
+  `project/<project_name>/manuscript_writing_profile.json`.
 
-5. Plot and figure production
-  - Use `energy-diagram-plotter`, `sabatier-volcano-plotter`, and `adsorbate-structure-grid` when applicable.
-  - Use `nature-figure` only for a new/custom manuscript figure design or multi-panel figure not covered by existing plotter/grid skills.
-  - Return generated figures and QA to `figure-map.yaml`.
+The writing profile stores project-specific narrative roles and vocabulary.
+Reusable writing skills must remain general. If a study needs HER, MoS2, Ni,
+ORR, CO2RR, NRR, alloy, oxide, vacancy, electrolyte, or any other domain
+language, that language belongs in project evidence or the writing profile, not
+inside reusable skill source code.
 
-6. Nature review of logic/figures
-  - Use `nature-reviewer` through MESA reviewer roles: `chem-claim-reviewer`, `chem-method-reviewer`, `chem-significance-reviewer`, and `chem-figure-reviewer`.
-  - Output structured reviewer issues only.
+## 1. Figure Plan From Strategy Procedures
 
-7. Logic/figure revision loop
-  - Use `mesa-manuscript-loop`.
-  - Revise claim matrix, figure map, and story spine.
-  - Repeat until no open `BLOCKER` remains.
+Use `strategy-figure-mapper` after strategy selection and after the
+calculation/result evidence exists.
 
-8. Manuscript architecture
-  - Use `nature-writing` through `chem-manuscript-architect`.
-  - Generate story spine, figure order, outline, and section contracts.
-  - Do not write final prose yet.
+The mapper input is the selected strategy's computational block, especially:
 
-9. Prose lock
-  - Use `mesa-manuscript-loop` validators.
-  - Validate claim matrix, figure map, reviewer issues, section contracts, and notation.
+- `models`;
+- `methods`;
+- `dft_details.adsorption_sites`;
+- `procedures`.
 
-10. Section drafting
-  - Use `nature-writing` through `chem-section-writer`.
-  - Draft evidence-first, then frame Results, Methods, Discussion, Conclusion, Introduction, Abstract/title, References, and SI.
-  - A manuscript for one completed strategy may be a bounded result artifact rather than a full final paper.
-  - Do not promote a strategy-specific claim into the original target claim unless the claim matrix supports it.
+The mapper asks for conventional computational-chemistry figure types directly
+supported by the planned workflow. It must not infer unsupported experiments,
+unsupported descriptors, or project-specific figure concepts absent from the
+strategy procedures.
 
-11. Prose polishing
-  - Use `nature-polishing`.
-  - Polish locked prose only.
+Save mapping under:
 
-12. Nature review of manuscript prose
-  - Use `nature-reviewer`.
-  - Review generated Markdown manuscript or locked sections.
-  - Convert findings to MESA reviewer issues.
+```text
+project/<project_name>/strategy_execution/<strategy_id>_figure/mapping/
+  figure_info.json
+```
 
-13. Manuscript revision loop
-  - Use `mesa-manuscript-loop` plus `chem-revision-editor`.
-  - Patch accepted issues only.
-  - Repeat until manuscript-level blockers are resolved.
+## 2. Figure Realization
 
-14. Final Markdown manuscript
-  - Use `mesa-manuscript-loop`.
-  - Finalize canonical Markdown/YAML/BibTeX/figure files under `paper/`.
+Use `strategy-figure-realizer` after figure mapping.
 
-15. Final typeset/export
-  - Use `mesa-manuscript-typeset`.
-  - Run check-only export first.
-  - Then export DOCX/styled DOCX.
-  - Export success is assembly/cross-reference verification, not scientific approval.
+The realizer reads `figure_info.json`, checks available calculation outputs,
+and creates actual figure files when source data are sufficient. It may call
+specialized plotter/grid skills or create simple script-backed plots. It must
+not invent missing data. Blocked figures must be recorded with reasons.
 
-16. Manuscript-to-strategy feedback
-  - Use `update-strategies-from-manuscript`.
-  - Feed final claims, caveats, blockers, and excluded claims back into the next strategy.
-  - This step is mandatory before the next modeling/calculation strategy begins.
+Figure exports are PNG-only for the current DOCX workflow.
+
+Save outputs under:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_figure/
+  exported/
+  realization/figure_realization.json
+```
+
+## 3. Figure Captions
+
+Use `strategy-figure-captioner` after figure realization.
+
+The captioner writes academic figure titles and captions from realized figures,
+strategy evidence, and calculation evidence. Captions must not mention internal
+procedure IDs, workflow IDs, skill names, JSON files, or strategy-style prose.
+
+Save outputs under:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_figure/caption/
+  caption_info.json
+```
+
+## 4. Insert Figures Into Skeleton DOCX
+
+Use `strategy-figure-docx-inserter`.
+
+Rules:
+
+- main figures are numbered `Fig. 1`, `Fig. 2`, ...;
+- Supporting Information figures are numbered `Fig. S1`, `Fig. S2`, ...;
+- figure number, separator, and figure title must be bold;
+- preserve DOCX integrity and verify that the file opens without recovery;
+- check both horizontal and vertical figure fit.
+
+Save manuscript DOCX outputs under:
+
+```text
+project/<project_name>/manuscript/<strategy_id>/
+```
+
+## 5. Methods Evidence Collection
+
+Use `methods-evidence-collector` before writing Methods.
+
+The collector should keep evidence minimal and general:
+
+- model construction evidence from selected strategy and model manifests;
+- gas model metadata such as formula, cell lengths, and PBC when available;
+- relaxation/calculation metadata summarized by category, not full raw logs;
+- energy/free-energy reference policy and equations when available;
+- evidence for the four core computational Methods sections only.
+
+The four core Methods sections are:
+
+1. `model_construction`;
+2. `geometry_optimization`;
+3. `vibrational_free_energy_corrections`;
+4. `electrochemical_free_energy_formalism`.
+
+Do not include optional analysis sections such as DOS, Bader charge, charge
+density difference, kinetics, or local geometry analysis unless separate
+project evidence and writer support explicitly exist for those sections.
+
+Save:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_methods/evidence/
+  methods_minimal_evidence.json
+  methods_writer_digest.json
+```
+
+## 6. Methods Writing
+
+Use `methods-section-writer`.
+
+The writer reads `methods_writer_digest.json` and writes structured section
+JSON with paragraph and equation blocks. Public Methods prose must translate
+internal tools into academic language and must not mention skill names, recipe
+IDs, file paths, JSON artifacts, project folders, or planning language.
+
+Equations belong in equation blocks, not hidden inside paragraphs. The writer
+may include chemical equations, thermochemical equations, or reference
+relations only when supplied by the evidence digest.
+
+Save:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_methods/text/
+  methods_section_text.json
+  methods_section_text.md
+```
+
+## 7. Methods Insertion
+
+Use `manuscript-section-docx-inserter` to insert
+`methods_section_text.json` into the manuscript skeleton or figure-containing
+DOCX.
+
+Use OMML/Pandoc equation conversion mode when equation blocks are present.
+Keep equation labels out of the visible DOCX body unless explicitly requested.
+
+## 8. Citation Source Extraction
+
+Use `citation-source-extractor` before citation selection.
+
+The citation library is bounded:
+
+- first-neighbor sources are local project PDFs and extracted papers;
+- second-neighbor sources are references cited by those PDFs;
+- do not add web-search references during manuscript citation insertion unless
+  the user explicitly requests it.
+
+Save:
+
+```text
+project/<project_name>/references/
+  citation_sources.json
+  library.bib
+```
+
+## 9. Section Citation Selection
+
+Use `citation-selector` after a section writer creates section JSON.
+
+Run it separately for Methods, Results, Introduction, and any other citation
+requiring section. The selector must preserve original paragraph text and write
+citation decisions into structured metadata and citation placeholders.
+
+Rules:
+
+- select only citation keys present in `citation_sources.json`;
+- return no citation when support is weak;
+- do not cite a sentence whose support is only the manuscript's own figure;
+- keep decisions reviewable with confidence and human-check flags.
+
+Save each section's citation layer under that section workspace, for example:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_methods/citations/
+  cited_section_text.json
+  citation_decisions.json
+```
+
+## 10. Citation Insertion Into DOCX
+
+Use `citation-inserter`.
+
+For section-local tests, the inserter may create a cited DOCX from one
+`cited_section_text.json`. For the manuscript, use the global/skeleton-
+preserving path:
+
+- merge section citation layers in manuscript order;
+- build `used_references.bib` only from selected citation sources;
+- preserve the existing DOCX skeleton and figure structure;
+- replace only matched manuscript paragraphs and the references placeholder.
+
+Do not use citation insertion as a citation-selection step.
+
+## 11. Results Evidence Collection
+
+Use `results-evidence-collector` after figures, captions, and result artifacts
+exist.
+
+The collector builds a compact Results evidence digest from:
+
+- selected-strategy context;
+- figure mapping, realization, and captions;
+- result artifact or bounded result artifact;
+- computed tables such as descriptor summaries, state profiles, rankings, and
+  benchmark comparisons;
+- model, relaxation, and vibration summaries;
+- blocked or unavailable evidence.
+
+It must keep facts separate from prose. It must not hide blocked evidence or
+turn unavailable analyses into claims.
+
+Save:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_results/evidence/
+  results_evidence.json
+  results_writer_digest.json
+```
+
+## 12. Results Writing And Insertion
+
+Use `results-section-writer`.
+
+The writer uses `results_writer_digest.json` and optional DOCX context to write
+figure-centered Results and Discussion subsections. It must:
+
+- mention every main-text figure supplied by the digest at least once;
+- use only figures and values present in the digest;
+- avoid internal workflow language;
+- avoid unsupported electronic, kinetic, solvation, or experimental claims;
+- avoid standalone limitation or future-work paragraphs.
+
+Insert Results with `manuscript-section-docx-inserter`. Use
+`--distribute-figures` when the DOCX already contains figure blocks and Results
+paragraphs mention those figure numbers.
+
+Run citation selection and citation insertion for Results after the section is
+written.
+
+## 13. Introduction Evidence, Writing, And Insertion
+
+Use `introduction-evidence-collector`.
+
+The collector is literature-led. It uses:
+
+- `citation_sources.json`;
+- local paper extraction responses;
+- optional experimental extraction notes;
+- optional selected strategy only for final present-work framing;
+- optional `manuscript_writing_profile.json` for project-specific narrative
+  roles and order.
+
+Use `introduction-section-writer` after the evidence collector.
+
+The Introduction writer must:
+
+- follow the digest `narrative_order` and writing profile;
+- not impose a reaction, material, dopant, electrolyte, or mechanism absent from
+  the evidence;
+- not cite inline;
+- not mention figures, tables, Results values, calculation counts, or execution
+  outcomes;
+- use selected-strategy content only for the final present-work objective.
+
+Insert Introduction with `manuscript-section-docx-inserter`. Then run
+`citation-selector` and `citation-inserter` for Introduction.
+
+## 14. Title, Abstract, Keywords, And Conclusion
+
+Use `abstract-keywords-conclusion-writer` after Introduction, Results, Methods,
+figures, and citations are assembled enough to provide manuscript context.
+
+The writer reads the DOCX and creates:
+
+- title;
+- abstract;
+- keywords;
+- conclusion.
+
+It must not add new claims, citations, figure references, unsupported analyses,
+or workflow language. Title insertion should use 14 pt bold formatting when the
+section JSON requests it.
+
+Insert title, abstract, keywords, and conclusion with
+`manuscript-section-docx-inserter`.
+
+If the skeleton contains `{{SI_TITLE}}`, insert the same title there unless the
+user requests a distinct SI title.
+
+## 15. Supporting Information Text
+
+Use `supporting-information-writer` after main text and SI figure placeholders
+exist.
+
+The SI writer creates minimal inserter-ready JSON for:
+
+- SI large-content title;
+- SI large-content text;
+- SI small-content title;
+- SI small-content text;
+- DFT/calculation details text.
+
+Rules:
+
+- write supplementary figure text only for existing SI figures;
+- write compact no-content text if no SI figure exists;
+- move detected detailed calculation or geometry-optimization details into the
+  DFT calculation details placeholder;
+- do not invent new parameters, calculations, or claims.
+
+Use `methods-to-si-mover` after SI insertion when detailed Methods text should
+be compressed in the main manuscript and preserved in SI. The mover is
+configurable and should replace only the configured detail block with a concise
+bridge paragraph.
+
+## 16. Final Manuscript Polishing
+
+Run final DOCX polishers as separate, general, config-driven steps.
+
+Recommended order:
+
+1. `manuscript-placeholder-polisher`
+  - Remove or replace unresolved placeholders according to a project config.
+  - Example config location:
+    `project/<project_name>/manuscript/<strategy_id>/final_polish_configs/placeholder_config.json`.
+
+2. `manuscript-reference-polisher`
+  - Normalize main manuscript reference paragraphs from a project reference
+    config.
+  - Do not renumber in-text citations unless the citation layer explicitly
+    requires it.
+
+3. `manuscript-si-reference-polisher`
+  - Create independent SI references when SI-local citation markers are used.
+  - Use configured SI citation mappings and SI reference entries.
+
+4. `manuscript-notation-polisher`
+  - Apply configured scientific notation formatting such as subscripts and
+    superscripts.
+  - Preserve run-level styling so bold small titles do not make whole
+    paragraphs bold.
+
+5. `manuscript-equation-number-polisher`
+  - Automatically find displayed Word equations and number them sequentially.
+  - Consecutive displayed equations are one equation group.
+  - Use the borderless three-column table layout by default:
+    empty side cell, centered equation group, right-aligned equation number.
+
+Each polisher must write a JSON report and preserve DOCX integrity. Validate
+with ZIP/XML checks and, when possible, headless LibreOffice conversion.
+
+## 17. Manuscript Outputs
+
+Final manuscript artifacts should remain under:
+
+```text
+project/<project_name>/manuscript/<strategy_id>/
+```
+
+Recommended files:
+
+- a latest assembled DOCX before final polishing;
+- a final polished DOCX;
+- all insertion, citation, SI, reference, notation, equation-numbering, and
+  placeholder reports;
+- project-specific polish configs under `final_polish_configs/`.
+
+A final manuscript is an assembled evidence-backed artifact. It is not
+scientific approval by itself.
+
+## 18. Manuscript-To-Strategy Feedback
+
+Use `update-strategies-from-manuscript` after the manuscript or bounded result
+artifact is complete.
+
+Feed final claims, caveats, blockers, missing procedure coverage, unsupported
+claims, and excluded claims back into the strategy plan. This step is mandatory
+before selecting or calculating the next strategy.
 
 # Decision Rules
 

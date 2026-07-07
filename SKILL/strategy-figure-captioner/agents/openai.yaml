@@ -1,0 +1,4 @@
+interface:
+  display_name: "Strategy Figure Captioner"
+  short_description: "Write paper-ready figure titles and captions"
+  default_prompt: "Create public manuscript figure titles and captions from strategy figure mapping and realization artifacts while keeping provenance out of public text."

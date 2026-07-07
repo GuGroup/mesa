@@ -1,0 +1,3 @@
+display_name: Introduction Evidence Collector
+short_description: Collect compact literature-led evidence for manuscript Introductions.
+default_prompt: Collect Introduction evidence for the selected project and strategy.

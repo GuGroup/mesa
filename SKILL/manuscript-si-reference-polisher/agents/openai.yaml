@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript SI Reference Polisher"
+  short_description: "Create independent SI references from config."
+  default_prompt: "Create independent Supporting Information references in this manuscript DOCX."

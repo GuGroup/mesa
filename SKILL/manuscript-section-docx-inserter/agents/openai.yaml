@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript Section DOCX Inserter"
+  short_description: "Insert structured manuscript section JSON into DOCX skeletons."
+  default_prompt: "Insert manuscript section JSON into a DOCX skeleton and save the edited document with an insertion report."

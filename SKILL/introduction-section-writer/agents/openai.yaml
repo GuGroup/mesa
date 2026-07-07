@@ -1,0 +1,3 @@
+display_name: Introduction Section Writer
+short_description: Write citation-free manuscript Introduction prose from collected evidence.
+default_prompt: Write the Introduction section from the collected evidence digest.

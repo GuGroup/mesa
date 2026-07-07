@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript Notation Polisher"
+  short_description: "Apply configured scientific notation formatting."
+  default_prompt: "Apply configured scientific notation formatting to this manuscript DOCX."

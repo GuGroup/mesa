@@ -1,0 +1,4 @@
+interface:
+  display_name: "Supporting Information Writer"
+  short_description: "Write minimal SI section JSON from a manuscript DOCX."
+  default_prompt: "Write minimal Supporting Information content from this manuscript DOCX."

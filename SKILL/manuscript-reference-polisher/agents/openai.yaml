@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript Reference Polisher"
+  short_description: "Normalize manuscript references from config."
+  default_prompt: "Normalize references in this manuscript DOCX from a reference config."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Strategy Figure Realizer"
+  short_description: "Realize mapped figures as PNG outputs"
+  default_prompt: "Realize mapped MESA figure candidates into source files, PNG exports, QA notes, and manifest artifacts."

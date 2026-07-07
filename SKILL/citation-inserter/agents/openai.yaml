@@ -1,0 +1,4 @@
+interface:
+  display_name: "Citation Inserter"
+  short_description: "Render citation placeholders in manuscript section JSON."
+  default_prompt: "Render citation placeholders from cited_section_text.json into manuscript citation text."

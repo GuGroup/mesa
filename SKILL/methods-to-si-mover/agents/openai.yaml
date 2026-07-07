@@ -1,0 +1,4 @@
+interface:
+  display_name: "Methods to SI Mover"
+  short_description: "Move detailed Methods text into SI."
+  default_prompt: "Move detailed Methods content into SI for this manuscript DOCX."

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Manuscript Equation Number Polisher"
+  short_description: "Add configured equation numbers to DOCX equations."
+  default_prompt: "Use $manuscript-equation-number-polisher to number displayed equations in this manuscript DOCX."
+

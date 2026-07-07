@@ -1,0 +1,4 @@
+interface:
+  display_name: "Results Evidence Collector"
+  short_description: "Collect Results evidence packets."
+  default_prompt: "Collect figure-centered Results and Discussion evidence for a project strategy."

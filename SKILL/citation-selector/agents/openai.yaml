@@ -1,0 +1,4 @@
+interface:
+  display_name: "Citation Selector"
+  short_description: "Select manuscript citations from a bounded source library."
+  default_prompt: "Select citations for manuscript section JSON from citation_sources.json."

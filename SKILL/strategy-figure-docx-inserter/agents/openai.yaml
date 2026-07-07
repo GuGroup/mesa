@@ -1,0 +1,4 @@
+interface:
+  display_name: "Strategy Figure DOCX Inserter"
+  short_description: "Insert realized strategy figures into DOCX skeletons"
+  default_prompt: "Insert realized strategy figures and public captions into a manuscript DOCX skeleton with deterministic main and SI figure numbering."
