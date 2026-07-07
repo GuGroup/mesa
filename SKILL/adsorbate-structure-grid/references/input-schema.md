@@ -29,40 +29,56 @@ structure/image paths resolve against the manifest file's directory unless
 | `view` | string | `top` \| `side_a` \| `side_b` \| `as_is`. Default `side_a`. |
 | `index` | int | Frame to read from a multi-frame file. Default `-1` (last). |
 | `repeat` | `[nx, ny, nz]` | Tile the cell before rendering (good for `top` views). |
-| `style` | object | aseview style overrides for this cell (merged over `defaults.style`). |
-| `width`, `height` | int | aseview render canvas in px (pre-crop). Default `600`. |
+| `style` | object | Render style overrides for this cell (merged over `defaults.style`). |
+| `width`, `height` | int | Render canvas in px (pre-crop). Default `600`. |
 | `pad_frac` | float | Crop margin as a fraction of the content box. Default `0.04`. |
 
 `defaults` accepts any of `view`, `index`, `repeat`, `style`, `width`, `height`,
 `pad_frac` and applies them to every cell that does not set its own.
 
-## aseview `style` keys (template — fixed but overridable)
+## `style` keys (template — fixed but overridable)
 
 Defaults live in `scripts/structure_render.py::DEFAULT_STYLE`:
 
 ```json
 {
-  "colorBy": "Atom",
-  "showBond": true,
-  "style": "rowan",
-  "atomSize": 0.75,
-  "viewMode": "Orthographic",
-  "showCell": true,
-  "showShadow": true,
-  "viewFit": 0.62
+  "atom_scale": 0.72,
+  "bond_scale": 1.05,
+  "show_cell": true,
+  "show_fixed_halo": true,
+  "margin_frac": 0.05,
+  "dpi": 220
 }
 ```
 
-Common overrides: `viewMode` (`"Orthographic"` default, or `"Perspective"`),
-`style` (`"rowan"` default; also `"default"`, `"metallic"`, `"glossy"`,
-`"cinematic"`), `showCell` (set `false` to hide the unit cell box),
-`showConstraint`, `showShadow`, `viewFit` (zoom; smaller = more padding),
-`atomSize`, `colorBy`, `backgroundColor`/`cellColor`. You can also pin a camera
-with `viewDirection`/`viewUp` in `style`, which overrides the `view` choice.
+- `atom_scale` — multiplier on the reference per-element radius table in
+  `render_core.py::_ELEMENT_TABLE` (a Jmol/three.js-style radius+color set).
+  Default `0.72` gives a ball-and-stick look with visible gaps/bonds, not a
+  close-packed/space-filling one. Bonds are always trimmed surface-to-surface
+  and atoms always draw on top of them, so a bigger `atom_scale` shrinks a
+  bond's visible sliver (it can vanish entirely for a short, symmetric bond
+  seen top-down) rather than ever letting the stick cut across a sphere.
+- `bond_scale` — multiplier on ASE's natural cutoffs for the covalent-bond
+  graph; bonds crossing a periodic boundary are not drawn. Bonds are opt-in:
+  they only render at all when the adsorbate can be identified (see below),
+  and even then only adsorbate-adsorbate and adsorbate-slab bonds are kept —
+  slab-slab bonds are never drawn. No adsorbate info at all means no bonds at
+  all, not a fallback to drawing the whole slab lattice.
+- `show_cell` — draw the unit cell wireframe.
+- `show_fixed_halo` — draw a small black X on top of `FixAtoms`-constrained
+  atoms (ase-gui's own convention). Defaults to on for `side_a`/`side_b` and
+  off for `top` (set it explicitly to override either way).
 
-**Side-view fixed-atoms policy:** for `side_a`/`side_b`, `showConstraint`
-defaults to `true` (frozen `FixAtoms` layers shown as a faded halo) unless you
-set it in `style`; `top` leaves it `false`.
+Slab/adsorbate identification (for bond scoping) reads, in order:
+`atoms.info["adsorbate_atom_indices_json"]`, `"adsorbate_metadata_json"`
+(slabuilder's `place_surface_adsorbates` output), or `atoms.info["adsorbate_tag"]`
++ ASE tags. None of this survives VASP POSCAR/CONTCAR/OUTCAR/vasprun.xml, so a
+bare VASP-derived structure renders with no bonds at all.
+- `margin_frac` — analytical content margin before the post-hoc crop.
+- `dpi` — raster DPI for the render.
+
+You can also pin a camera directly with `viewDirection`/`viewUp` in `style`
+(two 3-vectors), which overrides the `view` choice.
 
 ## Layout block (figure styling)
 

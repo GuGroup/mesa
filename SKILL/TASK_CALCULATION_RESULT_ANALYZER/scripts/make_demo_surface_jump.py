@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +35,9 @@ def main() -> int:
     atoms0 = slab + Atoms("CO", positions=[site_a, site_a + [0.0, 0.0, 1.15]])
     atoms0.info.pop("adsorbate_info", None)
     ads = [len(atoms0) - 2, len(atoms0) - 1]
+    # Mark the adsorbate (slabuilder's convention) so the renderer suppresses
+    # slab-slab bonds and only draws ads-ads / ads-slab ones.
+    atoms0.info["adsorbate_atom_indices_json"] = json.dumps(ads)
     top = [int(i) for i, value in enumerate(atoms0.positions[:, 2]) if top_z - 0.2 <= value <= top_z + 0.2]
 
     energies = [-0.10, -0.45, -0.78, -0.98, -0.83, -1.08, -0.52, -0.90, -1.14, -1.24, -1.29, -1.31]

@@ -19,8 +19,8 @@ Runtime policy:
 
 - Use `mesa-general` for lightweight common scripts and OpenAI API wrappers.
 - Use `mesa-modeling` for structures, slabs, adsorbates, trajectories, and ASE.
-- Use `mesa-manuscript` for manuscript work, figure export, Pandoc, Playwright,
-  and publication plotting.
+- Use `mesa-manuscript` for manuscript work, figure export, Pandoc, and
+  publication plotting.
 - Keep `mesa-paper-search` and `paper-search-mcp` separate because they expose
   similar commands but are different packages.
 - Keep UMA, AdsorbDiff, and VASP isolated because their runtime assumptions are

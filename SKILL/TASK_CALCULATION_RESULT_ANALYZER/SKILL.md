@@ -1,6 +1,6 @@
 ---
 name: calculation-result-analyzer
-description: Analyze UMA/MLIP and VASP calculation result trajectories for optimization divergence, non-monotonic energy behavior, multi-minima relaxation, RMSD jumps, force spikes, and visual-review frame selection; aggregate many analyzer outputs into project-level evidence readiness gates. Use when Codex needs to inspect relax.traj, ASE traj/extxyz/xyz, VASP vasprun.xml, OUTCAR, XDATCAR, or OSZICAR outputs, produce JSON/CSV diagnostics plus sampled aseview overlay artifacts, or classify many endpoints as accepted, accepted-with-caveat, failed, or excluded before downstream energetics/manuscript claims.
+description: Analyze UMA/MLIP and VASP calculation result trajectories for optimization divergence, non-monotonic energy behavior, multi-minima relaxation, RMSD jumps, force spikes, and visual-review frame selection; aggregate many analyzer outputs into project-level evidence readiness gates. Use when Codex needs to inspect relax.traj, ASE traj/extxyz/xyz, VASP vasprun.xml, OUTCAR, XDATCAR, or OSZICAR outputs, produce JSON/CSV diagnostics plus sampled trajectory-path overlay artifacts, or classify many endpoints as accepted, accepted-with-caveat, failed, or excluded before downstream energetics/manuscript claims.
 ---
 
 # Calculation Result Analyzer
@@ -45,26 +45,57 @@ radii) and, on slabs, upward lift-off along the surface normal
 (`desorption_suspected`). RMSD/displacement use the minimum-image convention so
 an atom crossing a periodic boundary is not a false jump.
 
-## Visual validation (aseview PNG overlays + multimodal gate)
+## Visual validation (trajectory-fade PNG overlays + multimodal gate)
 
 The analyzer renders **PNG overlays** the agent can actually look at, then folds
-a multimodal review into the verdict. `aseview.save_png` is used directly
-(headless), so this needs the `modeling` env's `aseview[export]` + a browser
-(playwright's bundled chromium; declared in `ENVIRONMENT/build_tools/environment.yml`).
+a multimodal review into the verdict. Rendering is pure ASE + matplotlib
+(`render_core.py`) — no aseview, no browser, nothing beyond the `modeling`
+env's existing ase/matplotlib/numpy/Pillow.
 
-Default rendering:
+Default rendering, designed so the relaxation's *movement* reads at a glance
+without collapsing into a blurred stack of overlapping frames:
 
-- Uniformly sample up to `--overlay-max-frames` (default **50**) frames across the
-  whole trajectory (always keeping first and last).
-- Overlay **all** sampled frames (every frame visible, not just the first three)
-  with MIC-unwrapped, non-rotated coordinates so an adsorbate walking across a
-  periodic boundary stays continuous.
+- Uniformly sample up to `--overlay-max-frames` (default **7**) frames across
+  the whole trajectory (always keeping first and last), MIC-unwrapped so an
+  adsorbate walking across a periodic boundary stays continuous. Keep this
+  number small — every sampled frame actually gets drawn (see below), so more
+  frames means more overlapping fades, not more clarity.
+- Every atom whose displacement across the selection clears
+  `--mover-threshold` (default **0.25** Å) renders at **every** sampled frame,
+  alpha rising from faint (oldest) to fully solid (last) — so the whole route
+  is visible at once, not just its two endpoints. Everything that did not
+  move renders once, solid, from the last frame; fading every atom at every
+  frame would make the static substrate's own per-step numerical jitter
+  randomly decide which copy lands on top, giving it a mottled look for no
+  physical reason.
+- A small black X (ase-gui's own convention) marks any `FixAtoms`-constrained
+  atom in `overlay_side_a.png`/`overlay_side_b.png`; `overlay_top.png` leaves
+  it off (the frozen layer sits behind the relaxed one from directly above,
+  and the view's job is coverage, not layer bookkeeping).
+- All of it is depth-sorted together (not drawn in fixed front/back bands),
+  so in a top-down view a mover's fade stays visible in front of the
+  substrate instead of being buried under it. Atoms always draw on top of
+  bonds (bonds are trimmed surface-to-surface first) so a stick can never cut
+  across the sphere it connects to; depth order is otherwise preserved
+  separately among atoms and among bonds.
+- Bonds are opt-in, not a fallback: a bond only renders when the adsorbate can
+  be identified (`render_core.adsorbate_mask` reads
+  `atoms.info["adsorbate_atom_indices_json"]`/`"adsorbate_metadata_json"` or
+  `atoms.info["adsorbate_tag"]` + ASE tags — the same metadata slabuilder's
+  `place_surface_adsorbates` writes), and even then only within the adsorbate
+  and between adsorbate-slab — slab-slab bonds are never drawn. This
+  identification is lost once a structure round-trips through VASP
+  (POSCAR/CONTCAR/OUTCAR/vasprun.xml carry no adsorbate concept), so a bare
+  VASP-derived trajectory renders with no bonds at all rather than guessing.
+- Atoms render at a ball-and-stick size (`atom_scale=0.72`, small enough that
+  bonds are clearly visible, not close-packed), colored/sized off a
+  Jmol/three.js-style reference table in `render_core.py::_ELEMENT_TABLE`.
 - Render three orthographic views — `overlay_top.png`, `overlay_side_a.png`,
-  `overlay_side_b.png` — in the fixed style: Rowan, bonds on, atom size 0.7,
-  `showCell` on.
-- `--zoom-frames "0,12,30"` additionally renders `zoom_*.png` for just those
-  indices (use after the full overlay to inspect a suspect region closely).
-- `--no-visual` skips PNG rendering; `--chrome-path` overrides the browser.
+  `overlay_side_b.png`.
+- `--zoom-frames "0,4,7"` additionally renders `zoom_*.png` restricted to just
+  those indices (use after the full overlay to inspect a suspect region
+  closely — same fade treatment over the smaller index set).
+- `--no-visual` skips PNG rendering entirely.
 
 Two-pass review (provider-neutral):
 
@@ -89,7 +120,7 @@ Gate aggregation (overall = severity max, **downgrade-only**):
 ## Quick Start
 
 Script paths are relative to this skill directory. Run in the `modeling` env
-(the script needs slabuilder/ASE/aseview; bare `python` is not on PATH).
+(the script needs slabuilder/ASE/matplotlib; bare `python` is not on PATH).
 
 ```bash
 mamba run -n modeling python scripts/analyze_calculation_result.py \
@@ -136,14 +167,13 @@ The single-run analyzer writes:
 | Artifact | Purpose |
 | --- | --- |
 | `analysis_summary.json` | Machine-readable overall `verdict`, `deterministic_verdict`, `visual_validation` (status/paths/review), `convergence` (criterion, converged, NSW), `run_parameters` (EDIFFG/NSW), `anomalies` (dissociation/desorption), diagnosis, warnings, selected frames, and output paths. |
-| `overlay_{top,side_a,side_b}.png` | Uniform≤50-frame overlay orthographic views (Rowan style, bonds on, atom size 0.7) for multimodal review. |
-| `zoom_{top,side_a,side_b}.png` | Zoomed overlay of the `--zoom-frames` indices, when requested. |
+| `overlay_{top,side_a,side_b}.png` | Uniform≤7-frame fading-mover views for multimodal review (see Visual validation above). |
+| `zoom_{top,side_a,side_b}.png` | Same treatment restricted to the `--zoom-frames` indices, when requested. |
 | `visual_review_request.json` | What the agent must inspect + the result schema for `visual_review.json`. |
 | `visual_review.json` | (agent-written) The multimodal verdict ingested into the overall verdict. |
 | `metrics.csv` | Per-step energy, max force, RMSD, and jump metrics. |
 | `selected_frames.extxyz` | Event/uniform sampled frames for overlay review when structures are available. Includes per-atom `analysis_disp_to_initial` and `analysis_disp_step` arrays for displacement coloring when the viewer supports scalar properties. |
-| `visual_review.md` | Human-readable interpretation and aseview commands. |
-| `aseview_trajectory.html` / `aseview_overlay.html` | Optional HTML viewers (`--no-html` to skip). |
+| `visual_review.md` | Human-readable interpretation: which atoms got a path drawn and what the overlay PNGs show. |
 
 The batch evidence gate writes:
 
@@ -196,23 +226,22 @@ Use `--anchor auto` by default:
 Use `--anchor none` only when raw coordinate drift is itself the signal being
 investigated.
 
-## aseview Review
+## Overlay Review
 
-Open selected frames with:
+Open `overlay_{top,side_a,side_b}.png` (and `zoom_*.png` if rendered) directly —
+they are plain static images, no viewer needed. Interpretation:
 
-```bash
-mamba run -n modeling aseview selected_frames.extxyz -v overlay --cmap viridis -o aseview_overlay.html
-```
-
-Interpretation:
-
-- overlay frames should be slab-aligned, not center-of-mass aligned, for surface
+- for each atom shown fading in, the faintest copy is its oldest sampled
+  position and the fully solid copy is its last — read the sequence of fading
+  copies as the steps it moved through, not just a start/end pair;
+- an atom that renders only once (solid, never fading in) stayed under
+  `--mover-threshold` — treat it as effectively stationary, not as "not
+  analyzed";
+- overlay frames are slab-aligned, not center-of-mass aligned, for surface
   calculations;
-- use `analysis_disp_to_initial` or `analysis_disp_step` as the scalar field
-  when a viewer supports per-atom property coloring;
-- use the aseview viewer's built-in Export PNG/GIF controls when a static image
-  is required; do not generate separate matplotlib previews for structure
-  review;
+- `selected_frames.extxyz` still carries `analysis_disp_to_initial` and
+  `analysis_disp_step` per-atom arrays for any ASE-compatible viewer that
+  supports scalar-property coloring;
 - frames with high RMSD or force jumps should be checked for adsorbate flipping,
   diffusion, dissociation, slab reconstruction, atom crossing periodic
   boundaries, or loss of fixed-layer behavior;

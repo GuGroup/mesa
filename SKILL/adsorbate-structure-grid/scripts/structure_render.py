@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Render single slab/adsorbate structures to publication-style PNGs via aseview.
+"""Render single slab/adsorbate structures to publication-style PNGs.
 
 This module is the rendering half of the ``adsorbate-structure-grid`` skill. It
 loads an ASE-readable structure, renders a fixed-but-overridable "paper" view
-(Rowan style, bonds on, compact atoms) for the ``top`` / ``side_a`` / ``side_b``
-camera directions through aseview's headless ``save_png``, and crops the result
-to the structure's bounding box so the cell tiles cleanly in a grid.
+(shaded jmol spheres, bonds on, dashed halo around FixAtoms-constrained atoms)
+for the ``top`` / ``side_a`` / ``side_b`` camera directions with the pure-ASE +
+matplotlib engine in ``render_core.py``, and crops the result to the
+structure's bounding box so the cell tiles cleanly in a grid.
 
-Run inside the ``modeling`` env (needs ase, aseview[export] + a chromium for
-playwright, Pillow, numpy):
+Run inside the ``modeling`` env (needs ase, matplotlib, Pillow, numpy — no
+aseview, no browser):
 
     mamba run -n modeling python structure_render.py \
         --input slab.cif ads.traj --views top side_a side_b --outdir renders
+
+Fixed atoms only render as fixed if the input format preserves ASE
+constraints: ``.traj``/``.extxyz`` and VASP ``POSCAR``/``CONTCAR`` (Selective
+Dynamics) all round-trip ``FixAtoms``; plain ``.cif`` does not.
 
 It is also imported by ``build_grid_figure.py``; keep the public helpers
 (``DEFAULT_STYLE``, ``camera_views``, ``load_structure``, ``render_view``,
@@ -26,29 +31,22 @@ from typing import Any
 
 import numpy as np
 
-# Fixed-but-overridable paper template, tuned for a clean figure cell:
-# transparent background (set at save time) so the crop is exact, orthographic
-# camera (parallel cell edges, no perspective foreshortening — the usual choice
-# for structure panels), unit cell box drawn, "rowan" style + soft shadow for a
-# bright, clean look with enough depth (other aseview styles: "default",
-# "metallic", "glossy", "cinematic"). aseview accepts ``viewMode`` of
-# "Orthographic" or "Perspective"; set ``showCell: false`` per cell to hide the
-# box.
-DEFAULT_STYLE: dict[str, Any] = {
-    "colorBy": "Atom",
-    "showBond": True,
-    "style": "rowan",
-    "atomSize": 0.75,
-    "viewMode": "Orthographic",
-    "showCell": True,
-    "showShadow": True,
-    "viewFit": 0.62,
-}
+import render_core as rc
 
-# Side views additionally reveal the fixed (FixAtoms) bottom layers by default,
-# so a relaxed-vs-frozen split is obvious. Top views look straight down and the
-# frozen layers are hidden behind the surface, so the policy does not apply.
-_SIDE_VIEWS = ("side_a", "side_b")
+# Fixed-but-overridable paper template, tuned for a clean figure cell: shaded
+# spheres sized off a Jmol-style reference radius table (ball-and-stick, not
+# space-filling), thin bonds drawn only within the adsorbate and between
+# adsorbate-slab (never slab-slab, when the adsorbate can be identified —
+# see ``render_core.adsorbate_mask``), unit cell wireframe, an X mark on
+# FixAtoms-constrained atoms, transparent background (so the crop is exact).
+DEFAULT_STYLE: dict[str, Any] = {
+    "atom_scale": 0.72,
+    "bond_scale": 1.05,
+    "show_cell": True,
+    "show_fixed_halo": True,  # side_a/side_b default; "top" defaults to off, see render_view()
+    "margin_frac": 0.05,
+    "dpi": 220,
+}
 
 # Camera kwargs are passed positionally per-view, not part of the style dict.
 _CAMERA_KEYS = ("viewDirection", "viewUp")
@@ -73,12 +71,13 @@ def camera_views(atoms: Any) -> dict[str, tuple[list[float], list[float]]]:
         b = np.array([0.0, 1.0, 0.0])
         normal = np.array([0.0, 0.0, 1.0])
     return {
-        # True top-down: look straight along the surface normal (no tilt), so
-        # stacked layers project exactly onto each other.
+        # True top-down: look straight along the surface normal, so stacked
+        # layers project exactly onto each other.
         "top": (normal.tolist(), b.tolist()),
-        # Slightly tilted in-plane perspectives for adsorbate height / layering.
-        "side_a": ((a + 0.12 * b + 0.08 * normal).tolist(), normal.tolist()),
-        "side_b": ((b - 0.12 * a + 0.08 * normal).tolist(), normal.tolist()),
+        # Straight-on in-plane profiles (no tilt): look exactly along a or b,
+        # with the surface normal as screen-up.
+        "side_a": (a.tolist(), normal.tolist()),
+        "side_b": (b.tolist(), normal.tolist()),
     }
 
 
@@ -94,7 +93,24 @@ def load_structure(path: str | Path, index: int = -1, repeat: tuple[int, int, in
     if isinstance(atoms, list):  # some readers ignore int index
         atoms = atoms[index]
     if repeat and tuple(repeat) != (1, 1, 1):
-        atoms = atoms * tuple(int(x) for x in repeat)
+        n_per_cell = len(atoms)
+        raw = atoms.info.get("adsorbate_atom_indices_json")
+        tiled = atoms * tuple(int(x) for x in repeat)
+        if raw:
+            # ``*`` lays repeated copies out as contiguous index blocks
+            # (copy k occupies [k*n_per_cell, (k+1)*n_per_cell)), but only
+            # copies the pre-tile indices verbatim into .info — restate them
+            # per copy so the bond-suppression mask covers every repeated
+            # adsorbate, not just the first cell.
+            try:
+                orig_indices = json.loads(raw) if isinstance(raw, str) else raw
+                n_tiles = len(tiled) // n_per_cell
+                tiled.info["adsorbate_atom_indices_json"] = json.dumps([
+                    int(i) + k * n_per_cell for k in range(n_tiles) for i in orig_indices
+                ])
+            except Exception:
+                pass
+        atoms = tiled
     return atoms
 
 
@@ -106,45 +122,61 @@ def render_view(
     style: dict[str, Any] | None = None,
     width: int = 600,
     height: int = 600,
-    chrome_path: str | None = None,
     background_color: str | None = None,
     transparent: bool = True,
 ) -> Path:
     """Render one camera view of ``atoms`` to ``out_png`` (transparent by default).
 
     ``view`` is one of ``top`` / ``side_a`` / ``side_b``, or ``"as_is"`` to use
-    aseview's default camera (plus any ``viewDirection``/``viewUp`` in ``style``).
+    an isometric-ish default camera (plus any ``viewDirection``/``viewUp`` in
+    ``style``).
     """
-    from aseview import MolecularViewer
+    import matplotlib.pyplot as plt
 
     merged = {**DEFAULT_STYLE, **(style or {})}
-    # Side-view policy: reveal the fixed bottom layers unless the caller set
-    # showConstraint explicitly.
-    if view in _SIDE_VIEWS and "showConstraint" not in (style or {}):
-        merged["showConstraint"] = True
-    # Pull explicit camera overrides out of style so the view choice wins unless
-    # the caller deliberately set a camera.
     cam_override = {k: merged.pop(k) for k in _CAMERA_KEYS if k in merged}
 
-    kwargs: dict[str, Any] = dict(merged)
-    if view != "as_is":
-        if view not in VIEW_NAMES:
-            raise ValueError(f"unknown view {view!r}; use one of {VIEW_NAMES} or 'as_is'")
+    if view != "as_is" and view not in VIEW_NAMES:
+        raise ValueError(f"unknown view {view!r}; use one of {VIEW_NAMES} or 'as_is'")
+    if "viewDirection" in cam_override and "viewUp" in cam_override:
+        direction, up = cam_override["viewDirection"], cam_override["viewUp"]
+    elif view == "as_is":
+        direction, up = (1.0, 1.0, 1.0), (0.0, 0.0, 1.0)
+    else:
         direction, up = camera_views(atoms)[view]
-        kwargs["viewDirection"] = direction
-        kwargs["viewUp"] = up
-    kwargs.update(cam_override)  # explicit camera in style overrides the view
 
-    viewer = MolecularViewer(atoms, **kwargs)
-    save_kwargs: dict[str, Any] = {"width": width, "height": height, "transparent": transparent}
-    if background_color is not None:
-        save_kwargs["background_color"] = background_color
-        save_kwargs["transparent"] = False
-    if chrome_path:
-        save_kwargs["browser_executable_path"] = chrome_path
+    # Fixed-atom marker policy: on by default, but "top" hides it unless the
+    # caller explicitly asked for it — from directly above, the frozen bottom
+    # layer sits behind the relaxed top layer anyway, and the marker mostly
+    # just adds clutter to a view whose job is showing site/coverage.
+    if view == "top" and "show_fixed_halo" not in (style or {}):
+        merged["show_fixed_halo"] = False
+
+    frame = rc.camera_frame(direction, up)
+    atom_scale = float(merged.pop("atom_scale"))
+    bond_scale = float(merged.pop("bond_scale"))
+    show_cell = bool(merged.pop("show_cell"))
+    show_fixed_halo = bool(merged.pop("show_fixed_halo"))
+    margin_frac = float(merged.pop("margin_frac"))
+    dpi = int(merged.pop("dpi"))
+
+    bounds = rc.frame_bounds([atoms], frame, atom_scale=atom_scale, margin_frac=margin_frac)
+    fig, ax = rc.figure_for_bounds(bounds, width, height, dpi=dpi)
+    rc.draw_frame(
+        ax, atoms, frame,
+        atom_scale=atom_scale, bond_scale=bond_scale,
+        show_cell=show_cell, show_fixed_halo=show_fixed_halo,
+    )
+
     out_png = Path(out_png)
     out_png.parent.mkdir(parents=True, exist_ok=True)
-    viewer.save_png(str(out_png), **save_kwargs)
+    save_kwargs: dict[str, Any] = {"transparent": transparent}
+    if background_color is not None:
+        fig.patch.set_facecolor(background_color)
+        ax.set_facecolor(background_color)
+        save_kwargs = {"transparent": False, "facecolor": background_color}
+    fig.savefig(str(out_png), **save_kwargs)
+    plt.close(fig)
     return out_png
 
 
@@ -210,19 +242,18 @@ def render_and_crop(
     width: int = 600,
     height: int = 600,
     pad_frac: float = 0.04,
-    chrome_path: str | None = None,
 ) -> Path:
     """Convenience: load -> render one view -> crop, returning the cropped path."""
     atoms = load_structure(structure, index=index, repeat=repeat)
     render_view(
         atoms, view, out_png,
-        style=style, width=width, height=height, chrome_path=chrome_path,
+        style=style, width=width, height=height,
     )
     return crop_to_content(out_png, pad_frac=pad_frac)
 
 
 def _main() -> int:
-    ap = argparse.ArgumentParser(description="Render + crop slab/adsorbate structures via aseview.")
+    ap = argparse.ArgumentParser(description="Render + crop slab/adsorbate structures (pure ASE + matplotlib).")
     ap.add_argument("--input", nargs="+", required=True, help="Structure file(s) (cif/POSCAR/traj/extxyz/xyz...).")
     ap.add_argument("--views", nargs="+", default=["side_a"], choices=[*VIEW_NAMES, "as_is"], help="Camera views to render.")
     ap.add_argument("--outdir", default="renders", help="Output directory for cropped PNGs.")
@@ -231,8 +262,7 @@ def _main() -> int:
     ap.add_argument("--width", type=int, default=600)
     ap.add_argument("--height", type=int, default=600)
     ap.add_argument("--pad-frac", type=float, default=0.04, help="Crop margin as a fraction of the content box.")
-    ap.add_argument("--style-json", default=None, help="JSON file or inline JSON of aseview style overrides.")
-    ap.add_argument("--chrome-path", default=None, help="Browser executable for aseview PNG export. Default: playwright chromium.")
+    ap.add_argument("--style-json", default=None, help="JSON file or inline JSON of style overrides (see DEFAULT_STYLE).")
     args = ap.parse_args()
 
     style = None
@@ -250,7 +280,7 @@ def _main() -> int:
                 inp, view, out_png,
                 index=args.index, repeat=tuple(args.repeat) if args.repeat else None,
                 style=style, width=args.width, height=args.height,
-                pad_frac=args.pad_frac, chrome_path=args.chrome_path,
+                pad_frac=args.pad_frac,
             )
             written.append(str(out_png))
             print(f"rendered {inp} [{view}] -> {out_png}")

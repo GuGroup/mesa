@@ -11,22 +11,12 @@ from typing import Any
 
 import numpy as np
 
+import render_core as rc
 
 ENERGY_KEYS = ("energy", "free_energy", "E", "Energy", "dft_energy", "potential_energy")
 
-# aseview overlay render style for visual review (bonds on, Rowan style, compact
-# atoms, orthographic camera). Kept here so the look is consistent across runs.
-VISUAL_STYLE = {
-    "colorBy": "Atom",
-    "showBond": True,
-    "style": "rowan",
-    "atomSize": 0.7,
-    "viewMode": "Orthographic",
-    "showCell": True,
-    "viewFit": 0.64,
-    "backgroundColor": "#64748b",
-    "cellColor": "#f1f5f9",
-}
+# Fixed white background for the overlay PNGs.
+OVERLAY_BACKGROUND = "#ffffff"
 SEVERITY = {"pass": 0, "warn": 1, "fail": 2}
 
 
@@ -647,38 +637,6 @@ def write_selected_frames(path: Path, frames: list[Any], selected: list[int], me
     write(str(path), out, format="extxyz")
 
 
-def write_aseview_htmls(
-    trajectory_html: Path,
-    overlay_html: Path,
-    frames: list[Any],
-    selected_frames: Path | None,
-    colormap: str,
-) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "trajectory_html_written": False,
-        "overlay_html_written": False,
-        "error": None,
-    }
-    try:
-        from ase.io import read
-        from aseview import MolecularViewer
-        from aseview import OverlayViewer
-    except Exception as exc:
-        result["error"] = f"aseview import failed: {exc}"
-        return result
-    try:
-        if frames:
-            MolecularViewer(frames).save_html(str(trajectory_html))
-            result["trajectory_html_written"] = True
-        if selected_frames is not None:
-            sampled = read(str(selected_frames), index=":")
-            OverlayViewer(sampled, colorBy="Colormap", colormap=colormap).save_html(str(overlay_html))
-            result["overlay_html_written"] = True
-    except Exception as exc:
-        result["error"] = f"aseview HTML export failed: {exc}"
-    return result
-
-
 def uniform_overlay_indices(n_frames: int, max_frames: int) -> list[int]:
     """Uniformly sample up to max_frames indices, always keeping first and last."""
     if n_frames <= 0:
@@ -720,7 +678,9 @@ def unwrap_selected(frames: list[Any], indices: list[int]) -> list[Any]:
 def camera_views(atoms: Any) -> dict[str, tuple[list[float], list[float]]]:
     """Top / Side-a / Side-b view directions from the cell basis.
 
-    Falls back to fixed Cartesian axes for non-periodic / degenerate cells."""
+    All three are straight-on (no tilt): top looks exactly along the surface
+    normal, side_a/side_b exactly along the in-plane cell vectors. Falls back
+    to fixed Cartesian axes for non-periodic / degenerate cells."""
     cell = atoms.cell.array if hasattr(atoms, "cell") else None
     if cell is not None and abs(np.linalg.det(cell)) > 1e-8:
         a = cell[0] / np.linalg.norm(cell[0])
@@ -732,27 +692,91 @@ def camera_views(atoms: Any) -> dict[str, tuple[list[float], list[float]]]:
         b = np.array([0.0, 1.0, 0.0])
         normal = np.array([0.0, 0.0, 1.0])
     return {
-        "top": ((normal + 0.12 * a - 0.08 * b).tolist(), b.tolist()),
-        "side_a": ((a + 0.12 * b + 0.08 * normal).tolist(), normal.tolist()),
-        "side_b": ((b - 0.12 * a + 0.08 * normal).tolist(), normal.tolist()),
+        "top": (normal.tolist(), b.tolist()),
+        "side_a": (a.tolist(), normal.tolist()),
+        "side_b": (b.tolist(), normal.tolist()),
     }
 
 
-def make_overlay_viewer(frames: list[Any], **kwargs: Any):
-    """OverlayViewer with every sampled frame visible.
+def _movers(selected: list[Any], mover_threshold: float) -> list[int]:
+    """Indices of atoms whose track across ``selected`` exceeds the threshold.
 
-    aseview >= 0.0.12 exposes a native ``visibleIndices`` setting; make all
-    sampled frames visible so the overlay shows the full trajectory, not just the
-    first few. Falls back to a plain OverlayViewer on older aseview."""
-    from aseview import OverlayViewer
+    Flags an atom if either its net (first-to-last) displacement or its
+    largest single-step jump clears ``mover_threshold``, so an atom that
+    wanders and returns still gets faded in across the sampled frames."""
+    if len(selected) < 2:
+        return []
+    n_atoms = len(selected[0])
+    if any(len(frame) != n_atoms for frame in selected):
+        return []
+    track = np.stack([np.asarray(frame.positions, dtype=float) for frame in selected])  # (n_frames, n_atoms, 3)
+    net = np.linalg.norm(track[-1] - track[0], axis=-1)
+    step = np.linalg.norm(np.diff(track, axis=0), axis=-1).max(axis=0) if len(selected) > 1 else np.zeros(n_atoms)
+    return [i for i in range(n_atoms) if net[i] >= mover_threshold or step[i] >= mover_threshold]
 
-    try:
-        return OverlayViewer(frames, visibleIndices=list(range(len(frames))), **kwargs)
-    except TypeError:
-        return OverlayViewer(frames, **kwargs)
+
+def _render_overlay_view(
+    selected: list[Any],
+    frame: rc.Frame,
+    fixed: list[int],
+    movers: list[int],
+    out_path: Path,
+    *,
+    width: int,
+    height: int,
+    show_fixed_halo: bool = True,
+) -> None:
+    """Fade every sampled step of the movers in, oldest to newest; draw the rest solid.
+
+    The static substrate is drawn once (solid) from the final frame — only
+    atoms flagged as ``movers`` get a copy at *every* sampled frame, alpha
+    rising from faint (oldest) to solid (last), so the whole trajectory is
+    visible at once rather than collapsing to just its two endpoints.
+    Drawing every atom at every frame would make the substrate's own
+    per-step numerical jitter randomly decide which copy of a *static* atom
+    lands on top, giving it a mottled, inconsistently-faded look for no
+    physical reason — so non-movers stay solid, drawn once.
+
+    Everything is merged into one depth-tagged item list and painter's
+    -algorithm sorted together (``rc.draw_items``), not drawn in fixed
+    front-to-back bands: in a top-down view a close-packed substrate tiles
+    the whole frame, so a fixed "substrate always on top" band would bury a
+    mover under unrelated substrate atoms even though it sits nearer the
+    camera. A shared depth sort keeps it correctly in front wherever it is.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    last = selected[-1]
+    bounds = rc.frame_bounds(selected, frame, atom_scale=0.72, margin_frac=0.06)
+    fig, ax = rc.figure_for_bounds(bounds, width, height, dpi=200)
+    fig.patch.set_facecolor(OVERLAY_BACKGROUND)
+    ax.set_facecolor(OVERLAY_BACKGROUND)
+
+    # Resolve the adsorbate mask once, on the full structure, and reuse it —
+    # a sub-selection like ``atoms[movers]`` keeps the *parent's* index
+    # metadata in its `.info`, which no longer lines up with the subset's own
+    # local indices, so frame_items() can't safely auto-detect it there.
+    ads_mask = rc.adsorbate_mask(last)
+    items = rc.frame_items(last, frame, alpha=1.0, fixed=fixed, ads_mask=ads_mask, show_fixed_halo=show_fixed_halo)
+    n = len(selected)
+    if movers and n > 1:
+        mover_mask = None if ads_mask is None else ads_mask[movers]
+        for k, atoms in enumerate(selected[:-1]):  # last is already solid, above
+            alpha = 0.15 + 0.75 * (k / (n - 2) if n > 2 else 1.0)
+            sub = atoms[movers]
+            items += rc.frame_items(
+                sub, frame, alpha=alpha, fixed=[], show_cell=False, show_fixed_halo=False, ads_mask=mover_mask,
+            )
+    rc.draw_items(ax, items)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(str(out_path), transparent=False, facecolor=OVERLAY_BACKGROUND)
+    plt.close(fig)
 
 
-def render_overlay_pngs(
+def render_trajectory_overlay(
     frames: list[Any],
     indices: list[int],
     outdir: Path,
@@ -760,68 +784,44 @@ def render_overlay_pngs(
     *,
     width: int,
     height: int,
-    chrome_path: str | None,
+    mover_threshold: float,
 ) -> dict[str, Any]:
-    """Render Top/Side-a/Side-b overlay PNGs for the selected frame indices."""
+    """Render Top/Side-a/Side-b PNGs showing where the relaxation moved.
+
+    Every atom whose displacement across the selection clears
+    ``mover_threshold`` renders at *each* selected (MIC-unwrapped) frame,
+    fading from faint (oldest) to solid (last); everything else renders once,
+    solid, from the last frame. Keep ``indices`` short (≤7 or so) — past that
+    the fades start to overlap into a blur rather than a readable sequence.
+    """
     result: dict[str, Any] = {"indices": indices, "paths": {}, "error": None}
     selected = unwrap_selected(frames, indices)
     if not selected:
         result["error"] = "no frames to render"
         return result
-    views = camera_views(selected[0])
-    save_kwargs: dict[str, Any] = {"width": width, "height": height, "transparent": False}
-    if chrome_path:
-        save_kwargs["browser_executable_path"] = chrome_path
     try:
+        fixed = fixed_indices(selected[-1])
+        movers = _movers(selected, mover_threshold)
+        views = camera_views(selected[-1])
         for name, (direction, up) in views.items():
-            viewer = make_overlay_viewer(selected, viewDirection=direction, viewUp=up, **VISUAL_STYLE)
+            cam = rc.camera_frame(direction, up)
             path = outdir / f"{prefix}_{name}.png"
-            viewer.save_png(str(path), **save_kwargs)
-            if png_is_all_black(path):
-                save_viewer_page_screenshot(viewer, path, width, height, chrome_path)
+            # Fixed-atom marker: on for the side views, off for "top" — from
+            # directly above, the frozen bottom layer sits behind the relaxed
+            # top layer anyway, and the marker mostly just adds clutter to a
+            # view whose job is showing site/coverage.
+            _render_overlay_view(
+                selected, cam, fixed, movers, path,
+                width=width, height=height, show_fixed_halo=(name != "top"),
+            )
             result["paths"][name] = str(path)
+        result["movers"] = movers
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
     return result
 
 
-def png_is_all_black(path: Path) -> bool:
-    try:
-        from PIL import Image, ImageStat
-
-        image = Image.open(path).convert("RGB")
-        extrema = ImageStat.Stat(image).extrema
-        return all(lo == 0 and hi == 0 for lo, hi in extrema)
-    except Exception:
-        return False
-
-
-def save_viewer_page_screenshot(
-    viewer: Any,
-    path: Path,
-    width: int,
-    height: int,
-    chrome_path: str | None,
-) -> None:
-    """Fallback for aseview versions whose export API returns a blank canvas."""
-    from playwright.sync_api import sync_playwright
-
-    launch_options: dict[str, Any] = {"headless": True}
-    if chrome_path:
-        launch_options["executable_path"] = chrome_path
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(**launch_options)
-        try:
-            page = browser.new_page(viewport={"width": width, "height": height})
-            page.set_content(viewer.get_html(), wait_until="networkidle", timeout=30000)
-            page.wait_for_function("() => document.querySelector('canvas') !== null", timeout=30000)
-            page.wait_for_timeout(1500)
-            page.screenshot(path=str(path), full_page=False)
-        finally:
-            browser.close()
-
-
-def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: Path | None, colormap: str) -> None:
+def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: Path | None) -> None:
     convergence = summary.get("convergence", {})
     anomalies = summary.get("anomalies", {})
     visual = summary.get("visual_validation", {})
@@ -870,28 +870,21 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
     else:
         lines.append("- No high-level warnings under the selected thresholds.")
     lines.extend(["", "## Visual check", ""])
-    trajectory_html = summary["paths"].get("aseview_trajectory_html")
-    overlay_html = summary["paths"].get("aseview_overlay_html")
-    if trajectory_html:
-        lines.extend([
-            f"- Full trajectory viewer: `{Path(trajectory_html).name}`",
-        ])
-    if overlay_html:
-        lines.extend([
-            f"- Event-sampled overlay viewer: `{Path(overlay_html).name}`",
-        ])
-    if trajectory_html or overlay_html:
+    overlay = summary.get("visual_validation", {}).get("overlay") or {}
+    overlay_paths = overlay.get("paths") or {}
+    if overlay_paths:
+        lines.append(
+            f"- Overlay PNGs ({', '.join(sorted(overlay_paths))}): atoms that moved more than "
+            f"`--mover-threshold` fade in across every sampled frame (faint = oldest, solid = last); "
+            f"everything else renders once, solid, from the last frame."
+        )
+        lines.append(f"- Atoms shown fading across sampled frames (by index): {overlay.get('movers', [])}")
         lines.append("")
     if selected_extxyz is not None:
         lines.extend([
-            "Open the sampled overlay directly with:",
-            "",
-            "```bash",
-            f"aseview {selected_extxyz.name} -v overlay --cmap {colormap} -o aseview_overlay.html",
-            "```",
-            "",
-            "The selected extxyz stores `analysis_disp_to_initial` and `analysis_disp_step` per-atom arrays.",
-            "Use aseview's built-in export controls in the viewer for PNG/GIF snapshots when needed.",
+            f"Sampled frames are also in `{selected_extxyz.name}` "
+            "(per-atom `analysis_disp_to_initial` / `analysis_disp_step` arrays included) "
+            "for loading in any ASE-compatible viewer.",
             "Inspect sampled frames around RMSD jumps, force spikes, energy increases, and local minima.",
         ])
     else:
@@ -920,12 +913,10 @@ def main() -> int:
     parser.add_argument("--nsw", type=int, default=None, help="Max ionic steps for the verdict. Default: NSW from VASP outputs when present.")
     parser.add_argument("--bond-scale", type=float, default=1.2, help="Covalent-radius multiplier for connectivity/dissociation detection.")
     parser.add_argument("--desorption-z", type=float, default=2.5, help="Upward shift along the surface normal (Å) that flags possible desorption/lift-off on slabs.")
-    parser.add_argument("--colormap", default="viridis", help="aseview overlay colormap.")
-    parser.add_argument("--no-html", action="store_true", help="Do not attempt aseview HTML export.")
-    parser.add_argument("--overlay-max-frames", type=int, default=50, help="Max frames uniformly sampled for the overlay PNGs.")
+    parser.add_argument("--mover-threshold", type=float, default=0.25, help="Minimum displacement (Å) across the sampled frames before an atom is faded in across frames instead of drawn once, solid.")
+    parser.add_argument("--overlay-max-frames", type=int, default=7, help="Max frames uniformly sampled for the overlay PNGs. Keep this low (~7): movers render at every sampled frame, so more frames means more overlapping fades, not more clarity.")
     parser.add_argument("--zoom-frames", default=None, help="Comma-separated frame indices to also render as a zoomed overlay (e.g. '0,12,30').")
-    parser.add_argument("--no-visual", action="store_true", help="Skip aseview PNG rendering entirely.")
-    parser.add_argument("--chrome-path", default=None, help="Browser executable for aseview PNG export. Default: playwright's bundled chromium.")
+    parser.add_argument("--no-visual", action="store_true", help="Skip PNG rendering entirely.")
     parser.add_argument("--png-width", type=int, default=1600, help="Overlay PNG width.")
     parser.add_argument("--png-height", type=int, default=1100, help="Overlay PNG height.")
     parser.add_argument("--visual-review", default=None, help="Path to a completed visual_review.json to ingest. Default: <outdir>/visual_review.json if present.")
@@ -971,7 +962,7 @@ def main() -> int:
     )
     deterministic_verdict = verdict["verdict"]
 
-    # --- Visual validation: aseview overlay PNGs + multimodal review gate ---
+    # --- Visual validation: trajectory-path overlay PNGs + multimodal review gate ---
     visual: dict[str, Any] = {
         "status": "skipped" if args.skip_visual_validation else "pending",
         "overlay": None,
@@ -988,9 +979,9 @@ def main() -> int:
         visual["error"] = "no structural frames to visualize"
     elif not args.no_visual:
         overlay_indices = uniform_overlay_indices(len(frames), args.overlay_max_frames)
-        visual["overlay"] = render_overlay_pngs(
+        visual["overlay"] = render_trajectory_overlay(
             frames, overlay_indices, outdir, "overlay",
-            width=args.png_width, height=args.png_height, chrome_path=args.chrome_path,
+            width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
         )
         if args.zoom_frames:
             zoom_idx = sorted({
@@ -998,9 +989,9 @@ def main() -> int:
                 if tok.strip().lstrip("-").isdigit() and 0 <= int(tok) < len(frames)
             })
             if zoom_idx:
-                visual["zoom"] = render_overlay_pngs(
+                visual["zoom"] = render_trajectory_overlay(
                     frames, zoom_idx, outdir, "zoom",
-                    width=args.png_width, height=args.png_height, chrome_path=args.chrome_path,
+                    width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
                 )
         if visual["overlay"].get("error") and not visual["overlay"].get("paths"):
             visual["status"] = "unavailable"
@@ -1058,22 +1049,11 @@ def main() -> int:
     metrics_path = outdir / "metrics.csv"
     summary_path = outdir / "analysis_summary.json"
     selected_path = outdir / "selected_frames.extxyz" if frames and selected else None
-    trajectory_html_path = outdir / "aseview_trajectory.html"
-    overlay_html_path = outdir / "aseview_overlay.html"
     review_path = outdir / "visual_review.md"
 
     write_metrics_csv(metrics_path, metrics)
     if selected_path is not None:
         write_selected_frames(selected_path, frames, selected, metrics, anchor_info["anchor_indices"])
-    aseview_result = {"trajectory_html_written": False, "overlay_html_written": False, "error": None}
-    if not args.no_html:
-        aseview_result = write_aseview_htmls(
-            trajectory_html_path,
-            overlay_html_path,
-            frames,
-            selected_path,
-            args.colormap,
-        )
 
     summary = {
         "status": "ready",
@@ -1096,21 +1076,10 @@ def main() -> int:
             "metrics_csv": str(metrics_path),
             "selected_frames_extxyz": str(selected_path) if selected_path else None,
             "visual_review_md": str(review_path),
-            "aseview_trajectory_html": str(trajectory_html_path) if aseview_result["trajectory_html_written"] else None,
-            "aseview_overlay_html": str(overlay_html_path) if aseview_result["overlay_html_written"] else None,
-        },
-        "visualization": {
-            "aseview_html_written": bool(aseview_result["trajectory_html_written"] or aseview_result["overlay_html_written"]),
-            "aseview_error": aseview_result["error"],
-            "suggested_commands": {
-                "trajectory": f"aseview {discovered['trajectory']}" if discovered["trajectory"] else None,
-                "overlay": f"aseview {selected_path.name} -v overlay --cmap {args.colormap} -o aseview_overlay.html" if selected_path else None,
-            },
-            "direct_png_note": "aseview exposes PNG/GIF export inside the browser viewer; the Python wrapper and CLI save viewer files as HTML.",
         },
     }
     summary_path.write_text(json.dumps(summary, indent=2, default=json_default))
-    write_review_markdown(review_path, summary, selected_path, args.colormap)
+    write_review_markdown(review_path, summary, selected_path)
     print(json.dumps(summary, indent=2, default=json_default))
     # Non-zero exit on a failing overall verdict so unattended workflows can gate.
     return 3 if overall_verdict == "fail" else 0
