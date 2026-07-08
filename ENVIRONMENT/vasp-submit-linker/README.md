@@ -60,8 +60,8 @@ submit_templates:
 Notes:
 
 - `vasp_pp_path` is mapped to `VASP_PP_PATH` only while `vasp-ase` writes inputs.
-- `queue_status_command` should print free node names in the `n31` style used by the auto preset selector.
-- `queue.preset: auto` chooses 64-core or 48-core from node availability. It chooses the Gamma-only VASP executable only for explicit `vasp.kpts: [1, 1, 1]` plus `vasp.gamma: true`; ordinary `kspacing` jobs use `vasp_std`.
+- `queue_status_command` should print node names in the `n31` style used by the auto preset selector. It may print bare node names or include remaining/free-slot hints such as `n31 remaining=0`.
+- `queue.preset: auto` chooses 64-core or 48-core from node availability. If no node is currently free, it defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. It chooses the Gamma-only VASP executable only for explicit `vasp.kpts: [1, 1, 1]` plus `vasp.gamma: true`; ordinary `kspacing` jobs use `vasp_std`.
 - VASP/INCAR defaults are not loaded from the server config. The agent skill writes final `vasp.parameters` explicitly into each job spec.
 
 ## Job Spec

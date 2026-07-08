@@ -13,6 +13,7 @@ from typing import Any
 from vasp_submit.common.config import dump_yaml
 from vasp_submit.common.paths import require_safe_segment, resolve_under, safe_relative_path
 from vasp_submit.common.spec import normalize_spec, project_input_specs_dir, validated_job_dir
+from vasp_submit.hpc_server.auto_preset import auto_select_preset
 from vasp_submit.hpc_server.jobs import now_iso
 
 
@@ -64,61 +65,6 @@ def write_vasp_inputs_with_vasp_ase(spec: dict[str, Any], config: dict[str, Any]
     missing = [name for name in required_files if not (directory / name).exists()]
     if missing:
         raise RuntimeError(f"vasp-ase did not generate required file(s): {', '.join(missing)}")
-
-
-def parse_available_qq_nodes(output: str, config: dict[str, Any]) -> dict[int, list[str]]:
-    auto = config.get("auto_preset") or {}
-    ranges = auto.get("node_core_ranges") or {
-        48: [[1, 30]],
-        64: [[31, 40]],
-    }
-    available: dict[int, list[str]] = {}
-    for line in output.splitlines():
-        stripped = line.strip()
-        match = re.match(r"^n(\d+)\s*$", stripped)
-        if not match:
-            continue
-        node_number = int(match.group(1))
-        node_name = f"n{node_number:02d}"
-        for cores_raw, intervals in ranges.items():
-            cores = int(cores_raw)
-            for start, end in intervals:
-                if int(start) <= node_number <= int(end):
-                    available.setdefault(cores, []).append(node_name)
-    return available
-
-
-def queue_status_output(config: dict[str, Any]) -> str:
-    command = str(config.get("queue_status_command") or "qq")
-    # subprocess does no tilde expansion, so expand a leading ~ here; bare
-    # command names (e.g. "qq") and absolute paths pass through unchanged.
-    if command.startswith("~"):
-        command = str(Path(command).expanduser())
-    proc = subprocess.run(
-        [command],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"{command} failed: {proc.stderr.strip()}")
-    return proc.stdout
-
-
-def auto_select_preset(spec: dict[str, Any], config: dict[str, Any]) -> str:
-    vasp = spec.get("vasp") or {}
-    binary = "gam" if bool(vasp.get("gamma", False)) and vasp.get("kpts") == [1, 1, 1] else "std"
-    available = parse_available_qq_nodes(queue_status_output(config), config)
-    prefer = (config.get("auto_preset") or {}).get("prefer") or [64, 48]
-    for cores in prefer:
-        core_count = int(cores)
-        if available.get(core_count):
-            return f"preset{core_count}{binary}"
-    fallback = (config.get("auto_preset") or {}).get("fallback")
-    if fallback:
-        return str(fallback)
-    raise RuntimeError("No free 48/64 nodes found from queue status output")
 
 
 def template_search_roots(config: dict[str, Any]) -> list[Path]:

@@ -323,7 +323,7 @@ queue:
 
 `queue.preset` selects which SGE submit template is used:
 
-- `auto` picks 48- vs 64-core from current free nodes (`qq`). For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
+- `auto` picks 48- vs 64-core from current free/remaining nodes (`qq`). If no node is currently free, `auto` defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
 - `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin it explicitly.
 
 ## Workflow

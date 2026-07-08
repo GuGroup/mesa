@@ -12,11 +12,8 @@ from helpers import base_spec
 
 from vasp_submit.hpc_server.renderer import (
     apply_vasp_ase_environment,
-    auto_select_preset,
     generated_job_dir,
-    parse_available_qq_nodes,
     prepare_job,
-    queue_status_output,
     render_template_submit_script,
     resolve_submit_template,
     write_vasp_inputs_with_vasp_ase,
@@ -55,37 +52,6 @@ class HpcRendererContractTests(unittest.TestCase):
                     os.environ.pop(key, None)
                 else:
                     os.environ[key] = value
-
-    def test_parse_available_qq_nodes_uses_configured_core_ranges(self) -> None:
-        available = parse_available_qq_nodes(
-            "header\nn01\nn05\nn31\nbusy n32\nn40\n",
-            {
-                "auto_preset": {
-                    "node_core_ranges": {
-                        48: [[1, 30]],
-                        64: [[31, 40]],
-                    }
-                }
-            },
-        )
-
-        self.assertEqual(available[48], ["n01", "n05"])
-        self.assertEqual(available[64], ["n31", "n40"])
-
-    def test_queue_status_command_expands_leading_tilde(self) -> None:
-        captured: dict[str, list[str]] = {}
-
-        def fake_run(args, **kwargs):  # noqa: ANN001, ANN003
-            captured["args"] = args
-            return types.SimpleNamespace(returncode=0, stdout="n31\n", stderr="")
-
-        with patch("vasp_submit.hpc_server.renderer.subprocess.run", side_effect=fake_run):
-            # ~ must be expanded (subprocess does not), bare names stay on PATH.
-            queue_status_output({"queue_status_command": "~/runners/qq-wrapper"})
-            self.assertEqual(captured["args"], [str(Path("~/runners/qq-wrapper").expanduser())])
-
-            queue_status_output({"queue_status_command": "qq"})
-            self.assertEqual(captured["args"], ["qq"])
 
     def test_write_vasp_inputs_uses_vasp_ase_write_input_contract(self) -> None:
         atoms = object()
@@ -169,20 +135,6 @@ class HpcRendererContractTests(unittest.TestCase):
                 else:
                     sys.modules[name] = module
 
-    def test_auto_select_preset_uses_gam_only_for_explicit_one_point_gamma_mesh(self) -> None:
-        config = {"auto_preset": {"prefer": [64, 48]}}
-
-        with patch("vasp_submit.hpc_server.renderer.queue_status_output", return_value="n31\n"):
-            multi_point = base_spec()
-            multi_point["vasp"]["gamma"] = True
-            multi_point["vasp"]["kpts"] = [4, 4, 4]
-            self.assertEqual(auto_select_preset(multi_point, config), "preset64std")
-
-            one_point = base_spec()
-            one_point["vasp"]["gamma"] = True
-            one_point["vasp"]["kpts"] = [1, 1, 1]
-            self.assertEqual(auto_select_preset(one_point, config), "preset64gam")
-
     def test_render_template_submit_script_resolves_auto_to_template(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -202,7 +154,7 @@ class HpcRendererContractTests(unittest.TestCase):
             }
 
             with patch(
-                "vasp_submit.hpc_server.renderer.queue_status_output",
+                "vasp_submit.hpc_server.auto_preset.queue_status_output",
                 return_value="n31\n",
             ):
                 rendered = render_template_submit_script(spec, config)
@@ -261,7 +213,7 @@ class HpcRendererContractTests(unittest.TestCase):
                     (directory / name).write_text(name, encoding="utf-8")
 
             with (
-                patch("vasp_submit.hpc_server.renderer.queue_status_output", return_value="n31\n"),
+                patch("vasp_submit.hpc_server.auto_preset.queue_status_output", return_value="n31\n"),
                 patch("vasp_submit.hpc_server.renderer.write_vasp_inputs_with_vasp_ase", fake_write_inputs),
             ):
                 directory = prepare_job(spec, config)
