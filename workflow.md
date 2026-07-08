@@ -6,7 +6,10 @@ Use `project/mos_0629_2` as the active result directory unless the user explicit
 
 This workflow is a loop. It is not a linear checklist and it is not valid to move directly from one strategy calculation into the next strategy calculation.
 
-For this test, a process till Strategy Generation is finished. You can check it on strategy_generation/generate_strategies directory. Please start from Per strategy execution loop based on generated_strategies!
+For this test project, if strategy generation artifacts already exist under the
+project folder, start from the Per-Strategy Execution Loop using the latest
+`generated_strategies` artifact. Do not regenerate strategies unless the user
+asks or the existing strategy artifact is missing, invalid, or superseded.
 
 ```text
 strategy generation
@@ -22,12 +25,39 @@ strategy generation
 
 The central rule is: the selected strategy's computational procedures are the contract. They must first be translated into explicit recipes. Do not silently replace a requested calculation with an easier proxy.
 
+# Current Skill Organization
+
+Use active skill names from the current `SKILL/` tree. Do not use retired
+`TASK_*` names except when reading archived `legacy/` material.
+
+The current high-level skill groups are:
+
+- `strategy/`: `generate-strategies`, `select-next-strategy`,
+  `update-strategies-from-manuscript`;
+- `orchestration/`: `generate-explicit-calculation-recipe`,
+  `validate-recipe-execution`, `record-missing-evidence`;
+- `modeling/`: `build-slab-models`, `build-gas-phase-models`,
+  `place-adsorbates-with-adsorbdiff`,
+  `propose-surface-models-from-literature`;
+- `calculation/`: `relax-uma-trajectory`,
+  `calculate-uma-vibrational-frequencies`, `analyze-calculation-results`,
+  `manage-vasp-jobs`, `balance-reaction-pathway`;
+- `analysis/`: `evaluate-energy-diagram`, `construct-energy-diagram`,
+  `assemble-alkaline-her-descriptors`;
+- `figure/`: `render-adsorbate-structure-grid`, `plot-energy-diagram`,
+  `plot-sabatier-volcano`, `create-nature-figure`;
+- `literature/`: `extract-data-from-experiment`,
+  `search-papers-with-mcp`, `extract-strategy-paper`,
+  `extract-general-insights-paper`;
+- `manuscript/`: grouped by stage under `akct/`, `figure/`, `general/`,
+  `intro/`, `methods/`, `results/`, `review/`, `si/`, and `polish/`.
+
 # Strategy Generation
 
 Strategy generation should follow this continuous skill flow.
 
 1. Experimental data extraction
-  - Use `TASK_EXTRACT_DATA_FROM_PDF`.
+  - Use `extract-data-from-experiment`.
   - Experimental extraction provides benchmark constraints, material identity, measured targets, and observed trends to explain computationally.
   - Do not turn experimental data into new experimental actions.
 
@@ -37,8 +67,8 @@ Strategy generation should follow this continuous skill flow.
   - If papers must be downloaded manually, stop and wait for the user.
 
 3. Paper extraction
-  - Use `decompose-chemistry-paper-pdf` for papers under a `strategy` folder.
-  - Use `extract-general-insight-pdf` for non-strategy/domain papers.
+  - Use `extract-strategy-paper` for papers under a `strategy` folder.
+  - Use `extract-general-insights-paper` for non-strategy/domain papers.
   - Preserve extracted source metadata and claims because strategy generation must inherit references from these artifacts.
 
 4. Strategy generation
@@ -69,7 +99,7 @@ Use `select-next-strategy` before any modeling, recipe generation, or calculatio
 
 ## 2. Generate Explicit Calculation Recipes
 
-Use `explicit-calculation-recipe` immediately after strategy selection and before any structure building or calculation.
+Use `generate-explicit-calculation-recipe` immediately after strategy selection and before any structure building or calculation.
 
 Input is the selected strategy artifact. The skill reads the selected strategy's computational block:
 
@@ -79,7 +109,7 @@ Input is the selected strategy artifact. The skill reads the selected strategy's
 Recommended command:
 
 ```bash
-python3 SKILL/explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
+python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
   --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
   --out project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
 ```
@@ -127,7 +157,7 @@ This planning step may determine that a recipe requires a prior structure, elect
 If a required calculation cannot be executed under the current project policy or available skills, do not silently downgrade it. Either:
 
 - stop and ask the user;
-- run a future preflight/feasibility skill when available;
+- use `record-missing-evidence` to create explicit unresolved, excluded, or blocked evidence records;
 - update the strategy through the manuscript/update loop after documenting the gap; or
 - execute only the user-approved subset and label the result as bounded.
 
@@ -137,19 +167,20 @@ Run modeling and calculations only for recipes generated in step 2.
 
 Use the narrowest relevant skill for each calculation type:
 
-- clean slabs: `TASK_BUILD_SLAB_MODELS`;
-- gas references: `TASK_BUILD_GAS_PHASE_MODELS`;
-- adsorbate placement: `TASK_Absorbdiff` and related adsorbate tools;
-- UMA relaxation or trajectory calculations: UMA skills available in the local skill tree;
-- vibrations: UMA vibration skills when present;
-- result trajectory checks: `TASK_CALCULATION_RESULT_ANALYZER`;
-- energy diagrams: `TASK_CONSTRUCT_ENERGY_DIAGRAM` or `energy-diagram-plotter` as appropriate for the data type;
-- manuscript figures: plotter/grid/nature-figure skills as appropriate.
+- clean slabs: `build-slab-models`;
+- gas references: `build-gas-phase-models`;
+- adsorbate placement: `place-adsorbates-with-adsorbdiff` and related adsorbate tools;
+- UMA relaxation or trajectory calculations: `relax-uma-trajectory`;
+- vibrations: `calculate-uma-vibrational-frequencies`;
+- result trajectory checks: `analyze-calculation-results`;
+- energy bookkeeping/diagrams: `evaluate-energy-diagram`, `construct-energy-diagram`, or `plot-energy-diagram` as appropriate for the data type;
+- manuscript figures: `render-adsorbate-structure-grid`, `plot-energy-diagram`, `plot-sabatier-volcano`, or `create-nature-figure` as appropriate.
 
 For this test project:
 
 - Prepare VASP-compatible input files when useful for interoperability.
 - Do not submit VASP jobs unless the project policy changes.
+- Do not use `manage-vasp-jobs` to submit calculations in this test. Use it only for preparation, dry-run, status inspection, or future policy-enabled VASP work.
 - If local GPU UMA execution is requested, run UMA locally on the GPU node; do not submit UMA through qsub unless explicitly required.
 
 Save calculation artifacts under the recipe calculation that authorized them:
@@ -190,12 +221,19 @@ Do not modify generated `recipe.json` or `recipe.md` files to store execution
 status. Execution status belongs in `execution/` artifacts and coverage notes,
 not in the translator output.
 
+After recipe-backed calculations are complete, use `validate-recipe-execution`
+to check that every produced calculation artifact is either under the
+corresponding `C###/execution/` folder or explicitly linked as a shared batch
+artifact. Repair orphan outputs before manuscript intake.
+
 ## 5. Evidence Readiness
 
 Before manuscript intake:
 
-- Use `TASK_CALCULATION_RESULT_ANALYZER` for relaxation/result sanity checks where trajectories or optimization outputs exist.
-- Use `TASK_CONSTRUCT_ENERGY_DIAGRAM` only when its data model matches the required chemistry. If charged species, pH, potential, or solvation are outside a skill's scope, do not hide that mismatch.
+- Use `analyze-calculation-results` for relaxation/result sanity checks where trajectories or optimization outputs exist.
+- Use `construct-energy-diagram` only when its data model matches the required chemistry. If charged species, pH, potential, or solvation are outside a skill's scope, do not hide that mismatch.
+- Use `record-missing-evidence` for absent required artifacts such as charge density, Bader charge, PDOS/DOS, wavefunction/projector files, kinetic barriers, solvent data, or other recipe-requested evidence that cannot be produced.
+- Use `validate-recipe-execution` before treating evidence as manuscript-ready.
 - Separate accepted, exploratory, failed, excluded, and accepted-with-caveat artifacts.
 - Continue only with trusted structures, tables, figures, and result artifacts.
 
@@ -237,7 +275,28 @@ new calculations. They assemble, write, cite, insert, and polish only from
 accepted evidence and project-local source libraries.
 
 The current manuscript workflow is evidence-first and section-based. It does
-not depend on the old `TASK_MANUSCRIPT_LOOP` path.
+not depend on retired manuscript-loop task names.
+
+Manuscript skills are currently grouped by stage:
+
+- `manuscript/figure/`: `map-strategy-figures`,
+  `realize-strategy-figures`, `caption-strategy-figures`,
+  `insert-strategy-figures-into-docx`;
+- `manuscript/methods/`: `collect-methods-evidence`,
+  `write-methods-sections`;
+- `manuscript/results/`: `collect-results-evidence`,
+  `write-results-section`;
+- `manuscript/intro/`: `collect-introduction-evidence`,
+  `write-introduction-section`;
+- `manuscript/general/`: `extract-citation-sources`,
+  `select-citations`, `insert-citations`, `insert-section-into-docx`;
+- `manuscript/akct/`: `write-title-abstract-keywords-conclusion`;
+- `manuscript/si/`: `write-supporting-information`;
+- `manuscript/polish/`: `move-methods-details-to-si`,
+  `resolve-manuscript-placeholders`, `polish-manuscript-references`,
+  `polish-si-references`, `polish-manuscript-notation`,
+  `number-manuscript-equations`;
+- `manuscript/review/`: `nature-reviewer`.
 
 ## Manuscript Inputs
 
@@ -261,7 +320,7 @@ inside reusable skill source code.
 
 ## 1. Figure Plan From Strategy Procedures
 
-Use `strategy-figure-mapper` after strategy selection and after the
+Use `map-strategy-figures` after strategy selection and after the
 calculation/result evidence exists.
 
 The mapper input is the selected strategy's computational block, especially:
@@ -285,7 +344,7 @@ project/<project_name>/strategy_execution/<strategy_id>_figure/mapping/
 
 ## 2. Figure Realization
 
-Use `strategy-figure-realizer` after figure mapping.
+Use `realize-strategy-figures` after figure mapping.
 
 The realizer reads `figure_info.json`, checks available calculation outputs,
 and creates actual figure files when source data are sufficient. It may call
@@ -304,7 +363,7 @@ project/<project_name>/strategy_execution/<strategy_id>_figure/
 
 ## 3. Figure Captions
 
-Use `strategy-figure-captioner` after figure realization.
+Use `caption-strategy-figures` after figure realization.
 
 The captioner writes academic figure titles and captions from realized figures,
 strategy evidence, and calculation evidence. Captions must not mention internal
@@ -319,7 +378,7 @@ project/<project_name>/strategy_execution/<strategy_id>_figure/caption/
 
 ## 4. Insert Figures Into Skeleton DOCX
 
-Use `strategy-figure-docx-inserter`.
+Use `insert-strategy-figures-into-docx`.
 
 Rules:
 
@@ -337,7 +396,7 @@ project/<project_name>/manuscript/<strategy_id>/
 
 ## 5. Methods Evidence Collection
 
-Use `methods-evidence-collector` before writing Methods.
+Use `collect-methods-evidence` before writing Methods.
 
 The collector should keep evidence minimal and general:
 
@@ -368,7 +427,7 @@ project/<project_name>/strategy_execution/<strategy_id>_methods/evidence/
 
 ## 6. Methods Writing
 
-Use `methods-section-writer`.
+Use `write-methods-sections`.
 
 The writer reads `methods_writer_digest.json` and writes structured section
 JSON with paragraph and equation blocks. Public Methods prose must translate
@@ -389,7 +448,7 @@ project/<project_name>/strategy_execution/<strategy_id>_methods/text/
 
 ## 7. Methods Insertion
 
-Use `manuscript-section-docx-inserter` to insert
+Use `insert-section-into-docx` to insert
 `methods_section_text.json` into the manuscript skeleton or figure-containing
 DOCX.
 
@@ -398,7 +457,7 @@ Keep equation labels out of the visible DOCX body unless explicitly requested.
 
 ## 8. Citation Source Extraction
 
-Use `citation-source-extractor` before citation selection.
+Use `extract-citation-sources` before citation selection.
 
 The citation library is bounded:
 
@@ -417,7 +476,7 @@ project/<project_name>/references/
 
 ## 9. Section Citation Selection
 
-Use `citation-selector` after a section writer creates section JSON.
+Use `select-citations` after a section writer creates section JSON.
 
 Run it separately for Methods, Results, Introduction, and any other citation
 requiring section. The selector must preserve original paragraph text and write
@@ -440,7 +499,7 @@ project/<project_name>/strategy_execution/<strategy_id>_methods/citations/
 
 ## 10. Citation Insertion Into DOCX
 
-Use `citation-inserter`.
+Use `insert-citations`.
 
 For section-local tests, the inserter may create a cited DOCX from one
 `cited_section_text.json`. For the manuscript, use the global/skeleton-
@@ -455,7 +514,7 @@ Do not use citation insertion as a citation-selection step.
 
 ## 11. Results Evidence Collection
 
-Use `results-evidence-collector` after figures, captions, and result artifacts
+Use `collect-results-evidence` after figures, captions, and result artifacts
 exist.
 
 The collector builds a compact Results evidence digest from:
@@ -481,7 +540,7 @@ project/<project_name>/strategy_execution/<strategy_id>_results/evidence/
 
 ## 12. Results Writing And Insertion
 
-Use `results-section-writer`.
+Use `write-results-section`.
 
 The writer uses `results_writer_digest.json` and optional DOCX context to write
 figure-centered Results and Discussion subsections. It must:
@@ -492,7 +551,7 @@ figure-centered Results and Discussion subsections. It must:
 - avoid unsupported electronic, kinetic, solvation, or experimental claims;
 - avoid standalone limitation or future-work paragraphs.
 
-Insert Results with `manuscript-section-docx-inserter`. Use
+Insert Results with `insert-section-into-docx`. Use
 `--distribute-figures` when the DOCX already contains figure blocks and Results
 paragraphs mention those figure numbers.
 
@@ -501,7 +560,7 @@ written.
 
 ## 13. Introduction Evidence, Writing, And Insertion
 
-Use `introduction-evidence-collector`.
+Use `collect-introduction-evidence`.
 
 The collector is literature-led. It uses:
 
@@ -512,7 +571,7 @@ The collector is literature-led. It uses:
 - optional `manuscript_writing_profile.json` for project-specific narrative
   roles and order.
 
-Use `introduction-section-writer` after the evidence collector.
+Use `write-introduction-section` after the evidence collector.
 
 The Introduction writer must:
 
@@ -524,12 +583,12 @@ The Introduction writer must:
   outcomes;
 - use selected-strategy content only for the final present-work objective.
 
-Insert Introduction with `manuscript-section-docx-inserter`. Then run
-`citation-selector` and `citation-inserter` for Introduction.
+Insert Introduction with `insert-section-into-docx`. Then run
+`select-citations` and `insert-citations` for Introduction.
 
 ## 14. Title, Abstract, Keywords, And Conclusion
 
-Use `abstract-keywords-conclusion-writer` after Introduction, Results, Methods,
+Use `write-title-abstract-keywords-conclusion` after Introduction, Results, Methods,
 figures, and citations are assembled enough to provide manuscript context.
 
 The writer reads the DOCX and creates:
@@ -544,14 +603,14 @@ or workflow language. Title insertion should use 14 pt bold formatting when the
 section JSON requests it.
 
 Insert title, abstract, keywords, and conclusion with
-`manuscript-section-docx-inserter`.
+`insert-section-into-docx`.
 
 If the skeleton contains `{{SI_TITLE}}`, insert the same title there unless the
 user requests a distinct SI title.
 
 ## 15. Supporting Information Text
 
-Use `supporting-information-writer` after main text and SI figure placeholders
+Use `write-supporting-information` after main text and SI figure placeholders
 exist.
 
 The SI writer creates minimal inserter-ready JSON for:
@@ -570,7 +629,7 @@ Rules:
   DFT calculation details placeholder;
 - do not invent new parameters, calculations, or claims.
 
-Use `methods-to-si-mover` after SI insertion when detailed Methods text should
+Use `move-methods-details-to-si` after SI insertion when detailed Methods text should
 be compressed in the main manuscript and preserved in SI. The mover is
 configurable and should replace only the configured detail block with a concise
 bridge paragraph.
@@ -581,28 +640,28 @@ Run final DOCX polishers as separate, general, config-driven steps.
 
 Recommended order:
 
-1. `manuscript-placeholder-polisher`
+1. `resolve-manuscript-placeholders`
   - Remove or replace unresolved placeholders according to a project config.
   - Example config location:
     `project/<project_name>/manuscript/<strategy_id>/final_polish_configs/placeholder_config.json`.
 
-2. `manuscript-reference-polisher`
+2. `polish-manuscript-references`
   - Normalize main manuscript reference paragraphs from a project reference
     config.
   - Do not renumber in-text citations unless the citation layer explicitly
     requires it.
 
-3. `manuscript-si-reference-polisher`
+3. `polish-si-references`
   - Create independent SI references when SI-local citation markers are used.
   - Use configured SI citation mappings and SI reference entries.
 
-4. `manuscript-notation-polisher`
+4. `polish-manuscript-notation`
   - Apply configured scientific notation formatting such as subscripts and
     superscripts.
   - Preserve run-level styling so bold small titles do not make whole
     paragraphs bold.
 
-5. `manuscript-equation-number-polisher`
+5. `number-manuscript-equations`
   - Automatically find displayed Word equations and number them sequentially.
   - Consecutive displayed equations are one equation group.
   - Use the borderless three-column table layout by default:
