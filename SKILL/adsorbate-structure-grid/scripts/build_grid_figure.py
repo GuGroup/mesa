@@ -3,8 +3,9 @@
 
 Reads a JSON manifest describing a table whose rows are surfaces (by Miller
 index or material) and columns are adsorbate states. Each cell points at a
-structure file; the script renders it through aseview (``structure_render``),
-crops to content, pads every cell to a uniform box, and lays the cells out in a
+structure file; the script renders it with the pure-ASE + matplotlib engine in
+``structure_render``/``render_core`` (no aseview, no browser), crops to
+content, pads every cell to a uniform box, and lays the cells out in a
 compact table-like grid with row/column labels and horizontal rules. Figure
 labels and captions are intentionally not drawn.
 
@@ -79,7 +80,6 @@ def _cell_render(
     ri: int,
     ci: int,
     *,
-    chrome_path: str | None,
     rerender: bool,
 ) -> Path | None:
     """Resolve one cell to a cropped PNG path (or None for an empty cell)."""
@@ -123,7 +123,7 @@ def _cell_render(
     )
     if not cached_ok:
         atoms = sr.load_structure(src, index=index, repeat=tuple(repeat) if repeat else None)
-        sr.render_view(atoms, view, out, style=style, width=width, height=height, chrome_path=chrome_path)
+        sr.render_view(atoms, view, out, style=style, width=width, height=height)
         sr.crop_to_content(out, pad_frac=pad_frac)
         sig_file.write_text(sig)
     return out
@@ -272,6 +272,7 @@ def compose_grid(
 def _build_example(workdir: Path) -> Path:
     """Write a small self-contained demo manifest + structures; return its path."""
     from ase.build import fcc111, add_adsorbate
+    from ase.constraints import FixAtoms
     from ase.io import write
 
     struct_dir = workdir / "demo_structures"
@@ -279,32 +280,41 @@ def _build_example(workdir: Path) -> Path:
 
     def slab(metal: str, ads: str | None, height: float = 1.7, site: str = "fcc"):
         s = fcc111(metal, size=(3, 3, 3), vacuum=8.0)
+        z = s.positions[:, 2]
+        bottom = z.min() + 0.5
+        s.set_constraint(FixAtoms(indices=[i for i, v in enumerate(z) if v <= bottom]))
         if ads:
+            n_before = len(s)
             add_adsorbate(s, ads, height=height, position=site)
+            # Record which atoms are the adsorbate (plain ase.build tagging
+            # does not mark this) so the renderer can suppress slab-slab bonds.
+            s.info["adsorbate_atom_indices_json"] = json.dumps(list(range(n_before, len(s))))
         return s
 
     specs = {
         "pt_clean": slab("Pt", None),
-        "pt_h": slab("Pt", "H", 1.0),
-        "pt_o": slab("Pt", "O", 1.5),
+        "pt_h": slab("Pt", "H", 0.6),
+        "pt_o": slab("Pt", "O", 1.2),
         "cu_clean": slab("Cu", None),
-        "cu_h": slab("Cu", "H", 1.0),
-        "cu_o": slab("Cu", "O", 1.5),
+        "cu_h": slab("Cu", "H", 0.6),
+        "cu_o": slab("Cu", "O", 1.2),
     }
+    # .traj (not .cif) so the FixAtoms constraints survive the round-trip and
+    # the bottom-layer halo actually shows up in the render.
     for name, atoms in specs.items():
-        write(str(struct_dir / f"{name}.cif"), atoms)
+        write(str(struct_dir / f"{name}.traj"), atoms)
 
     manifest = {
         "defaults": {"view": "side_a"},
         "cols": [{"label": "*"}, {"label": "H*"}, {"label": "O*"}],
         "rows": [{"label": "Pt(111)"}, {"label": "Cu(111)"}],
         "cells": [
-            {"row": 0, "col": 0, "structure": "demo_structures/pt_clean.cif"},
-            {"row": 0, "col": 1, "structure": "demo_structures/pt_h.cif"},
-            {"row": 0, "col": 2, "structure": "demo_structures/pt_o.cif"},
-            {"row": 1, "col": 0, "structure": "demo_structures/cu_clean.cif"},
-            {"row": 1, "col": 1, "structure": "demo_structures/cu_h.cif"},
-            {"row": 1, "col": 2, "structure": "demo_structures/cu_o.cif"},
+            {"row": 0, "col": 0, "structure": "demo_structures/pt_clean.traj"},
+            {"row": 0, "col": 1, "structure": "demo_structures/pt_h.traj"},
+            {"row": 0, "col": 2, "structure": "demo_structures/pt_o.traj"},
+            {"row": 1, "col": 0, "structure": "demo_structures/cu_clean.traj"},
+            {"row": 1, "col": 1, "structure": "demo_structures/cu_h.traj"},
+            {"row": 1, "col": 2, "structure": "demo_structures/cu_o.traj"},
         ],
     }
     manifest_path = workdir / "demo_manifest.json"
@@ -319,7 +329,6 @@ def main() -> int:
     ap.add_argument("--outdir", default=None, help="Working dir for cached renders. Default: <output dir>/_grid_work.")
     ap.add_argument("--example", action="store_true", help="Build and render a self-contained demo grid.")
     ap.add_argument("--rerender", action="store_true", help="Ignore cached cell renders and redo them.")
-    ap.add_argument("--chrome-path", default=None, help="Browser executable for aseview PNG export.")
     args = ap.parse_args()
 
     if not args.input and not args.example:
@@ -358,7 +367,7 @@ def main() -> int:
             cell = grid_cells[ri][ci] or {"empty": True}
             row_imgs.append(_cell_render(
                 cell, defaults, base_dir, cache_dir, ri, ci,
-                chrome_path=args.chrome_path, rerender=args.rerender,
+                rerender=args.rerender,
             ))
         rendered.append(row_imgs)
 

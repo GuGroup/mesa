@@ -29,7 +29,6 @@ runtimes:
       - mamba env create -f environment.yml
     update:
       - mamba env update -f environment.yml --prune
-      - mamba run -n modeling python -m playwright install chromium
     check_tools:
       - mamba
       - python
@@ -41,7 +40,7 @@ runtimes:
 
   mesa-manuscript:
     kind: conda-env
-    description: Manuscript, figure, document export, Pandoc, Playwright, aseview, and publication plotting runtime.
+    description: Manuscript, figure, document export, Pandoc, and publication plotting runtime.
     cwd: ENVIRONMENT/manuscript_tools
     spec: ENVIRONMENT/manuscript_tools/environment.yml
     run_prefix: mamba run -n mesa-manuscript
@@ -49,7 +48,6 @@ runtimes:
       - mamba env create -f environment.yml
     update:
       - mamba env update -f environment.yml --prune
-      - mamba run -n mesa-manuscript python -m playwright install chromium
     check_tools:
       - mamba
       - python
