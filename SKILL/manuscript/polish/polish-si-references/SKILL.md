@@ -3,6 +3,8 @@ name: polish-si-references
 description: Create an independent Supporting Information reference zone in a DOCX using a project-provided citation map and SI reference config. Use when Codex must convert SI-local citations such as [2] into [S1] and insert SI references without hardcoding mappings in the skill.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Manuscript SI Reference Polisher
 
 ## Scope
@@ -21,7 +23,7 @@ It does not infer citation mappings.
 ## Command
 
 ```bash
-python SKILL/manuscript-si-reference-polisher/scripts/polish_si_references.py \
+python SKILL/manuscript/polish/polish-si-references/scripts/polish_si_references.py \
   --input-docx manuscript.docx \
   --output-docx manuscript.si_refs.docx \
   --config si_reference_config.json

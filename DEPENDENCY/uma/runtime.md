@@ -2,9 +2,8 @@
 
 Use this runtime for:
 
-- `TASK_UMA`
-- `TASK_UMA_traj`
-- `TASK_UMA_vib`
+- `relax-uma-trajectory`
+- `calculate-uma-vibrational-frequencies`
 
 This runtime is intentionally manual because FAIRChem/UMA, PyTorch, CUDA, GPU
 driver compatibility, and cluster queues are machine-specific.

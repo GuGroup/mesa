@@ -1,0 +1,4 @@
+interface:
+  display_name: "Extract Citation Sources"
+  short_description: "Build bounded citation libraries"
+  default_prompt: "Use $extract-citation-sources to build citation_sources.json and library.bib from local project PDFs."

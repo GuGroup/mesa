@@ -3,6 +3,8 @@ name: balance-reaction-pathway
 description: Balance electrochemical CHON reaction pathway strings into structured reaction metadata for downstream catalyst modeling, VASP input preparation, calculation orchestration, and energy-diagram construction. Use when Codex needs balanced states, gas reservoirs, and slab-count metadata from pathway strings.
 ---
 
+For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
+
 Reaction Pathway Balancing Skill
 
 Purpose

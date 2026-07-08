@@ -1,3 +1,4 @@
-display_name: Strategy Figure Mapper
-short_description: Ask for DFT figure intents and attach evidence
-default_prompt: Ask an LLM for conventional figure types from a selected MESA strategy, then attach explicit recipe evidence into figure_info.json.
+interface:
+  display_name: "Map Strategy Figures"
+  short_description: "Map DFT figure intents and attach evidence"
+  default_prompt: "Use $map-strategy-figures to identify conventional figure types from a selected MESA strategy and attach explicit recipe evidence into figure_info.json."

@@ -1,7 +1,10 @@
 ---
 name: plot-energy-diagram
-description: Create publication-ready reaction coordinate and free-energy diagrams from user-provided energy data using the provided matplotlib/chemdiagrams visual style: boxed energy profile, bold reaction-coordinate labels, colorblind-friendly comparative paths, auto energy annotations, shared zero-reference labels, and SVG/PDF/PNG export. Use when Codex needs to plot catalyst energy profiles, adsorption/reaction intermediates, transition-state paths, or comparative surface energetics from arbitrary systems.
+description: >-
+  Create publication-ready reaction coordinate and free-energy diagrams from user-provided energy data using the provided matplotlib/chemdiagrams visual style: boxed energy profile, bold reaction-coordinate labels, colorblind-friendly comparative paths, auto energy annotations, shared zero-reference labels, and SVG/PDF/PNG export. Use when Codex needs to plot catalyst energy profiles, adsorption/reaction intermediates, transition-state paths, or comparative surface energetics from arbitrary systems.
 ---
+
+For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this skill.
 
 # Energy Diagram Plotter
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Construct Energy Diagram"
+  short_description: "Construct reaction free-energy profiles"
+  default_prompt: "Use $construct-energy-diagram to construct a reaction free-energy profile from pathway metadata and calculation outputs."

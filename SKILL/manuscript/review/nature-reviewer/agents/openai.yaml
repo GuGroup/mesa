@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nature Reviewer"
+  short_description: "Generate Nature-style reviewer reports"
+  default_prompt: "Use $nature-reviewer to create a bounded Nature-style review package from manuscript materials."

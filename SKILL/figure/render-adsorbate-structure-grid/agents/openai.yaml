@@ -1,4 +1,4 @@
 interface:
-  display_name: "Adsorbate Structure Grid"
+  display_name: "Render Adsorbate Structure Grid"
   short_description: "Render slab/adsorbate structures into a paper-style grid figure."
-  default_prompt: "Use $adsorbate-structure-grid to render my slab and adsorbate structures into a publication-style grid figure (surfaces as rows, adsorbate states as columns)."
+  default_prompt: "Use $render-adsorbate-structure-grid to render slab and adsorbate structures into a publication-style grid figure."

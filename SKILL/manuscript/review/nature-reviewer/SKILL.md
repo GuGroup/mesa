@@ -7,9 +7,9 @@ description: >-
   reviewer-style manuscript evaluation, mock peer review, pre-submission critique, or
   Nature reviewer report. Return 3 reviewer reports plus a cross-review synthesis,
   grounded only in the local Nature reviewer source basis.
-version: 0.1.0
-status: Draft
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Nature Reviewer Assessment Skill
 

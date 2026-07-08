@@ -1,6 +1,6 @@
 # mesa-adsorbdiff Runtime Contract
 
-Use this runtime for `TASK_Absorbdiff`.
+Use this runtime for `place-adsorbates-with-adsorbdiff`.
 
 This runtime is intentionally manual because AdsorbDiff depends on a research ML
 stack: PyTorch, PyG extensions, LMDB, checkpoint files, and CUDA wheel matching.
@@ -20,7 +20,8 @@ datasets or checkpoints from bootstrap by default.
 Required runtime capabilities:
 
 - Python environment with `ase`, `numpy`, `pyyaml`, `lmdb`, and `torch`
-- Vendored AdsorbDiff importability from `SKILL/TASK_Absorbdiff/assets/AdsorbDiff`
+- Vendored AdsorbDiff importability from
+  `SKILL/modeling/place-adsorbates-with-adsorbdiff/assets/AdsorbDiff`
 - Local checkpoint paths for diffusion and optional GemNet/OCP relaxation
 
 Common checkpoint names expected by the controller:

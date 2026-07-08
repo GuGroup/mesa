@@ -3,6 +3,8 @@ name: record-missing-evidence
 description: Record missing required scientific artifacts as explicit unresolved, excluded, or blocked evidence records without proxy substitution. Use when a workflow recipe requests charge density, Bader charge, PDOS/DOS, wavefunction/projector files, kinetic barriers, solvent data, or any other artifact that is absent, and Codex needs to create auditable JSON/CSV/Markdown summaries before updating results or manuscripts.
 ---
 
+For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying this skill.
+
 # Missing Evidence Recorder
 
 ## Scope

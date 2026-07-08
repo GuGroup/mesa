@@ -1,0 +1,4 @@
+interface:
+  display_name: "Relax UMA Trajectory"
+  short_description: "Run UMA relaxation trajectories"
+  default_prompt: "Use $relax-uma-trajectory to generate a UMA relaxation trajectory and relaxed POSCAR from a POSCAR input."

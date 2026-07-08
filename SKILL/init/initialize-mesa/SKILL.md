@@ -3,6 +3,8 @@ name: initialize-mesa
 description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, or diagnose the repo before running skills, including DEPENDENCY runtime mappings, repo-local .codex/config.toml, paper_search MCP setup, .env/API-key presence, and skill-specific environment readiness.
 ---
 
+For MESA repository setup use, read `workflow.md` before applying this skill.
+
 # MESA Init
 
 ## Overview
@@ -29,7 +31,7 @@ python3 DEPENDENCY/tools/mesa_env.py bootstrap
 3. If the user asks for a specific skill, resolve that skill's runtime:
 
 ```bash
-python3 DEPENDENCY/tools/mesa_env.py doctor --skill TASK_BUILD_SLAB_MODELS
+python3 DEPENDENCY/tools/mesa_env.py doctor --skill build-slab-models
 ```
 
 4. Do not install every runtime by default. Install only the runtime needed for
@@ -68,7 +70,7 @@ For install dry-runs:
 
 ```bash
 python3 DEPENDENCY/tools/mesa_env.py install mesa-general
-python3 DEPENDENCY/tools/mesa_env.py install --skill TASK_BUILD_SLAB_MODELS
+python3 DEPENDENCY/tools/mesa_env.py install --skill build-slab-models
 ```
 
 Execute installs only when the user explicitly wants setup changes:

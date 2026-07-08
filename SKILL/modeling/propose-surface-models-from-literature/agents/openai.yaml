@@ -1,0 +1,4 @@
+interface:
+  display_name: "Propose Surface Models From Literature"
+  short_description: "Propose literature-backed surface models"
+  default_prompt: "Use $propose-surface-models-from-literature to run the literature workflow for catalyst surface-modeling proposals."

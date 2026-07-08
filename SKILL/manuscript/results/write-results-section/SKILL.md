@@ -1,13 +1,15 @@
 ---
 name: write-results-section
-description: Ask an LLM to write manuscript-ready Results and Discussion prose from results-evidence-collector's results_writer_digest.json plus a compact DOCX-derived manuscript context. Use after results-evidence-collector when Codex must draft results_section_text.json and .md for catalyst computational manuscripts while guarding against internal workflow language, unsupported electronic descriptors, raw file paths, procedure ids, and overclaimed experimental prediction.
+description: Ask an LLM to write manuscript-ready Results and Discussion prose from collect-results-evidence's results_writer_digest.json plus a compact DOCX-derived manuscript context. Use after collect-results-evidence when Codex must draft results_section_text.json and .md for catalyst computational manuscripts while guarding against internal workflow language, unsupported electronic descriptors, raw file paths, procedure ids, and overclaimed experimental prediction.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Results Section Writer
 
 ## Scope
 
-Use this skill after `results-evidence-collector` has produced
+Use this skill after `collect-results-evidence` has produced
 `results_writer_digest.json`.
 
 It preprocesses an optional manuscript DOCX into compact context, then asks an
@@ -35,7 +37,7 @@ project/<project>/strategy_execution/<strategy_id>_results/text/
 Run:
 
 ```bash
-python SKILL/results-section-writer/scripts/write_results_section.py \
+python SKILL/manuscript/results/write-results-section/scripts/write_results_section.py \
   --digest project/<project>/strategy_execution/<strategy_id>_results/evidence/results_writer_digest.json \
   --manuscript-docx project/<project>/manuscript/S1/S1_manuscript_with_citations.docx
 ```

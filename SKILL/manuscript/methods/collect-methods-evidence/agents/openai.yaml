@@ -1,4 +1,4 @@
 interface:
   display_name: "Methods Evidence Collector"
   short_description: "Collect minimal Methods evidence"
-  default_prompt: "Use $methods-evidence-collector to collect a minimal four-section Methods evidence source for a MESA catalyst project."
+  default_prompt: "Use $collect-methods-evidence to collect a minimal four-section Methods evidence source for a MESA catalyst project."

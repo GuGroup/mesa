@@ -3,6 +3,8 @@ name: extract-data-from-experiment
 description: Extract DFT-relevant experimentally reported materials information from PDF files by sending the PDF through a fixed OpenAI Responses API prompt that explicitly checks body text, tables, figures, captions, plots, axes, legends, annotations, microscopy images, spectra, and graphical data. Use when Codex needs to inspect a local materials-research PDF, extract experimental material identity, structure, synthesis conditions, measured properties, characterization evidence, figure-only values, or run a smoke test against a sample PDF such as ExperimentalData.pdf.
 ---
 
+For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
+
 # Extract Data From PDF
 
 ## Overview
@@ -21,7 +23,7 @@ Use this skill to extract only explicitly reported experimental materials inform
 Run:
 
 ```bash
-python3 /path/to/extract-data-from-pdf/scripts/ask_pdf.py /path/to/file.pdf
+python3 SKILL/literature/extract-data-from-experiment/scripts/ask_pdf.py /path/to/file.pdf
 ```
 
 Useful options:
@@ -42,7 +44,7 @@ The script prompt explicitly tells the model to inspect figure panels and extrac
 For smoke testing with `ExperimentalData.pdf`:
 
 ```bash
-python3 extract-data-from-pdf/scripts/ask_pdf.py ExperimentalData.pdf --dry-run
+python3 SKILL/literature/extract-data-from-experiment/scripts/ask_pdf.py ExperimentalData.pdf --dry-run
 ```
 
 Remove `--dry-run` when `OPENAI_API_KEY` is set and an actual API smoke test is intended.

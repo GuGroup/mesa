@@ -173,35 +173,53 @@ runtimes:
       - No runtime install required.
 
 skills:
-  TASK_EXTRACT_DATA_FROM_PDF: mesa-general
-  decompose-chemistry-paper-pdf: mesa-general
-  extract-general-insight-pdf: mesa-general
+  extract-data-from-experiment: mesa-general
+  extract-strategy-paper: mesa-general
+  extract-general-insights-paper: mesa-general
   generate-strategies: mesa-general
   select-next-strategy: mesa-general
   update-strategies-from-manuscript: mesa-general
-  TASK_balance_reaction_pathway: mesa-general
-  TASK1_experimental_information_extraction: mesa-general
-  TASK2_reaction_energy_evaluation: mesa-general
-  TASK_BUILD_SLAB_MODELS: mesa-modeling
-  TASK_BUILD_GAS_PHASE_MODELS: mesa-modeling
-  TASK_PLACE_SURFACE_ADSORBATES: mesa-modeling
-  ToBeReplaced_INSPECT_SURFACE_SITES: mesa-modeling
-  TASK_CALCULATION_RESULT_ANALYZER: mesa-modeling
-  TASK_CONSTRUCT_ENERGY_DIAGRAM: mesa-modeling
-  TASK_MANUSCRIPT_LOOP: mesa-manuscript
-  TASK_MANUSCRIPT_TYPESET: mesa-manuscript
-  energy-diagram-plotter: mesa-manuscript
-  sabatier-volcano-plotter: mesa-manuscript
-  adsorbate-structure-grid: mesa-manuscript
-  nature-figure: mesa-manuscript
-  TASK_LITERATURE_SURFACE_PROPOSAL: mesa-paper-search
+  generate-explicit-calculation-recipe: mesa-general
+  validate-recipe-execution: mesa-general
+  record-missing-evidence: mesa-general
+  balance-reaction-pathway: mesa-general
+  evaluate-energy-diagram: mesa-general
+  assemble-alkaline-her-descriptors: mesa-general
+  build-slab-models: mesa-modeling
+  build-gas-phase-models: mesa-modeling
+  analyze-calculation-results: mesa-modeling
+  construct-energy-diagram: mesa-modeling
+  place-adsorbates-with-adsorbdiff: mesa-adsorbdiff
+  propose-surface-models-from-literature: mesa-paper-search
   search-papers-with-mcp: paper-search-mcp
-  TASK_VASP_JOB: mesa-vasp-submit
-  TASK_UMA: mesa-uma
-  TASK_UMA_traj: mesa-uma
-  TASK_UMA_vib: mesa-uma
-  TASK_Absorbdiff: mesa-adsorbdiff
-  ToBeAmended_SURFACE_REACTION_MODELING_WORKFLOW: no-runtime
-  nature-writing: no-runtime
-  nature-polishing: no-runtime
+  manage-vasp-jobs: mesa-vasp-submit
+  relax-uma-trajectory: mesa-uma
+  calculate-uma-vibrational-frequencies: mesa-uma
+  plot-energy-diagram: mesa-manuscript
+  plot-sabatier-volcano: mesa-manuscript
+  render-adsorbate-structure-grid: mesa-manuscript
+  create-nature-figure: mesa-manuscript
+  map-strategy-figures: mesa-manuscript
+  realize-strategy-figures: mesa-manuscript
+  caption-strategy-figures: mesa-manuscript
+  insert-strategy-figures-into-docx: mesa-manuscript
+  collect-methods-evidence: mesa-manuscript
+  write-methods-sections: mesa-manuscript
+  collect-results-evidence: mesa-manuscript
+  write-results-section: mesa-manuscript
+  collect-introduction-evidence: mesa-manuscript
+  write-introduction-section: mesa-manuscript
+  extract-citation-sources: mesa-manuscript
+  select-citations: mesa-manuscript
+  insert-citations: mesa-manuscript
+  insert-section-into-docx: mesa-manuscript
+  write-title-abstract-keywords-conclusion: mesa-manuscript
+  write-supporting-information: mesa-manuscript
+  move-methods-details-to-si: mesa-manuscript
+  resolve-manuscript-placeholders: mesa-manuscript
+  polish-manuscript-references: mesa-manuscript
+  polish-si-references: mesa-manuscript
+  polish-manuscript-notation: mesa-manuscript
+  number-manuscript-equations: mesa-manuscript
   nature-reviewer: no-runtime
+  initialize-mesa: no-runtime

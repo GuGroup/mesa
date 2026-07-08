@@ -3,6 +3,8 @@ name: extract-general-insights-paper
 description: Extract broad, topic-level scientific insights from a local paper PDF, especially review papers, perspective articles, roadmap papers, and domain-overview papers that do not report one detailed computational workflow. Use when Codex needs a loose but structured synthesis of general mechanisms, design principles, progress, challenges, opportunities, and reusable lessons from a scientific PDF.
 ---
 
+For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
+
 # Extract General Insight PDF
 
 ## Overview
@@ -22,7 +24,7 @@ Use this skill to extract general insight from scientific review papers and doma
 Run:
 
 ```bash
-python3 /path/to/extract-general-insight-pdf/scripts/extract_general_insight.py /path/to/review.pdf --topic "high-entropy alloys in catalysis"
+python3 SKILL/literature/extract-general-insights-paper/scripts/extract_general_insight.py /path/to/review.pdf --topic "high-entropy alloys in catalysis"
 ```
 
 Useful options:

@@ -3,6 +3,8 @@ name: build-gas-phase-models
 description: Build neutral isolated gas-phase molecule structures for reaction reference calculations. Use when Codex needs POSCAR/metadata files for gas reservoirs or gas products such as H2(g), H2O(g), CO(g), CO2(g), NH3(g), NOx species, alcohols, or SMILES-defined molecules before VASP relax/static/frequency handoff.
 ---
 
+For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
+
 # Build Gas Phase Models
 
 ## Scope
@@ -96,6 +98,6 @@ Each metadata file records:
 ## Boundaries
 
 - Do not build slabs; use `build-slab-models`.
-- Do not place this gas molecule on a surface; use `place-surface-adsorbates`.
+- Do not place this gas molecule on a surface; use `place-adsorbates-with-adsorbdiff`.
 - Do not create VASP INCAR/KPOINTS/POTCAR files; use `vasp-job`.
 - Do not submit calculations from this skill.

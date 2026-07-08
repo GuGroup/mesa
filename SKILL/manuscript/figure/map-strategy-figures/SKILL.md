@@ -3,6 +3,8 @@ name: map-strategy-figures
 description: Ask an LLM to identify conventional computational chemistry figure types from a MESA selected strategy's models, methods, adsorption sites, and procedures, then attach explicit recipe execution evidence into a compact figure_info.json mapping. Use after recipe-backed calculations/evidence checks when Codex must decide which standard DFT catalysis figures should be must-have, useful, or supplementary and route them to plotting/realization skills.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Strategy Figure Mapper
 
 ## Scope
@@ -25,7 +27,7 @@ write manuscript prose, or invent unsupported calculations.
 Run the mapper on the selected strategy and explicit recipe root:
 
 ```bash
-python SKILL/strategy-figure-mapper/scripts/map_strategy_figures.py \
+python SKILL/manuscript/figure/map-strategy-figures/scripts/map_strategy_figures.py \
   --strategy project/<project>/strategy_execution/strategy_selection/selected_strategy.json \
   --recipe-root project/<project>/strategy_execution/<strategy_id>_explicit_recipe
 ```
@@ -103,7 +105,7 @@ may be extracted generically from procedure text, for example `Delta G_NO` to
       "source": {"procedures": ["P003"], "calculations": ["P003/C006"]},
       "artifacts": ["project/.../energy_diagram.svg"],
       "status": "accepted-with-caveat",
-      "skill": "energy-diagram-plotter",
+      "skill": "plot-energy-diagram",
       "grounding": {"status": "grounded", "quantities": ["free_energy_profile"], "basis": ["P003: ..."]},
       "caveats": [],
       "blockers": []
@@ -113,5 +115,5 @@ may be extracted generically from procedure text, for example `Delta G_NO` to
 }
 ```
 
-After mapping, use `strategy-figure-realizer` to create source, exported, QA,
+After mapping, use `realize-strategy-figures` to create source, exported, QA,
 and realization artifacts.

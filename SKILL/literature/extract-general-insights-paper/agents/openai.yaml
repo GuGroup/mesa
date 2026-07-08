@@ -1,4 +1,4 @@
 interface:
-  display_name: "Extract General Insight PDF"
+  display_name: "Extract General Insights Paper"
   short_description: "Extract broad paper insights"
-  default_prompt: "Use $extract-general-insight-pdf to extract general topic-level insights from a review paper PDF."
+  default_prompt: "Use $extract-general-insights-paper to extract general topic-level insights from a review paper PDF."

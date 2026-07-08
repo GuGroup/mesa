@@ -1,11 +1,13 @@
 ---
 name: relax-uma-trajectory
-description: Generate a UMA relaxation trajectory for the MESA TASK_UMA_RELAX_TRAJECTORY workflow. Use when the upstream MESA task provides only a POSCAR path and the controller must decide UMA execution settings, run or submit UMA relaxation, and return relax.traj plus relaxed/POSCAR with structured result metadata.
+description: Generate a UMA relaxation trajectory for the MESA relax-uma-trajectory workflow. Use when the upstream MESA task provides only a POSCAR path and the controller must decide UMA execution settings, run or submit UMA relaxation, and return relax.traj plus relaxed/POSCAR with structured result metadata.
 ---
+
+For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
 
 # mesa-uma-traj
 
-`mesa-uma-traj` is a minimal MESA TASK-level skill for generating a UMA/ASE
+`relax-uma-trajectory` is a minimal MESA skill for generating a UMA/ASE
 relaxation trajectory from one POSCAR file. The upstream task provides only the
 POSCAR path. The controller decides all UMA execution settings, writes the
 resolved configuration, and runs or submits the fixed runner. The runner executes
@@ -80,8 +82,8 @@ Return the standard MESA skill output format with:
 ```json
 {
   "status": "success",
-  "task_id": "TASK_UMA_RELAX_TRAJECTORY",
-  "skill": "uma_relax_traj_controller",
+  "task_id": "relax-uma-trajectory",
+  "skill": "relax-uma-trajectory",
   "data": {},
   "artifacts": [],
   "messages": [],

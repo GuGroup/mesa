@@ -3,6 +3,8 @@ name: collect-results-evidence
 description: Deterministically collect compact, figure-centered evidence for Results and Discussion drafting in computational catalyst manuscript workflows. Use after figures and result artifacts exist, before a Results writer skill, when Codex needs results_evidence.json and results_writer_digest.json from selected_strategy, S*_result_artifact, figure mapping/captions/realization, free-energy tables, model manifest, relaxation, and vibration summaries without writing manuscript prose.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Results Evidence Collector
 
 ## Scope
@@ -28,7 +30,7 @@ project/<project>/strategy_execution/<strategy_id>_results/evidence/
 Run:
 
 ```bash
-python SKILL/results-evidence-collector/scripts/collect_results_evidence.py \
+python SKILL/manuscript/results/collect-results-evidence/scripts/collect_results_evidence.py \
   --project project/<project> \
   --strategy-id <strategy_id>
 ```

@@ -3,6 +3,8 @@ name: propose-surface-models-from-literature
 description: Run the packaged SearchAgent literature workflow for catalyst surface-modeling proposals from a YAML run input. Use when MESA needs literature-backed surface, descriptor, facet, interface, or calculation-gap suggestions before modeling or manuscript work.
 ---
 
+For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
+
 # MESA Literature Surface Proposal
 
 Use this skill to run the SearchAgent package vendored at

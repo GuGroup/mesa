@@ -1,0 +1,4 @@
+interface:
+  display_name: "Calculate UMA Vibrational Frequencies"
+  short_description: "Run UMA finite-displacement vibrations"
+  default_prompt: "Use $calculate-uma-vibrational-frequencies to calculate UMA-based vibrational frequencies from a relaxed POSCAR."

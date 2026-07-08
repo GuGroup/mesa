@@ -1,3 +1,4 @@
-display_name: Introduction Section Writer
-short_description: Write citation-free manuscript Introduction prose from collected evidence.
-default_prompt: Write the Introduction section from the collected evidence digest.
+interface:
+  display_name: "Write Introduction Section"
+  short_description: "Write citation-free Introduction prose"
+  default_prompt: "Use $write-introduction-section to write the Introduction section from the collected evidence digest."

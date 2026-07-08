@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Nature Figure"
+  short_description: "Assemble publication-style figures"
+  default_prompt: "Use $create-nature-figure to assemble publication-style multi-panel figures from existing scientific panels and data."

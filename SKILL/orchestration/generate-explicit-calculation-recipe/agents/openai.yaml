@@ -1,4 +1,4 @@
 interface:
   display_name: "Explicit Calculation Recipe"
   short_description: "Translate strategies into recipes"
-  default_prompt: "Use $explicit-calculation-recipe to turn the selected strategy computational section into explicit calculation recipes."
+  default_prompt: "Use $generate-explicit-calculation-recipe to turn the selected strategy computational section into explicit calculation recipes."

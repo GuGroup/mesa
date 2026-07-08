@@ -1,13 +1,15 @@
 ---
 name: realize-strategy-figures
-description: Realize strategy-figure-mapper figure_info.json candidates into a strategy figure workspace with source files, PNG exported figures, QA notes, and a realization manifest. Use after strategy-figure-mapper when Codex must copy existing PNG assets, generate simple tabular PNG figures, prepare specialized renderer manifests, and record blocked or skipped figure candidates.
+description: Realize map-strategy-figures figure_info.json candidates into a strategy figure workspace with source files, PNG exported figures, QA notes, and a realization manifest. Use after map-strategy-figures when Codex must copy existing PNG assets, generate simple tabular PNG figures, prepare specialized renderer manifests, and record blocked or skipped figure candidates.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Strategy Figure Realizer
 
 ## Scope
 
-Use this skill to turn `strategy-figure-mapper` output into file-backed figure
+Use this skill to turn `map-strategy-figures` output into file-backed figure
 artifacts under the same `<strategy_id>_figure/` workspace.
 
 It orchestrates figure realization; it does not validate chemistry or invent
@@ -20,7 +22,7 @@ skills, and write QA/blocker notes.
 Run the realizer on the mapping output:
 
 ```bash
-python SKILL/strategy-figure-realizer/scripts/realize_strategy_figures.py \
+python SKILL/manuscript/figure/realize-strategy-figures/scripts/realize_strategy_figures.py \
   --mapping project/<project>/strategy_execution/<strategy_id>_figure/mapping/figure_info.json
 ```
 

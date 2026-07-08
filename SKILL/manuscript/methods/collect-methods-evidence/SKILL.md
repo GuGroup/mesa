@@ -3,6 +3,8 @@ name: collect-methods-evidence
 description: Deterministically collect a minimal four-section Methods evidence source for computational chemistry catalyst projects. Use before Methods prose writing when Codex needs methods_minimal_evidence.json and methods_writer_digest.json from selected_strategy experiment.computational models/methods/dft_details/procedures, model_manifest motif_label/state values, one gas metadata example, UMA relaxation/vibration summaries, reference_policy, and brief energy-bookkeeping tool information without descriptor, electronic-structure, or standalone limitations sections.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Methods Evidence Collector
 
 ## Scope
@@ -33,7 +35,7 @@ project/<project>/strategy_execution/<strategy_id>_methods/evidence/
 Run:
 
 ```bash
-python SKILL/methods-evidence-collector/scripts/collect_methods_evidence.py \
+python SKILL/manuscript/methods/collect-methods-evidence/scripts/collect_methods_evidence.py \
   --project project/<project> \
   --strategy-id <strategy_id>
 ```

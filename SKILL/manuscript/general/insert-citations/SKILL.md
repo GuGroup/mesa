@@ -1,13 +1,15 @@
 ---
 name: insert-citations
-description: Create a BibTeX/Pandoc cited DOCX from citation-selector output. Use after citation-selector when Codex must convert cited_section_text.json placeholders such as {{cite:Wang2015;Hinnemann2005}} into Pandoc citeproc citations, generate used_references.bib, apply a local numeric CSL style, and save a cited DOCX with bibliography without changing citation choices.
+description: Create a BibTeX/Pandoc cited DOCX from select-citations output. Use after select-citations when Codex must convert cited_section_text.json placeholders such as {{cite:Wang2015;Hinnemann2005}} into Pandoc citeproc citations, generate used_references.bib, apply a local numeric CSL style, and save a cited DOCX with bibliography without changing citation choices.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Citation Inserter
 
 ## Scope
 
-Use this skill after `citation-selector` has produced `cited_section_text.json`.
+Use this skill after `select-citations` has produced `cited_section_text.json`.
 
 The inserter converts selected citation placeholders into Pandoc citation
 syntax, writes a BibTeX file for the used references, applies a local numeric
@@ -40,7 +42,7 @@ project/<project>/strategy_execution/<strategy_id>_methods/citations/pandoc/
 Run:
 
 ```bash
-python SKILL/citation-inserter/scripts/insert_citations.py \
+python SKILL/manuscript/general/insert-citations/scripts/insert_citations.py \
   --cited-section-json project/<project>/strategy_execution/<strategy_id>_methods/citations/cited_section_text.json
 ```
 
@@ -56,7 +58,7 @@ Useful options:
 Skeleton-preserving manuscript update:
 
 ```bash
-python SKILL/citation-inserter/scripts/insert_citations.py \
+python SKILL/manuscript/general/insert-citations/scripts/insert_citations.py \
   --cited-section-json project/<project>/strategy_execution/<strategy_id>_methods/citations/cited_section_text.json \
   --input-docx project/<project>/manuscript/S1/S1_manuscript_with_figures_and_methods.docx \
   --output-docx project/<project>/manuscript/S1/S1_manuscript_with_citations.docx
@@ -65,7 +67,7 @@ python SKILL/citation-inserter/scripts/insert_citations.py \
 Global manuscript citation update:
 
 ```bash
-python SKILL/citation-inserter/scripts/insert_citations.py \
+python SKILL/manuscript/general/insert-citations/scripts/insert_citations.py \
   --cited-section-json \
     project/<project>/strategy_execution/<strategy_id>_results/citations/cited_section_text.json \
     project/<project>/strategy_execution/<strategy_id>_methods/citations/cited_section_text.json \

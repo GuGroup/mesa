@@ -1,13 +1,15 @@
 ---
 name: caption-strategy-figures
-description: Create public manuscript-style figure titles and captions for strategy-figure-mapper and strategy-figure-realizer outputs. Use after figures have been mapped and realized when Codex must write paper-ready figure_title, caption, and extended_caption fields from figure_info.json, figure_realization.json, exported PNGs, grounding quantities, caveats, blockers, and source metadata while keeping workflow provenance out of public text.
+description: Create public manuscript-style figure titles and captions for map-strategy-figures and realize-strategy-figures outputs. Use after figures have been mapped and realized when Codex must write paper-ready figure_title, caption, and extended_caption fields from figure_info.json, figure_realization.json, exported PNGs, grounding quantities, caveats, blockers, and source metadata while keeping workflow provenance out of public text.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Strategy Figure Captioner
 
 ## Scope
 
-Use this skill after `strategy-figure-mapper` and `strategy-figure-realizer`.
+Use this skill after `map-strategy-figures` and `realize-strategy-figures`.
 It writes manuscript-facing figure titles and captions; it does not draw
 figures, validate chemistry, or add new scientific claims.
 
@@ -31,7 +33,7 @@ project/<project>/strategy_execution/<strategy_id>_figure/
 Run:
 
 ```bash
-python SKILL/strategy-figure-captioner/scripts/caption_strategy_figures.py \
+python SKILL/manuscript/figure/caption-strategy-figures/scripts/caption_strategy_figures.py \
   --mapping project/<project>/strategy_execution/<strategy_id>_figure/mapping/figure_info.json
 ```
 

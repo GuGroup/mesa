@@ -3,6 +3,8 @@ name: update-strategies-from-manuscript
 description: Update an existing computational chemistry strategy plan after one strategy has been completed and summarized in a manuscript or manuscript-like result artifact. Use when Codex needs to compare a completed strategy result, such as S1, against the original generate-strategies output and decide whether to maintain the original strategy sequence, revise details of the next strategy, reprioritize remaining strategies, repair/repeat the completed strategy, or add a new computational direction. The output must remain evidence-backed, preserve inherited references, and use decompose-style problem/axioms/hypothesis/experiment/results/conclusion strategy blocks.
 ---
 
+For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
+
 # Update Strategies From Manuscript
 
 ## Overview

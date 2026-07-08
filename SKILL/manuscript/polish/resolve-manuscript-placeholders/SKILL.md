@@ -3,6 +3,8 @@ name: resolve-manuscript-placeholders
 description: Remove or replace unresolved placeholders in a manuscript DOCX using a project-provided JSON policy. Use when Codex must handle leftover tokens such as {{DATA_AVAILABILITY_TEXT}} without hardcoding project-specific placeholder behavior inside the skill.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Manuscript Placeholder Polisher
 
 ## Scope
@@ -15,7 +17,7 @@ It does not rewrite prose, references, notation, figures, or citations.
 ## Command
 
 ```bash
-python SKILL/manuscript-placeholder-polisher/scripts/polish_placeholders.py \
+python SKILL/manuscript/polish/resolve-manuscript-placeholders/scripts/polish_placeholders.py \
   --input-docx manuscript.docx \
   --output-docx manuscript.no_placeholders.docx \
   --config placeholder_config.json

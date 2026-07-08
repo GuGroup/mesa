@@ -3,7 +3,9 @@ name: evaluate-energy-diagram
 description: Modular MESA skill for extracting experimental context and evaluating DFT reaction-energy tables from CSV or dictionary input. Supports HER and OER algorithmic analysis plus schema-based naming/evaluation for NO3RR and related reactions.
 ---
 
-# TASK_REACTION_ENERGY_EVALUATION
+For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
+
+# Evaluate Energy Diagram
 
 Use this skill when the user provides DFT reaction-coordinate energies for electrocatalyst performance evaluation.
 

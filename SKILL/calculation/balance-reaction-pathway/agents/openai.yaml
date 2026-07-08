@@ -1,0 +1,4 @@
+interface:
+  display_name: "Balance Reaction Pathway"
+  short_description: "Balance electrochemical pathway states"
+  default_prompt: "Use $balance-reaction-pathway to convert reaction pathway strings into balanced states and metadata for downstream modeling or energy diagrams."

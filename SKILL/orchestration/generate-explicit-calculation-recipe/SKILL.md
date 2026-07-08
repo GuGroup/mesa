@@ -3,6 +3,8 @@ name: generate-explicit-calculation-recipe
 description: Translate a selected computational-chemistry strategy's experiment.computational or experimental.computational section into a procedure-indexed explicit calculation recipe folder tree. Use before any slab, gas, adsorbate, relaxation, vibration, free-energy, DOS, charge, or benchmark-comparison execution when Codex must preserve the strategy's computational procedures as concrete required inputs, operations, and outputs without judging feasibility or silently replacing the requested calculation with a proxy.
 ---
 
+For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying this skill.
+
 # Explicit Calculation Recipe
 
 ## Purpose
@@ -21,7 +23,7 @@ the strategy asks for.
 Use the selected strategy artifact produced by `select-next-strategy`, usually:
 
 ```bash
-python3 SKILL/explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
+python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
   --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
   --out project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
 ```
@@ -93,7 +95,7 @@ After creating or updating this skill, validate the skill folder:
 
 ```bash
 python3 /home/ytk/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
-  SKILL/explicit-calculation-recipe
+  SKILL/orchestration/generate-explicit-calculation-recipe
 ```
 
 For functional validation, run the generator on a selected strategy artifact and

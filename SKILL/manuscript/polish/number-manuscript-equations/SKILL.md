@@ -3,6 +3,8 @@ name: number-manuscript-equations
 description: Add configured equation numbers to manuscript DOCX equations, including one number for a multi-line equation group. Use when Codex must number displayed equations near the end of manuscript polishing without hardcoding project-specific equation text.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Manuscript Equation Number Polisher
 
 ## Scope
@@ -29,7 +31,7 @@ It does not rewrite prose, convert equations, or renumber citations.
 ## Command
 
 ```bash
-python SKILL/manuscript-equation-number-polisher/scripts/number_equations.py \
+python SKILL/manuscript/polish/number-manuscript-equations/scripts/number_equations.py \
   --input-docx manuscript.docx \
   --output-docx manuscript.equation_numbered.docx \
   --config equation_number_config.json

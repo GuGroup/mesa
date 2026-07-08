@@ -1,7 +1,9 @@
 ---
 name: generate-strategies
-description: Generate evidence-backed computational chemistry strategies for a target materials/chemistry task from prior extraction artifacts. Use when Codex needs to synthesize outputs from TASK_EXTRACT_DATA_FROM_PDF, decompose-chemistry-paper-pdf, and extract-general-insight-pdf into multiple DFT/computational proof strategy dictionaries that preserve the decompose-chemistry-paper-pdf problem/axioms/hypothesis/experiment/results/conclusion structure, exclude experimental strategy generation, and include explicit inherited references for every decision.
+description: Generate evidence-backed computational chemistry strategies for a target materials/chemistry task from prior extraction artifacts. Use when Codex needs to synthesize outputs from extract-data-from-experiment, extract-strategy-paper, and extract-general-insights-paper into multiple DFT/computational proof strategy dictionaries that preserve the problem/axioms/hypothesis/experiment/results/conclusion structure, exclude experimental strategy generation, and include explicit inherited references for every decision.
 ---
+
+For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
 
 # Generate Strategies
 
@@ -35,9 +37,9 @@ paper_decomposition = {
 
 Collect the saved outputs from previous workflow steps:
 
-- Experimental data extraction from `TASK_EXTRACT_DATA_FROM_PDF`.
-- Strategy-folder paper decompositions from `decompose-chemistry-paper-pdf`.
-- Non-strategy paper insights from `extract-general-insight-pdf`.
+- Experimental data extraction from `extract-data-from-experiment`.
+- Strategy-folder paper decompositions from `extract-strategy-paper`.
+- Non-strategy paper insights from `extract-general-insights-paper`.
 
 Prefer saved `.txt`, `.md`, `.py`, or `.json` extraction artifacts over PDFs. Do not rerun PDF extraction unless the expected extraction output is missing.
 
@@ -59,7 +61,7 @@ Prefer saved `.txt`, `.md`, `.py`, or `.json` extraction artifacts over PDFs. Do
 Run:
 
 ```bash
-python3 /path/to/generate-strategies/scripts/generate_strategies.py \
+python3 SKILL/strategy/generate-strategies/scripts/generate_strategies.py \
   --target-task "..." \
   --material-domain "..." \
   --experimental-extraction /path/to/experimental_extraction.txt \
@@ -104,7 +106,8 @@ generated_strategies = {
 }
 ```
 
-Each strategy must be clear enough to compare against `decompose-chemistry-paper-pdf` output, while making two distinctions explicit:
+Each strategy must be clear enough to compare against `extract-strategy-paper`
+output, while making two distinctions explicit:
 
 - `experiment` means computational experiment only.
 - `results` are expected computational results, computational checks, or benchmark comparisons for a proposed strategy, not established current-paper findings.

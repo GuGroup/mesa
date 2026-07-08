@@ -3,6 +3,8 @@ name: insert-section-into-docx
 description: Insert structured manuscript section JSON into a DOCX skeleton/template. Use when Codex must place generated section text such as methods_section_text.json into a Word manuscript, replace placeholders like {{METHOD_TEXT}}, preserve DOCX integrity, render section headings, paragraphs, and simple LaTeX equation blocks, and write insertion reports without rewriting the scientific prose.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Manuscript Section DOCX Inserter
 
 ## Overview
@@ -46,7 +48,7 @@ split row.
 ## Command
 
 ```bash
-python SKILL/manuscript-section-docx-inserter/scripts/insert_section_docx.py \
+python SKILL/manuscript/general/insert-section-into-docx/scripts/insert_section_docx.py \
   --template RESOURCE/manuscript_skeleton_polished.docx \
   --section-json project/<project>/strategy_execution/<strategy>_methods/text/methods_section_text.json \
   --output project/<project>/manuscript/<strategy>/<strategy>_manuscript_with_methods.docx

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Decompose Chemistry Paper PDF"
+  display_name: "Extract Strategy Paper"
   short_description: "Decompose computational chemistry papers"
-  default_prompt: "Use $decompose-chemistry-paper-pdf to extract a computational chemistry paper PDF into the required Python dictionary."
+  default_prompt: "Use $extract-strategy-paper to extract a computational chemistry paper PDF into the required strategy dictionary."

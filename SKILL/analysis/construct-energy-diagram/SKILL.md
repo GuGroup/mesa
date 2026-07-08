@@ -3,6 +3,8 @@ name: construct-energy-diagram
 description: Construct reaction free-energy profiles from balanced reaction pathway metadata, calculation registry maps, and VASP OUTCAR thermochemistry inputs. Use when Codex needs relative catalyst reaction-state free energies from reaction.json and map.json inputs.
 ---
 
+For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
+
 Energy Diagram Construction Skill
 
 Purpose

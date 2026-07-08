@@ -3,6 +3,8 @@ name: write-supporting-information
 description: Create minimal Supporting Information section JSON from an assembled computational catalysis manuscript DOCX. Use when Codex must fill SI placeholders such as supplementary figure headings/text and Density Functional Theory calculation details, using existing manuscript text, SI figure captions, and Methods detail paragraphs without adding new scientific claims.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Supporting Information Writer
 
 ## Scope
@@ -26,7 +28,7 @@ use `methods-to-si-mover` after SI insertion for that.
 Run:
 
 ```bash
-python SKILL/supporting-information-writer/scripts/write_supporting_information.py \
+python SKILL/manuscript/si/write-supporting-information/scripts/write_supporting_information.py \
   --manuscript-docx project/<project>/manuscript/<strategy>/<manuscript>.docx \
   --strategy-id <strategy>
 ```

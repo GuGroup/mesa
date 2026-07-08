@@ -3,6 +3,8 @@ name: polish-manuscript-references
 description: Normalize main manuscript reference paragraphs in a DOCX from a project-provided reference config. Use when Codex must standardize existing numeric references without hardcoding bibliography records in the skill and without renumbering in-text citations.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Manuscript Reference Polisher
 
 ## Scope
@@ -16,7 +18,7 @@ or modify SI references.
 ## Command
 
 ```bash
-python SKILL/manuscript-reference-polisher/scripts/polish_references.py \
+python SKILL/manuscript/polish/polish-manuscript-references/scripts/polish_references.py \
   --input-docx manuscript.docx \
   --output-docx manuscript.refs.docx \
   --config reference_config.json

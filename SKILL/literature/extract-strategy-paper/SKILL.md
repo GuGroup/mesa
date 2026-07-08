@@ -3,6 +3,8 @@ name: extract-strategy-paper
 description: Extract a computational chemistry scientific paper PDF into a structured Python dictionary covering problem, inherited axioms with sources, hypothesis, computational and experimental procedures, current-paper results, integrated computation-experiment findings, and conclusion. Use when Codex needs to analyze a local scientific PDF rather than summarize it loosely.
 ---
 
+For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
+
 # Decompose Chemistry Paper PDF
 
 ## Overview
@@ -22,7 +24,7 @@ Use this skill to decompose a local computational chemistry paper PDF into a str
 Run:
 
 ```bash
-python3 /path/to/decompose-chemistry-paper-pdf/scripts/decompose_pdf.py /path/to/paper.pdf
+python3 SKILL/literature/extract-strategy-paper/scripts/decompose_pdf.py /path/to/paper.pdf
 ```
 
 Useful options:

@@ -1,13 +1,15 @@
 ---
 name: write-methods-sections
-description: Ask an LLM to write public academic Methods sections from methods-evidence-collector's minimal methods_writer_digest.json. Use after methods-evidence-collector when Codex must draft exactly the four core computational Methods sections, save methods_section_text.json and .md, and guard against internal workflow ids, file paths, JSON names, skill names, descriptor/electronic-analysis sections, or unsupported claims.
+description: Ask an LLM to write public academic Methods sections from collect-methods-evidence's minimal methods_writer_digest.json. Use after collect-methods-evidence when Codex must draft exactly the four core computational Methods sections, save methods_section_text.json and .md, and guard against internal workflow ids, file paths, JSON names, skill names, descriptor/electronic-analysis sections, or unsupported claims.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Methods Section Writer
 
 ## Scope
 
-Use this skill after `methods-evidence-collector` has produced
+Use this skill after `collect-methods-evidence` has produced
 `methods_writer_digest.json`.
 
 It writes manuscript-facing Methods prose with ordered paragraph/equation
@@ -36,7 +38,7 @@ project/<project>/strategy_execution/<strategy_id>_methods/text/
 Run:
 
 ```bash
-python SKILL/methods-section-writer/scripts/write_methods_sections.py \
+python SKILL/manuscript/methods/write-methods-sections/scripts/write_methods_sections.py \
   --digest project/<project>/strategy_execution/<strategy_id>_methods/evidence/methods_writer_digest.json
 ```
 

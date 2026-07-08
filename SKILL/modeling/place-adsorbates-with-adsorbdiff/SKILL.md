@@ -3,6 +3,8 @@ name: place-adsorbates-with-adsorbdiff
 description: Plan, set up, run, and validate AdsorbDiff adsorbate placement workflows from AdeeshKolluru/AdsorbDiff for surface-adsorbate systems. Use when Codex receives a POSCAR slab plus an adsorbate request, must check AdsorbDiff adsorbate identities, tag/prepare slab atoms, decide placement and sampling settings that were formerly human choices, prepare OC20/OCP-style LMDB sampling inputs, generate diffusion sampling and MLFF relaxation commands, manage AdsorbDiff checkpoints, or integrate candidate adsorption geometries with MESA/MLIP relaxation and DFT handoff workflows.
 ---
 
+For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
+
 # AdsorbDiff Placement
 
 ## Overview

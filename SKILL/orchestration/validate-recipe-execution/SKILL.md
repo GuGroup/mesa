@@ -3,6 +3,8 @@ name: validate-recipe-execution
 description: Validate recipe-local execution folders, execution_manifest.json files, shared batch artifact links, and orphan outputs for MESA strategy runs. Use after recipe-backed calculations and before evidence readiness, manuscript/result writing, or strategy updates when Codex must enforce that outputs live under S*_explicit_recipe/P*/calculations/C*/execution/ or are explicitly linked shared artifacts.
 ---
 
+For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying this skill.
+
 # Recipe Execution Gate
 
 ## Scope
@@ -69,7 +71,7 @@ chooses to treat warnings as blocking.
 ## Interpretation
 
 `pass` means the execution pathway is auditable. It does not mean the chemistry
-is correct. Continue with `TASK_CALCULATION_RESULT_ANALYZER`, free-energy
+is correct. Continue with `analyze-calculation-results`, free-energy
 bookkeeping, missing-evidence recording, and manuscript/result skills only after
 the relevant recipe execution gate passes or the exceptions are explicitly
 accepted by the user.

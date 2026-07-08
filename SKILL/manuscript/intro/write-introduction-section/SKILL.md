@@ -1,13 +1,15 @@
 ---
 name: write-introduction-section
-description: Ask an LLM to write a citation-free, literature-led Introduction section from introduction-evidence-collector's introduction_writer_digest.json plus optional DOCX context. Use after introduction-evidence-collector when Codex must draft introduction_section_text.json and .md for computational catalysis manuscripts while avoiding internal workflow language, figure/result claims, citation placeholders, and strategy-style prose.
+description: Ask an LLM to write a citation-free, literature-led Introduction section from collect-introduction-evidence's introduction_writer_digest.json plus optional DOCX context. Use after collect-introduction-evidence when Codex must draft introduction_section_text.json and .md for computational catalysis manuscripts while avoiding internal workflow language, figure/result claims, citation placeholders, and strategy-style prose.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Introduction Section Writer
 
 ## Scope
 
-Use this skill after `introduction-evidence-collector` has produced
+Use this skill after `collect-introduction-evidence` has produced
 `introduction_writer_digest.json`.
 
 It optionally preprocesses a manuscript DOCX for light continuity context, then
@@ -34,7 +36,7 @@ project/<project>/strategy_execution/<strategy_id>_introduction/text/
 Run:
 
 ```bash
-python SKILL/introduction-section-writer/scripts/write_introduction_section.py \
+python SKILL/manuscript/intro/write-introduction-section/scripts/write_introduction_section.py \
   --digest project/<project>/strategy_execution/<strategy_id>_introduction/evidence/introduction_writer_digest.json \
   --manuscript-docx project/<project>/manuscript/S1/S1_manuscript_with_global_citations.docx
 ```

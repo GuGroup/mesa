@@ -1,7 +1,9 @@
 ---
 name: collect-introduction-evidence
-description: Collect compact, literature-led evidence for a computational catalysis manuscript Introduction from paper extraction responses, citation-source libraries, experimental extraction notes, and light selected-strategy framing. Use before an introduction-section-writer when Codex must assemble background, gap, rationale, and "here we show" inputs without drafting prose.
+description: Collect compact, literature-led evidence for a computational catalysis manuscript Introduction from paper extraction responses, citation-source libraries, experimental extraction notes, and light selected-strategy framing. Use before write-introduction-section when Codex must assemble background, gap, rationale, and "here we show" inputs without drafting prose.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Introduction Evidence Collector
 
@@ -35,7 +37,7 @@ project/<project>/strategy_execution/<strategy_id>_introduction/evidence/
 Run:
 
 ```bash
-python SKILL/introduction-evidence-collector/scripts/collect_introduction_evidence.py \
+python SKILL/manuscript/intro/collect-introduction-evidence/scripts/collect_introduction_evidence.py \
   --project project/<project> \
   --strategy-id S1
 ```

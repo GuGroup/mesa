@@ -3,6 +3,8 @@ name: plot-sabatier-volcano
 description: Create publication-ready Sabatier/volcano plots from user-provided descriptor and activity data using a Python matplotlib workflow. Use when Codex needs to plot catalytic activity versus binding-energy descriptors, fit or draw volcano envelopes, mark the optimum, compare catalyst families, label selected catalysts, or export editable SVG/PDF/PNG manuscript figures.
 ---
 
+For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this skill.
+
 # Sabatier Volcano Plotter
 
 ## Workflow

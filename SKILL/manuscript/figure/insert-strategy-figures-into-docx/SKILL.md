@@ -1,20 +1,22 @@
 ---
 name: insert-strategy-figures-into-docx
-description: Insert realized strategy figures into a manuscript DOCX skeleton. Use after strategy-figure-realizer and strategy-figure-captioner when Codex must place exported PNG figures and public figure_title/caption text into a Word skeleton, assign deterministic main/SI figure numbers, skip blocked figures, and write insertion reports without rewriting scientific captions.
+description: Insert realized strategy figures into a manuscript DOCX skeleton. Use after realize-strategy-figures and caption-strategy-figures when Codex must place exported PNG figures and public figure_title/caption text into a Word skeleton, assign deterministic main/SI figure numbers, skip blocked figures, and write insertion reports without rewriting scientific captions.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Strategy Figure DOCX Inserter
 
 ## Scope
 
-Use this skill after `strategy-figure-captioner`.
+Use this skill after `caption-strategy-figures`.
 It edits DOCX export artifacts only; it does not choose scientific figure types,
 draw figures, write captions, or change manuscript claims.
 
 Required inputs:
 
 - DOCX skeleton/template, preferably `RESOURCE/manuscript_skeleton_polished.docx`
-- `caption_info.json` from `strategy-figure-captioner`
+- `caption_info.json` from `caption-strategy-figures`
 - optional `figure_realization.json` for figure levels and fallback image paths
 - optional location map for explicit main/SI/skip placement and ordering
 
@@ -71,7 +73,7 @@ aspect ratio. The default limits are `--max-width-in 6.25` and
 ## Command
 
 ```bash
-python SKILL/strategy-figure-docx-inserter/scripts/insert_strategy_figures_docx.py \
+python SKILL/manuscript/figure/insert-strategy-figures-into-docx/scripts/insert_strategy_figures_docx.py \
   --template RESOURCE/manuscript_skeleton_polished.docx \
   --caption-info project/<project>/strategy_execution/<strategy>_figure/caption/caption_info.json \
   --realization project/<project>/strategy_execution/<strategy>_figure/realization/figure_realization.json \

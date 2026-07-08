@@ -1,14 +1,16 @@
 ---
 name: select-citations
-description: Select manuscript sentence-level citations from citation-source-extractor outputs. Use after section writing and citation-source-extractor when Codex must create cited_section_text.json, citation_decisions.json, and a review summary without editing DOCX files or searching outside the bounded citation source library.
+description: Select manuscript sentence-level citations from extract-citation-sources outputs. Use after section writing and extract-citation-sources when Codex must create cited_section_text.json, citation_decisions.json, and a review summary without editing DOCX files or searching outside the bounded citation source library.
 ---
+
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
 
 # Citation Selector
 
 ## Scope
 
 Use this skill after manuscript section text exists and
-`citation-source-extractor` has produced `citation_sources.json`.
+`extract-citation-sources` has produced `citation_sources.json`.
 
 The selector reads a manuscript section JSON, retrieves a small candidate set
 from the bounded citation source library for each sentence, and writes
@@ -35,7 +37,7 @@ project/<project>/strategy_execution/<strategy_id>_methods/citations/
 Run:
 
 ```bash
-python SKILL/citation-selector/scripts/select_citations.py \
+python SKILL/manuscript/general/select-citations/scripts/select_citations.py \
   --section-json project/<project>/strategy_execution/<strategy_id>_methods/text/methods_section_text.json \
   --citation-sources project/<project>/references/citation_sources.json
 ```

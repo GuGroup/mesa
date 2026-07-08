@@ -1,11 +1,13 @@
 ---
 name: calculate-uma-vibrational-frequencies
-description: Run a minimal MESA TASK_UMA_VIB_FREQ workflow for UMA-based finite-displacement vibrational frequencies from only a POSCAR path, with controller-owned UMA and vibration settings, qsub/local execution, vib.freq output, and structured vibration metadata.
+description: Run a minimal MESA calculate-uma-vibrational-frequencies workflow for UMA-based finite-displacement vibrational frequencies from only a POSCAR path, with controller-owned UMA and vibration settings, qsub/local execution, vib.freq output, and structured vibration metadata.
 ---
+
+For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
 
 # mesa-uma-vib-freq
 
-`mesa-uma-vib-freq` is a minimal MESA TASK-level skill for UMA-based
+`calculate-uma-vibrational-frequencies` is a minimal MESA skill for UMA-based
 finite-displacement vibrational frequency calculation. The upstream task
 provides only a POSCAR path, preferably a relaxed POSCAR. The controller decides
 all UMA and vibration settings, writes the resolved configuration, and runs or
@@ -83,8 +85,8 @@ Return the standard MESA skill output format with:
 ```json
 {
   "status": "success",
-  "task_id": "TASK_UMA_VIB_FREQ",
-  "skill": "uma_vib_freq_controller",
+  "task_id": "calculate-uma-vibrational-frequencies",
+  "skill": "calculate-uma-vibrational-frequencies",
   "data": {
     "frequency_output": {
       "format": "ASE vibration summary",

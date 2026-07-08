@@ -2,9 +2,9 @@
 name: create-nature-figure
 description: >-
   Submission-grade Nature/high-impact journal figure workflow for Python or R. Use whenever the user asks to create, revise, audit, or polish manuscript figures, multi-panel scientific plots, figures4papers-style matplotlib plots, or journal-ready SVG/PDF/TIFF outputs, especially for Nature-family or other high-impact journals. Before plotting, define the figure's conclusion, evidence logic, export needs, and review risks. If the user has not chosen Python or R, ask "Python or R?" and stop. Use only the selected backend for figure generation, previewing, exporting, and QA. Supports matplotlib/seaborn and ggplot2/patchwork/ComplexHeatmap. Not for dashboards or Illustrator/Figma-first infographics. Also trigger on general academic figure needs, such as making figures/plots for a paper, scientific plotting, academic plotting, data visualization for a manuscript, publication plots, or manuscript figure revision.
-version: 2.0.0
-author: Community contribution, refactored into static/dynamic layers
 ---
+
+For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this skill.
 
 # Nature Figure Making - Router
 

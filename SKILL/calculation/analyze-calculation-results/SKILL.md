@@ -3,6 +3,8 @@ name: analyze-calculation-results
 description: Analyze UMA/MLIP and VASP calculation result trajectories for optimization divergence, non-monotonic energy behavior, multi-minima relaxation, RMSD jumps, force spikes, and visual-review frame selection; aggregate many analyzer outputs into project-level evidence readiness gates. Use when Codex needs to inspect relax.traj, ASE traj/extxyz/xyz, VASP vasprun.xml, OUTCAR, XDATCAR, or OSZICAR outputs, produce JSON/CSV diagnostics plus sampled trajectory-path overlay artifacts, or classify many endpoints as accepted, accepted-with-caveat, failed, or excluded before downstream energetics/manuscript claims.
 ---
 
+For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
+
 # Calculation Result Analyzer
 
 ## Scope

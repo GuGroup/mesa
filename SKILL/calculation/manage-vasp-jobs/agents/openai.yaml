@@ -1,4 +1,4 @@
 interface:
-  display_name: "VASP Job"
+  display_name: "Manage VASP Jobs"
   short_description: "Prepare refinement-default VASP jobs on SGE"
-  default_prompt: "Use $vasp-job to prepare a refinement-default VASP dry-run from an input folder containing POSCAR. Use screening settings only if I explicitly ask for quick comparison or rough triage, preserve provided VASP parameters unless I ask for defaults, and do not submit until I explicitly approve the selected small candidate set."
+  default_prompt: "Use $manage-vasp-jobs to prepare a refinement-default VASP dry-run from an input folder containing POSCAR, preserving provided parameters and avoiding submission unless explicitly approved."

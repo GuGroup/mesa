@@ -3,6 +3,8 @@ name: select-next-strategy
 description: Select the next MESA per-strategy execution item from a generated strategy artifact. Use when starting workflow.md "Per-Strategy Execution Loop" step 1, when checking prioritization.recommended_order or updated_prioritization.recommended_order, when a completed/blocked/retired strategy status must be skipped, or whenever Codex needs to record which computational chemistry strategy is allowed to run next.
 ---
 
+For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
+
 # Select Next Strategy
 
 ## Purpose

@@ -3,11 +3,13 @@ name: build-slab-models
 description: Build DFT-ready clean slab models with slabuilder. Use when Codex needs to fetch or select Materials Project bulk structures, generate Miller-index slabs, choose terminations, tune target atom count, lateral size, slab thickness, supercell repeats, layer counts, fix bottom support layers by fraction or explicit layer count, and validate clean slab quality before adsorption or calculation workflows.
 ---
 
+For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
+
 # Build Slab Models
 
 ## Scope
 
-Use this skill to generate clean slabs only. Stop at validated slab files and metadata. Use `place-surface-adsorbates` after this skill when the next step is adsorption-site identification and adsorbate placement.
+Use this skill to generate clean slabs only. Stop at validated slab files and metadata. Use `place-adsorbates-with-adsorbdiff` after this skill when the next step is adsorption-site identification and adsorbate placement.
 
 The `slabuilder` engine this skill drives is vendored in this repo (`./slabuilder`) and installed with the project, so no external checkout is required.
 
@@ -152,7 +154,7 @@ mamba run -n modeling python scripts/build_slab_model.py \
 
 ## Handoff Contract
 
-Before handing a slab to `inspect-surface-sites`, `place-surface-adsorbates`, or
+Before handing a slab to surface-site inspection, `place-adsorbates-with-adsorbdiff`, or
 `vasp-job`, have:
 
 - selected MP id / bulk candidate;

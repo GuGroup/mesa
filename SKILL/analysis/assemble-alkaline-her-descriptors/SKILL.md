@@ -3,6 +3,8 @@ name: assemble-alkaline-her-descriptors
 description: Assemble bounded alkaline HER free-energy descriptors and motif rankings from relaxed/vibrated endpoint free energies. Use when Codex needs to compare MoS2 or catalyst motifs with clean, H2O*, OH*, H*, H*+OH*, and H2* states under a pH/RHE CHE-style bookkeeping convention, create descriptor_summary/activity_ranking artifacts, or check that downstream alkaline HER claims stay thermodynamic rather than kinetic.
 ---
 
+For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
+
 # Alkaline HER Free-Energy Bookkeeper
 
 ## Scope

@@ -3,6 +3,8 @@ name: search-papers-with-mcp
 description: "Search, screen, read, and download catalyst-domain academic papers using the paper_search MCP tools, organized into three outputs: Domain Foundation Papers for material-domain knowledge, Computational Proof-Strategy Papers for recent DFT-backed evidence related to the target task, and optional Legacy Anchor Papers for older implicitly related foundations. Use when Codex needs to find catalyst papers for a user-specified target task and material domain, especially for new catalyst ideas where exact equivalent papers may not exist, compare candidate catalysts or materials, extract computational chemistry evidence such as DFT adsorption energies/free energies/barriers/electronic structure, retrieve metadata from scholarly sources, read accessible papers, download PDFs, or produce source-grounded catalyst literature summaries with citations."
 ---
 
+For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
+
 # Search Papers With MCP
 
 ## Overview

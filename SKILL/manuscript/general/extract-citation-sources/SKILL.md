@@ -3,6 +3,8 @@ name: extract-citation-sources
 description: Build a controlled citation library from local project PDFs and their explicit reference lists. Use before manuscript citation insertion when Codex needs citation_sources.json and library.bib without additive literature search.
 ---
 
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+
 # Citation Source Extractor
 
 ## Scope
@@ -34,7 +36,7 @@ project/<project>/references/
 Run:
 
 ```bash
-python SKILL/citation-source-extractor/scripts/extract_citation_sources.py \
+python SKILL/manuscript/general/extract-citation-sources/scripts/extract_citation_sources.py \
   --project project/<project>
 ```
 
