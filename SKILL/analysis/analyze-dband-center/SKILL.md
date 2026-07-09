@@ -1,0 +1,96 @@
+---
+name: analyze-dband-center
+description: >-
+  Compute d-band center (ε_d), width (W_d), and filling (f_d) from VASP
+  vasprun.xml for transition-metal catalyst surfaces.  Supports single-system
+  analysis and multi-system comparison with d-DOS visualisation.  Use when
+  Codex needs to quantify d-band electronic structure, compare d-band centers
+  across catalyst systems, or interpret results using Hammer–Nørskov d-band
+  theory.  Renders d-DOS plots in the sumo visual style.
+---
+
+For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
+
+# D-Band Center Analyzer
+
+## Prerequisites — VASP Single-Point Calculation
+
+This skill requires a **converged single-point (static) VASP calculation** with projected DOS output.  Ensure the following INCAR settings before running VASP:
+
+```
+# Required
+LORBIT  = 11          # Write projected DOS (element + orbital resolved)
+ISMEAR  = -5          # Tetrahedron method with Blöchl corrections (for DOS)
+NEDOS   = 3001        # Number of DOS grid points (higher = smoother)
+IBRION  = -1          # No ionic relaxation (static)
+NSW     = 0           # Zero ionic steps (single point)
+NELM    = 300         # Allow enough electronic SCF cycles for DOS/static runs
+EDIFF   = 1E-5        # Tight electronic convergence for DOS descriptors
+
+# Recommended
+LWAVE   = .FALSE.     # Skip WAVECAR (saves disk)
+LCHARG  = .FALSE.     # Skip CHGCAR (saves disk)
+SIGMA   = 0.05        # Small smearing for accurate DOS (if using ISMEAR=0)
+EMIN    = -15         # Energy range for DOS (optional, VASP auto-detects)
+EMAX    = 15
+```
+
+> **Tip**: Run this as a follow-up calculation using the converged CONTCAR from your geometry optimization as the POSCAR.
+
+If `LORBIT` is not set, the `vasprun.xml` will not contain projected DOS data, and element/orbital decomposition will fail.
+
+## Workflow
+
+Run the analysis script from this skill directory using the shared `modeling`
+mamba environment:
+
+```bash
+mamba run -n modeling python scripts/analyze_dband.py ...
+```
+
+1. Ensure the user has a `vasprun.xml` from a single-point calculation with `LORBIT = 11`.
+2. Check for VASP convergence warnings when parsing. Do not interpret
+   unconverged electronic runs as reliable d-band evidence; request/recommend a
+   rerun with at least `NELM = 300` and tighter convergence.
+3. Run `mamba run -n modeling python scripts/analyze_dband.py single` for a single system or `compare` for multi-system comparison.
+4. Report the d-band center (ε_d), width (W_d), and filling (f_d) values.
+5. Interpret the results using the Hammer–Nørskov d-band theory framework described in `references/dband-theory.md`.
+
+## Quick Start
+
+```bash
+# Single system
+mamba run -n modeling python scripts/analyze_dband.py single --vasprun vasprun.xml --elements Pt --output dband.svg --json dband.json
+
+# Compare multiple systems
+mamba run -n modeling python scripts/analyze_dband.py compare \
+    --vaspruns sys_a/vasprun.xml sys_b/vasprun.xml \
+    --labels "Pt(111)" "PtNi(111)" \
+    --element Pt \
+    --output dband_compare.svg
+
+# Style demo (no vasprun needed)
+mamba run -n modeling python scripts/analyze_dband.py example --output dband_example.svg
+```
+
+## Runtime Environment
+
+Use the `modeling` mamba environment. It already provides `pymatgen`,
+`matplotlib`, and `numpy`.
+
+## Plotting Standards
+
+- Use the sumo visual style: `fill_between` with alpha + solid line overlay for each d-DOS component.
+- Filled region below Fermi level uses subtle background shading (alpha 0.10).
+- d-DOS curve uses alpha 0.22 fill with 1.5 lw solid overlay.
+- d-band center marked with a subtle vertical line + triangle marker.
+- Fermi level is always at 0 eV, marked with a dashed vertical line.
+- Multi-system comparison overlays d-DOS curves with distinct colors.
+- Minor ticks on both axes via `AutoMinorLocator(2)`.
+- y-axis tick labels are hidden by default (DOS units are arbitrary).
+- SVG/PDF text is editable (`svg.fonttype: none`, `pdf.fonttype: 42`).
+
+## Customization
+
+Read `references/input-schema.md` for CLI flag details and JSON output format.
+Read `references/dband-theory.md` when interpreting d-band analysis results for catalysis discussions.
