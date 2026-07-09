@@ -24,3 +24,6 @@ dependencies:
   - pip
   - pip:
       - -e .
+      - pymatgen
+      - matplotlib
+      - numpy
