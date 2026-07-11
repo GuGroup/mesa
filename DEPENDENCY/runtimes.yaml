@@ -1,5 +1,15 @@
 version: 1
 
+recipes:
+  core:
+    description: CPU/runtime-managed first-install stack; excludes CUDA, UMA, AdsorbDiff, qsub-dependent submission, and checkpoint-managed runtimes.
+    runtimes:
+      - mesa-general
+      - paper-search-mcp
+      - mesa-paper-search
+      - mesa-modeling
+      - mesa-manuscript
+
 runtimes:
   mesa-general:
     kind: uv-project
@@ -147,6 +157,8 @@ runtimes:
     smoke:
       - python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
     env_optional:
+      - HF_TOKEN
+      - HF_HOME
       - MESA_UMA_DEVICE
       - CUDA_VISIBLE_DEVICES
 
@@ -163,6 +175,8 @@ runtimes:
     smoke:
       - python -c "import ase, lmdb, torch, yaml; print('mesa-adsorbdiff ok')"
     env_optional:
+      - HF_TOKEN
+      - HF_HOME
       - CUDA_VISIBLE_DEVICES
 
   no-runtime:

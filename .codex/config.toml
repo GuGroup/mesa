@@ -13,22 +13,7 @@ startup_timeout_sec = 30
 tool_timeout_sec = 120
 default_tools_approval_mode = "auto"
 
-# Forward shell-exported values. This lets users source .env before launching
-# Codex, or rely on CI/host-level secret injection.
-env_vars = [
-  "PAPER_SEARCH_MCP_UNPAYWALL_EMAIL",
-  "PAPER_SEARCH_MCP_CORE_API_KEY",
-  "PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY",
-  "PAPER_SEARCH_MCP_DOAJ_API_KEY",
-  "PAPER_SEARCH_MCP_ZENODO_ACCESS_TOKEN",
-  "PAPER_SEARCH_MCP_GOOGLE_SCHOLAR_PROXY_URL",
-  "PAPER_SEARCH_MCP_OPENAIRE_API_KEY",
-  "PAPER_SEARCH_MCP_CITESEERX_API_KEY",
-  "PAPER_SEARCH_MCP_IEEE_API_KEY",
-  "PAPER_SEARCH_MCP_ACM_API_KEY",
-]
-
-# The MCP server can read repository-root .env through this explicit path.
-# Because cwd is EXTERNAL/paper-search-mcp, ../../.env resolves to repo/.env.
+# The MCP server can read repository dependency secrets through this explicit path.
+# Because cwd is EXTERNAL/paper-search-mcp, ../../DEPENDENCY/.env resolves to repo/DEPENDENCY/.env.
 [mcp_servers.paper_search.env]
-PAPER_SEARCH_MCP_ENV_FILE = "../../.env"
+PAPER_SEARCH_MCP_ENV_FILE = "../../DEPENDENCY/.env"
