@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY = REPO_ROOT / "DEPENDENCY" / "runtimes.yaml"
 DEFAULT_HANDOFF_CONTRACT = REPO_ROOT / "DEPENDENCY" / "non_deterministic_runtimes.yaml"
 DEFAULT_PROJECT_DIR = REPO_ROOT / "project" / "mos"
+DEFAULT_INITIALIZATION_DIR = DEFAULT_PROJECT_DIR / "initialization"
 DEPENDENCY_ENV = REPO_ROOT / "DEPENDENCY" / ".env"
 ENV_EXAMPLE = REPO_ROOT / "DEPENDENCY" / ".env.example"
 LEGACY_ROOT_ENV = REPO_ROOT / ".env"
@@ -185,6 +186,12 @@ def repo_path(path_value: Any) -> Path | None:
     if not p.is_absolute():
         p = REPO_ROOT / p
     return p
+
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 def command_tool(command: str) -> str | None:
     try:
         parts = shlex.split(command)

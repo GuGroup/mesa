@@ -68,13 +68,13 @@ To generate and review a saved non-deterministic runtime plan:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json
 ```
 
 Execute the saved plan only after review and explicit approval:
 
 ```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json --yes
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json --yes
 ```
 
 Legacy handoff output remains available:
@@ -99,6 +99,13 @@ Manual Python fallback:
 ```bash
 python3 DEPENDENCY/tools/mesa_env.py bootstrap
 ```
+
+Initialization-owned artifacts are written under
+`project/<project_name>/initialization/` by default. Keep the project root for
+workflow outputs such as literature, strategy, modeling, calculation, analysis,
+figures, and manuscript artifacts. Do not clean or migrate older root-level
+initialization files automatically; treat them as historical outputs unless the
+user explicitly asks for cleanup.
 
 ## Workflow
 
@@ -150,10 +157,10 @@ bash DEPENDENCY/bootstrap.sh --install-mamba --install-core --yes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic
 ```
 
-   This writes `project/mos/nondeterministic_profile.json` and
-   `project/mos/nondeterministic_profile.md` by default. It must not print
-   secret values, download checkpoints, install CUDA-specific wheels, or submit
-   jobs. The profile must separate facts into `cuda`, `scheduler`,
+   This writes `project/mos/initialization/nondeterministic_profile.json` and
+   `project/mos/initialization/nondeterministic_profile.md` by default. It must
+   not print secret values, download checkpoints, install CUDA-specific wheels,
+   or submit jobs. The profile must separate facts into `cuda`, `scheduler`,
    `checkpoints`, `python_env`, `platform`, `tools`, and `runtimes` sections.
 
 9. Generate a runtime install plan only after the analyzer profile exists:
@@ -162,10 +169,11 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministi
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma
 ```
 
-   This writes `project/mos/runtime_plans/<runtime>_plan.json` and
-   `project/mos/runtime_plans/<runtime>_plan.md`. The plan must state runtime,
-   CUDA/Torch choice, scheduler policy, checkpoint policy, exact commands,
-   blockers, warnings, and the next dry-run/execute commands.
+   This writes
+   `project/mos/initialization/runtime_plans/<runtime>_plan.json` and
+   `project/mos/initialization/runtime_plans/<runtime>_plan.md`. The plan must
+   state runtime, CUDA/Torch choice, scheduler policy, checkpoint policy, exact
+   commands, blockers, warnings, and the next dry-run/execute commands.
 
 10. Notify the user through status artifacts whenever a plan is generated,
     dry-run, blocked, started, failed, or completed:
@@ -174,14 +182,15 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan m
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --message "Plan generated; review before execution."
 ```
 
-    Status artifacts are `project/mos/initialize_status.md` and
-    `project/mos/initialize_events.jsonl`.
+    Status artifacts are
+    `project/mos/initialization/initialize_status.md` and
+    `project/mos/initialization/initialize_events.jsonl`.
 
 11. Execute a saved non-deterministic runtime plan only after review and
     explicit approval:
 
 ```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json --yes
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json --yes
 ```
 
     Without `--yes`, the executor must dry-run or report blockers. If a saved
@@ -265,19 +274,21 @@ Treat these as the standard init checks:
   each runtime first, skip it if healthy, otherwise install and smoke-test
   again.
 - `analyze-nondeterministic` writes
-  `project/mos/nondeterministic_profile.json` and
-  `project/mos/nondeterministic_profile.md`. These files summarize OS/tool/env
-  presence and separate CUDA/GPU, scheduler/HPC, checkpoint, Python/env, and
-  runtime decision facts. They must not contain secret values.
+  `project/mos/initialization/nondeterministic_profile.json` and
+  `project/mos/initialization/nondeterministic_profile.md`. These files
+  summarize OS/tool/env presence and separate CUDA/GPU, scheduler/HPC,
+  checkpoint, Python/env, and runtime decision facts. They must not contain
+  secret values.
 - `bootstrap --analyze-nondeterministic` performs the same analyzer write as
   part of bootstrap. It is read-only with respect to dependencies.
-- `notify`/`status` writes or refreshes `project/mos/initialize_status.md` and
-  appends to `project/mos/initialize_events.jsonl`. Use these artifacts as the
-  user-facing progress ledger for future Codex sessions.
+- `notify`/`status` writes or refreshes
+  `project/mos/initialization/initialize_status.md` and appends to
+  `project/mos/initialization/initialize_events.jsonl`. Use these artifacts as
+  the user-facing progress ledger for future Codex sessions.
 - `generate-runtime-plan <runtime>` writes
-  `project/mos/runtime_plans/<runtime>_plan.json` and
-  `project/mos/runtime_plans/<runtime>_plan.md` from the non-deterministic
-  profile. It must not execute commands.
+  `project/mos/initialization/runtime_plans/<runtime>_plan.json` and
+  `project/mos/initialization/runtime_plans/<runtime>_plan.md` from the
+  non-deterministic profile. It must not execute commands.
 - `execute-runtime-plan <plan.json>` dry-runs by default. It executes only with
   `--yes`, refuses blocked plans, logs status events, and runs only commands
   stored in the saved plan.
@@ -300,7 +311,7 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py smoke mesa-general --ye
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --message "Initialization status refreshed."
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff
 ```
 
@@ -319,7 +330,7 @@ Execute installs only when the user explicitly wants setup changes:
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba --install-core --yes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install mesa-general --yes
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json --yes
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json --yes
 ```
 
 ## Reporting

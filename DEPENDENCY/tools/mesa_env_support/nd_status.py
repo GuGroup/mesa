@@ -35,7 +35,7 @@ def append_initialize_event(
     contracts: dict[str, Any] | None = None,
 ) -> Path:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_PROJECT_DIR
+    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     event_path = out_dir / names["events_jsonl"]
     record: dict[str, Any] = {
@@ -52,7 +52,7 @@ def append_initialize_event(
 
 def read_recent_events(output_dir: Path, limit: int = 20, contracts: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_PROJECT_DIR
+    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
     event_path = out_dir / names["events_jsonl"]
     if not event_path.is_file():
         return []
@@ -69,7 +69,7 @@ def read_recent_events(output_dir: Path, limit: int = 20, contracts: dict[str, A
 
 def status_artifact_state(output_dir: Path, contracts: dict[str, Any] | None = None) -> dict[str, Any]:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_PROJECT_DIR
+    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
     plan_dir = out_dir / names["runtime_plan_dir"]
     plan_jsons = sorted(plan_dir.glob("*_plan.json")) if plan_dir.is_dir() else []
     return {
@@ -130,9 +130,9 @@ def render_initialize_status(
             "- Generate a non-deterministic runtime plan:",
             "  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma`",
             "- Dry-run a saved runtime plan:",
-            "  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')}`",
             "- Execute a saved runtime plan only after reviewing it:",
-            "  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json --yes`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')} --yes`",
             "",
         ]
     )
@@ -144,7 +144,7 @@ def write_initialize_status(
     headline: str | None = None,
 ) -> Path:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_PROJECT_DIR
+    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     events = read_recent_events(out_dir, contracts=contracts)
     status_path = out_dir / names["status_markdown"]

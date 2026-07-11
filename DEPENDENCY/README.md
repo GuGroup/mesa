@@ -28,8 +28,8 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install mesa-general --
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --message "Initialization status refreshed."
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/runtime_plans/mesa-uma_plan.json --yes
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/mos/initialization/runtime_plans/mesa-uma_plan.json --yes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff
 ```
 
@@ -77,8 +77,8 @@ Non-deterministic analyzer:
   requirements, analyzer output names, and Codex decision points for UMA and
   AdsorbDiff.
 - `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic`
-  writes `project/mos/nondeterministic_profile.json` and
-  `project/mos/nondeterministic_profile.md`.
+  writes `project/mos/initialization/nondeterministic_profile.json` and
+  `project/mos/initialization/nondeterministic_profile.md`.
 - `bootstrap --analyze-nondeterministic` writes the same files during
   bootstrap.
 - The analyzer is read-only with respect to dependencies: it records OS, tool,
@@ -88,14 +88,16 @@ Non-deterministic analyzer:
 - Secret values are never written; token-like variables are recorded only as
   `SET` or `MISSING`.
 - Legacy `handoff` and `bootstrap --write-handoff` still write
-  `project/mos/machine_profile.json` and `project/mos/dependency_handoff.md`.
+  `project/mos/initialization/machine_profile.json` and
+  `project/mos/initialization/dependency_handoff.md`.
 
 Notification, planning, and execution policy:
 
-- `notify`/`status` writes `project/mos/initialize_status.md` and appends to
-  `project/mos/initialize_events.jsonl`.
+- `notify`/`status` writes
+  `project/mos/initialization/initialize_status.md` and appends to
+  `project/mos/initialization/initialize_events.jsonl`.
 - `generate-runtime-plan <runtime>` writes a saved plan under
-  `project/mos/runtime_plans/`. It does not execute commands.
+  `project/mos/initialization/runtime_plans/`. It does not execute commands.
 - `execute-runtime-plan <plan.json>` dry-runs by default. It executes only with
   `--yes`.
 - Blocked plans are refused even with `--yes`.

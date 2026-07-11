@@ -222,7 +222,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_bootstrap.add_argument(
         "--nd-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
+        default=DEFAULT_INITIALIZATION_DIR,
         help="Output directory for --analyze-nondeterministic.",
     )
     p_bootstrap.add_argument(
@@ -234,7 +234,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_bootstrap.add_argument(
         "--handoff-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
+        default=DEFAULT_INITIALIZATION_DIR,
         help="Output directory for --write-handoff.",
     )
     p_bootstrap.add_argument(
@@ -280,7 +280,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_handoff.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
+        default=DEFAULT_INITIALIZATION_DIR,
         help="Directory for machine_profile.json and dependency_handoff.md.",
     )
     p_handoff.add_argument(
@@ -299,7 +299,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_nd.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
+        default=DEFAULT_INITIALIZATION_DIR,
         help="Directory for nondeterministic_profile.json and nondeterministic_profile.md.",
     )
     p_nd.add_argument(
@@ -318,8 +318,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_notify.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
-        help="Project output directory for initialize_status.md and initialize_events.jsonl.",
+        default=DEFAULT_INITIALIZATION_DIR,
+        help="Initialization artifact directory for initialize_status.md and initialize_events.jsonl.",
     )
     p_notify.add_argument(
         "--contracts",
@@ -343,7 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument(
         "--profile",
         type=Path,
-        default=DEFAULT_PROJECT_DIR / "nondeterministic_profile.json",
+        default=DEFAULT_INITIALIZATION_DIR / "nondeterministic_profile.json",
         help="Path to nondeterministic_profile.json.",
     )
     p_plan.add_argument(
@@ -355,14 +355,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR / "runtime_plans",
+        default=DEFAULT_INITIALIZATION_DIR / "runtime_plans",
         help="Directory for <runtime>_plan.json and <runtime>_plan.md.",
     )
     p_plan.add_argument(
         "--project-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
-        help="Project directory for status/event artifacts.",
+        default=DEFAULT_INITIALIZATION_DIR,
+        help="Initialization artifact directory for status/event artifacts.",
     )
     p_plan.add_argument(
         "--no-auto-analyze",
@@ -386,8 +386,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_execute.add_argument(
         "--project-dir",
         type=Path,
-        default=DEFAULT_PROJECT_DIR,
-        help="Project directory for status/event artifacts.",
+        default=DEFAULT_INITIALIZATION_DIR,
+        help="Initialization artifact directory for status/event artifacts.",
     )
     p_execute.set_defaults(func=cmd_execute_runtime_plan)
 

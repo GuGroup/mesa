@@ -21,7 +21,7 @@ def ensure_nondeterministic_profile(
         status = write_nondeterministic_analysis(output_dir, contracts_path)
         if status != 0:
             raise SystemExit("Could not generate non-deterministic profile.")
-        generated_default = (repo_path(output_dir) or DEFAULT_PROJECT_DIR) / "nondeterministic_profile.json"
+        generated_default = (repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR) / "nondeterministic_profile.json"
         if not resolved_profile.is_file() and generated_default.is_file():
             resolved_profile = generated_default
     if not resolved_profile.is_file():
@@ -316,7 +316,7 @@ def write_runtime_plan(
     contracts_path = repo_path(contracts_path) or DEFAULT_HANDOFF_CONTRACT
     contracts = load_handoff_contract(contracts_path)
     names = contract_output_names(contracts)
-    project_out = repo_path(project_dir) or DEFAULT_PROJECT_DIR
+    project_out = repo_path(project_dir) or DEFAULT_INITIALIZATION_DIR
     profile_resolved = repo_path(profile_path) or profile_path
     profile = ensure_nondeterministic_profile(profile_resolved, project_out, contracts_path, auto_analyze)
     plan = build_runtime_plan(runtime_name, profile, contracts, profile_resolved)
