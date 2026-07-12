@@ -48,6 +48,9 @@ These keep panels/curves comparable — apply them consistently:
 - **Light Gaussian broadening**: `--smear 0.05` (eV) by default for a clean curve
   (see the tool-convention note in the script). It is **plot-only** — ε_d, width
   and filling are always computed from the raw DOS. Set `--smear 0` for raw.
+- **2-decimal display**: ε_d (and width/filling) are shown to 2 decimal places on
+  plots and in the console table, since the extra digits are below the meaningful
+  precision at this level of theory. The JSON keeps full precision.
 
 ## Not recommended
 

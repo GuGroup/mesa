@@ -110,6 +110,8 @@ Comparability conventions (apply consistently across a figure set):
 - Lock the DOS scale with `--ymax` (single/compare) or `--xmax` (columns).
 - A small plot-only Gaussian broadening (`--smear 0.05` eV) is applied for
   legibility; moments are always computed from the raw DOS.
+- Displayed d-band values (ε_d, width, filling) are shown to **2 decimal places**
+  in plots and the console table (the raw JSON keeps full precision).
 
 ## Customization
 

@@ -511,8 +511,8 @@ def main() -> None:
                 print(f"{el:<10} ERROR: {data['error']}")
                 continue
             print(
-                f"{el:<10} {data['d_band_center']:<12.4f} "
-                f"{data['d_band_width']:<12.4f} {data['d_band_filling']:<10.4f}"
+                f"{el:<10} {data['d_band_center']:<12.2f} "
+                f"{data['d_band_width']:<12.2f} {data['d_band_filling']:<10.2f}"
             )
             # Plot
             energies = np.asarray(result["energies"])
@@ -547,8 +547,8 @@ def main() -> None:
                 print(f"{label:<20} ERROR: {el_data['error']}")
                 continue
             print(
-                f"{label:<20} {el_data['d_band_center']:<12.4f} "
-                f"{el_data['d_band_width']:<12.4f} {el_data['d_band_filling']:<10.4f}"
+                f"{label:<20} {el_data['d_band_center']:<12.2f} "
+                f"{el_data['d_band_width']:<12.2f} {el_data['d_band_filling']:<10.2f}"
             )
             systems.append({
                 "label": label,
@@ -586,8 +586,8 @@ def main() -> None:
             if "error" in d:
                 print(f"{label:<22} {el:<5} ERROR: {d['error']}")
                 continue
-            print(f"{label:<22} {el:<5} {d['d_band_center']:<12.4f} "
-                  f"{d['d_band_width']:<12.4f} {d['d_band_filling']:<10.4f}")
+            print(f"{label:<22} {el:<5} {d['d_band_center']:<12.2f} "
+                  f"{d['d_band_width']:<12.2f} {d['d_band_filling']:<10.2f}")
             systems.append({
                 "label": label,
                 "energies": np.asarray(result["energies"]),
@@ -617,8 +617,8 @@ def main() -> None:
         print("-" * 54)
         for s in demo["systems"]:
             print(
-                f"{s['label']:<20} {s['d_band_center']:<12.4f} "
-                f"{s['d_band_width']:<12.4f} {s['d_band_filling']:<10.4f}"
+                f"{s['label']:<20} {s['d_band_center']:<12.2f} "
+                f"{s['d_band_width']:<12.2f} {s['d_band_filling']:<10.2f}"
             )
 
     else:
