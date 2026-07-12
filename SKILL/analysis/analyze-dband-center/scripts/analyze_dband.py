@@ -42,6 +42,7 @@ def _analyze_vasprun(
     erange: tuple[float, float] | None = None,
 ) -> dict[str, Any]:
     """Return d-band metrics and d-DOS arrays for one vasprun.xml."""
+    from pymatgen.core.periodic_table import Element
     from pymatgen.electronic_structure.core import OrbitalType, Spin
     from pymatgen.io.vasp.outputs import Vasprun
 
@@ -75,16 +76,22 @@ def _analyze_vasprun(
             results["elements"][el] = {"error": str(exc)}
             continue
 
-        # d-DOS for plotting
+        # d-DOS for plotting, normalized PER ATOM (states/eV/atom) so systems
+        # with different atom counts (e.g. a single dopant vs a full slab) are
+        # directly comparable on a shared y-scale. Per-atom scaling is a constant
+        # factor and does NOT change center/width/filling.
+        n_el = max(1, int(round(float(cdos.structure.composition[Element(el)]))))
         spd = cdos.get_element_spd_dos(el)
         d_dos_obj = spd[OrbitalType.d]
-        d_dens_up = d_dos_obj.densities[Spin.up]
-        d_dens_down = d_dos_obj.densities.get(Spin.down)
+        d_dens_up = d_dos_obj.densities[Spin.up] / n_el
+        d_dens_down_raw = d_dos_obj.densities.get(Spin.down)
+        d_dens_down = None if d_dens_down_raw is None else d_dens_down_raw / n_el
 
         el_result: dict[str, Any] = {
             "d_band_center": round(float(center), 4),
             "d_band_width": round(float(width), 4),
             "d_band_filling": round(float(filling), 4),
+            "n_atoms": n_el,
             "d_dos_up": d_dens_up.tolist(),
         }
         if d_dens_down is not None:
@@ -169,6 +176,34 @@ def _generate_synthetic_dband() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def gaussian_smear(
+    energies: np.ndarray, dos: np.ndarray, sigma: float | None
+) -> np.ndarray:
+    """Convolve a DOS on a uniform energy grid with a Gaussian of width ``sigma``.
+
+    Plot-only cosmetic broadening (states are conserved). A symmetric kernel
+    preserves the first moment, so it does NOT shift the d-band centre; the
+    centre/width/filling reported elsewhere are computed from the RAW DOS.
+    Convention: tool defaults are typically off, with 0.03-0.1 eV the usual
+    range (pymatgen/VASPKIT ~0.05 eV, sumo example 0.1 eV).
+    """
+    if sigma is None or sigma <= 0.0:
+        return dos
+    de = float(energies[1] - energies[0])
+    if de <= 0.0:
+        return dos
+    half = int(np.ceil(4.0 * sigma / de))
+    x = np.arange(-half, half + 1) * de
+    kernel = np.exp(-0.5 * (x / sigma) ** 2)
+    kernel /= kernel.sum()
+    return np.convolve(dos, kernel, mode="same")
+
+
+# Default plot-only Gaussian broadening (eV). Tool-convention consensus value;
+# moments stay raw. Set to 0.0 / None to disable.
+DEFAULT_SMEAR_EV = 0.05
+
+
 def _apply_styles() -> None:
     styles: list = []
     if SUMO_BASE_STYLE.exists():
@@ -186,17 +221,25 @@ def plot_single_dband(
     center: float,
     label: str,
     output: str,
-    emin: float = -10.0,
-    emax: float = 5.0,
+    emin: float = -8.0,
+    emax: float = 2.0,
+    ymax: float | None = None,
+    smear: float | None = DEFAULT_SMEAR_EV,
 ) -> Path:
-    """Plot d-DOS with d-band center marker for a single system."""
+    """Plot d-DOS with d-band center marker for a single system.
+
+    Pass ``ymax`` to lock the DOS (y) scale so multiple plots share the same
+    range and are directly comparable; otherwise it auto-scales to this curve.
+    ``smear`` is a plot-only Gaussian broadening (eV); it does not affect ε_d.
+    """
     _apply_styles()
 
+    d_dos = gaussian_smear(energies, d_dos, smear)
     mask = (energies >= emin - 0.05) & (energies <= emax + 0.05)
     e = energies[mask]
     d = d_dos[mask]
     dmax = float(np.max(d))
-    ymax = dmax * 1.12
+    ymax = dmax * 1.12 if ymax is None else float(ymax)
 
     fig, ax = plt.subplots(figsize=(5.0, 3.4))
 
@@ -223,7 +266,7 @@ def plot_single_dband(
     ax.set_xlim(emin, emax)
     ax.set_ylim(0, ymax)
     ax.set_xlabel("Energy (eV)")
-    ax.set_ylabel("d-DOS (states/eV)")
+    ax.set_ylabel("d-DOS (states eV$^{-1}$ atom$^{-1}$)")
     ax.tick_params(axis="y", labelleft=False)
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -250,10 +293,17 @@ def plot_single_dband(
 def plot_comparison(
     systems: list[dict[str, Any]],
     output: str,
-    emin: float = -10.0,
-    emax: float = 5.0,
+    emin: float = -8.0,
+    emax: float = 2.0,
+    ymax: float | None = None,
+    smear: float | None = DEFAULT_SMEAR_EV,
 ) -> Path:
-    """Overlay d-DOS from multiple systems for comparison."""
+    """Overlay d-DOS from multiple systems for comparison.
+
+    ``ymax`` locks the DOS (y) scale to a shared value across plots; when None
+    it auto-scales to the tallest curve in this figure. ``smear`` is a plot-only
+    Gaussian broadening (eV) applied identically to every curve.
+    """
     _apply_styles()
 
     fig, ax = plt.subplots(figsize=(5.0, 3.4))
@@ -263,7 +313,7 @@ def plot_comparison(
 
     for i, sys in enumerate(systems):
         energies = np.asarray(sys["energies"])
-        d_dos = np.asarray(sys["d_dos"])
+        d_dos = gaussian_smear(energies, np.asarray(sys["d_dos"]), smear)
         center = sys["d_band_center"]
         label = sys.get("label", f"System {i + 1}")
         color = DEFAULT_COLORS[i % len(DEFAULT_COLORS)]
@@ -279,7 +329,7 @@ def plot_comparison(
         center_info.append((center, label, color))
 
     # Set y-axis before drawing center markers
-    ymax = global_dmax * 1.12
+    ymax = global_dmax * 1.12 if ymax is None else float(ymax)
     ax.set_ylim(0, ymax)
     ax.set_xlim(emin, emax)
 
@@ -296,7 +346,7 @@ def plot_comparison(
             fontsize=9, color="#999999", ha="left", va="top")
 
     ax.set_xlabel("Energy (eV)")
-    ax.set_ylabel("d-DOS (states/eV)")
+    ax.set_ylabel("d-DOS (states eV$^{-1}$ atom$^{-1}$)")
     ax.tick_params(axis="y", labelleft=False)
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -336,8 +386,10 @@ def main() -> None:
     p_single = sub.add_parser("single", help="Analyse one vasprun.xml.")
     p_single.add_argument("--vasprun", required=True, help="Path to vasprun.xml.")
     p_single.add_argument("--elements", nargs="+", help="Elements to analyse (default: all TMs).")
-    p_single.add_argument("--emin", type=float, default=-10.0)
-    p_single.add_argument("--emax", type=float, default=5.0)
+    p_single.add_argument("--emin", type=float, default=-8.0)
+    p_single.add_argument("--emax", type=float, default=2.0)
+    p_single.add_argument("--ymax", type=float, default=None, help="Fixed DOS y-limit (states/eV/atom) for a shared scale across plots.")
+    p_single.add_argument("--smear", type=float, default=DEFAULT_SMEAR_EV, help="Plot-only Gaussian broadening sigma (eV); 0 to disable. Does not affect ε_d.")
     p_single.add_argument("--output", default="dband.svg", help="Plot output path.")
     p_single.add_argument("--json", help="Save metrics to JSON file.")
 
@@ -346,16 +398,19 @@ def main() -> None:
     p_cmp.add_argument("--vaspruns", nargs="+", required=True, help="vasprun.xml paths.")
     p_cmp.add_argument("--labels", nargs="+", help="Labels for each system.")
     p_cmp.add_argument("--element", required=True, help="Element to compare (e.g. Pt).")
-    p_cmp.add_argument("--emin", type=float, default=-10.0)
-    p_cmp.add_argument("--emax", type=float, default=5.0)
+    p_cmp.add_argument("--emin", type=float, default=-8.0)
+    p_cmp.add_argument("--emax", type=float, default=2.0)
+    p_cmp.add_argument("--ymax", type=float, default=None, help="Fixed DOS y-limit (states/eV/atom) for a shared scale across plots.")
+    p_cmp.add_argument("--smear", type=float, default=DEFAULT_SMEAR_EV, help="Plot-only Gaussian broadening sigma (eV); 0 to disable. Does not affect ε_d.")
     p_cmp.add_argument("--output", default="dband_compare.svg")
     p_cmp.add_argument("--json", help="Save comparison metrics to JSON file.")
 
     # --- example ---
     p_ex = sub.add_parser("example", help="Render demo with synthetic data.")
     p_ex.add_argument("--output", default="dband_example.svg")
-    p_ex.add_argument("--emin", type=float, default=-10.0)
-    p_ex.add_argument("--emax", type=float, default=5.0)
+    p_ex.add_argument("--emin", type=float, default=-8.0)
+    p_ex.add_argument("--emax", type=float, default=2.0)
+    p_ex.add_argument("--smear", type=float, default=DEFAULT_SMEAR_EV)
 
     args = parser.parse_args()
 
@@ -377,7 +432,7 @@ def main() -> None:
             d_dos = np.asarray(data["d_dos_up"])
             out = plot_single_dband(
                 energies, d_dos, data["d_band_center"],
-                el, args.output, args.emin, args.emax,
+                el, args.output, args.emin, args.emax, args.ymax, args.smear,
             )
             print(f"Plot saved: {out}")
 
@@ -418,7 +473,7 @@ def main() -> None:
             })
 
         if systems:
-            out = plot_comparison(systems, args.output, args.emin, args.emax)
+            out = plot_comparison(systems, args.output, args.emin, args.emax, args.ymax, args.smear)
             print(f"Comparison plot saved: {out}")
 
         if args.json:
@@ -431,7 +486,7 @@ def main() -> None:
 
     elif args.command == "example":
         demo = _generate_synthetic_dband()
-        out = plot_comparison(demo["systems"], args.output, args.emin, args.emax)
+        out = plot_comparison(demo["systems"], args.output, args.emin, args.emax, None, args.smear)
         print(f"Example plot saved: {out}")
         print()
         print(f"{'Label':<20} {'ε_d (eV)':<12} {'Width (eV)':<12} {'Filling':<10}")
