@@ -53,6 +53,8 @@ def parse_args() -> argparse.Namespace:
         choices=("adsorption", "substitutional-dopant", "modified-vs-pristine", "differential-adsorption"),
     )
     diff.add_argument("--title", default="Charge-flow analysis")
+    diff.add_argument("--slices", action="store_true",
+                      help="Also render 2D orthogonal delta-density contour slices (off by default).")
     diff.add_argument("--write-delta-chgcar", action="store_true")
     diff.add_argument("--lattice-atol", type=float, default=1e-5)
 

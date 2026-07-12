@@ -132,7 +132,7 @@ The analyzer writes:
 | `z_profile.csv` | Normalized slab-normal profile: `z_A`, plane-averaged `Delta n`, lateral integral `Delta lambda`, and cumulative charge displacement from bottom/top. |
 | `dipole_summary.json` | Delta-density-derived electron moment and sign-converted electrostatic dipole descriptor; not a work-function result without `LOCPOT`. |
 | `plane_average_z.png` | Side-A slab/isodensity view paired with a vertical plane-averaged delta-density profile along the slab normal. |
-| `delta_density_slices.png` | Orthogonal delta-density contour slices through the strongest lobe. |
+| `delta_density_slices.png` | Orthogonal delta-density contour slices through the strongest lobe. **Off by default; pass `--slices` to render** (the isosurface + z-profile are the primary views). |
 | `delta_density_isosurface.png` | Marching-cubes positive/negative isosurface mesh in fixed `top`, `side_a`, and `side_b` slab views with atom and unit-cell context. |
 | `charge_flow_report.md` | Human-readable interpretation scaffold with allowed and disallowed claims. |
 | `delta.CHGCAR` | Optional VASP-compatible delta-density file for VESTA/ParaView-style inspection. |

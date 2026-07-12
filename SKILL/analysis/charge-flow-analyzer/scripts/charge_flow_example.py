@@ -45,6 +45,7 @@ def run_example(outdir_text: str) -> None:
         outdir=str(outdir / "analysis"),
         comparison="adsorption",
         title="Synthetic charge-flow example",
+        slices=True,  # exercise the (opt-in) slice renderer in the smoke test
         write_delta_chgcar=True,
         lattice_atol=1e-5,
     )

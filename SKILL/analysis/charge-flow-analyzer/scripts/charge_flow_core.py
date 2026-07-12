@@ -44,7 +44,7 @@ class OutputPaths:
     z_profile_csv: Path
     dipole_json: Path
     plane_png: Path
-    slices_png: Path
+    slices_png: Path | None
     isosurface_png: Path
     delta_chgcar: Path | None
 
@@ -73,7 +73,7 @@ def run_difference(args: argparse.Namespace) -> None:
         z_profile_csv=outdir / Z_PROFILE_CSV,
         dipole_json=outdir / DIPOLE_JSON,
         plane_png=outdir / PLANE_PNG,
-        slices_png=outdir / SLICES_PNG,
+        slices_png=outdir / SLICES_PNG if args.slices else None,
         isosurface_png=outdir / ISOSURFACE_PNG,
         delta_chgcar=outdir / DELTA_CHGCAR if args.write_delta_chgcar else None,
     )
@@ -82,7 +82,8 @@ def run_difference(args: argparse.Namespace) -> None:
     write_z_profile_csv(paths.z_profile_csv, z_profile)
     paths.dipole_json.write_text(json.dumps(build_dipole_summary(z_profile), indent=2), encoding="utf-8")
     write_side_profile_plot(paths.plane_png, delta_chgcar, str(args.title))
-    write_slice_plots(paths.slices_png, delta_chgcar, str(args.title))
+    if paths.slices_png is not None:
+        write_slice_plots(paths.slices_png, delta_chgcar, str(args.title))
     write_lobe_isosurface(paths.isosurface_png, delta_chgcar, str(args.title))
     if paths.delta_chgcar is not None:
         delta_chgcar.write_file(paths.delta_chgcar)
@@ -194,7 +195,7 @@ def build_summary(
             "z_profile_csv": str(paths.z_profile_csv),
             "dipole_summary_json": str(paths.dipole_json),
             "plane_average_png": str(paths.plane_png),
-            "delta_density_slices_png": str(paths.slices_png),
+            "delta_density_slices_png": str(paths.slices_png) if paths.slices_png else None,
             "delta_density_isosurface_png": str(paths.isosurface_png),
             "delta_chgcar": str(paths.delta_chgcar) if paths.delta_chgcar else None,
         },
