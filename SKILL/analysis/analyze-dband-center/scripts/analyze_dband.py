@@ -371,6 +371,77 @@ def plot_comparison(
     return out_path
 
 
+def plot_columns(
+    systems: list[dict[str, Any]],
+    output: str,
+    emin: float = -8.0,
+    emax: float = 2.0,
+    smear: float | None = DEFAULT_SMEAR_EV,
+    xmax: float | None = None,
+) -> Path:
+    """Vertical multi-panel d-band comparison — the conventional publication layout.
+
+    Energy is on the shared y-axis and DOS on the x-axis, with one colored column
+    per system. Each panel shows the projected metal d-DOS (per atom), a dashed
+    d-band-centre line with its ε_d value, and the Fermi level. This is the format
+    to prefer when comparing d-band centres across several systems/columns.
+
+    Panels share the energy window and the DOS x-scale (``xmax``) so column
+    widths are directly comparable. ``smear`` is plot-only and does not affect ε_d.
+    """
+    _apply_styles()
+    n = len(systems)
+    fig, axes = plt.subplots(
+        1, n, figsize=(1.55 * n + 0.5, 3.7), sharey=True,
+        gridspec_kw={"wspace": 0.06},
+    )
+    if n == 1:
+        axes = [axes]
+
+    prepared = []
+    dmax = 0.0
+    for s in systems:
+        energies = np.asarray(s["energies"])
+        d = gaussian_smear(energies, np.asarray(s["d_dos"]), smear)
+        mask = (energies >= emin - 0.05) & (energies <= emax + 0.05)
+        prepared.append((energies[mask], d[mask], s))
+        dmax = max(dmax, float(d[mask].max()))
+    xlim = dmax * 1.12 if xmax is None else float(xmax)
+
+    for ax, (e, d, s) in zip(axes, prepared):
+        color = s.get("color", DEFAULT_COLORS[0])
+        center = float(s["d_band_center"])
+        ax.fill_betweenx(e, 0.0, d, color=color, alpha=0.80, lw=0)
+        ax.plot(d, e, color=color, lw=0.6)
+        ax.axhline(0.0, color="#9aa3ad", ls="-.", lw=0.8, zorder=1)          # Fermi
+        ax.axhline(center, color="#232323", ls="--", lw=1.1, zorder=2)       # d-band centre
+        # epsilon_d value sits just below the dashed centre line, right-aligned
+        ax.text(0.96 * xlim, center - 0.02 * (emax - emin),
+                f"$\\varepsilon_d$ {center:.2f} eV",
+                ha="right", va="top", fontsize=7.5, color="#232323", zorder=3,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7))
+        ax.set_xlim(0, xlim)
+        ax.set_ylim(emin, emax)
+        ax.set_xticks([])
+        ax.set_title(s.get("label", ""), color=color, fontsize=9,
+                     fontweight="bold", pad=4)
+        ax.tick_params(axis="y", labelsize=8)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    axes[0].set_ylabel("Energy (eV)")
+    axes[-1].text(0.95 * xlim, 0.06 * (emax - emin), "$E_F$",
+                  ha="right", va="bottom", fontsize=8, color="#9aa3ad")
+    fig.text(0.5, 0.008, "Density of states", ha="center", fontsize=10)
+
+    out_path = Path(output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.subplots_adjust(left=0.10, right=0.98, top=0.90, bottom=0.13, wspace=0.06)
+    fig.savefig(out_path, dpi=400, bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -404,6 +475,20 @@ def main() -> None:
     p_cmp.add_argument("--smear", type=float, default=DEFAULT_SMEAR_EV, help="Plot-only Gaussian broadening sigma (eV); 0 to disable. Does not affect ε_d.")
     p_cmp.add_argument("--output", default="dband_compare.svg")
     p_cmp.add_argument("--json", help="Save comparison metrics to JSON file.")
+
+    # --- columns (vertical multi-panel comparison) ---
+    p_col = sub.add_parser("columns", help="Vertical multi-panel d-band comparison (publication style).")
+    p_col.add_argument("--vaspruns", nargs="+", required=True, help="vasprun.xml paths, one per column.")
+    p_col.add_argument("--labels", nargs="+", help="Column titles.")
+    p_col.add_argument("--elements", nargs="+", required=True,
+                       help="Metal to project per column (one per vasprun, or a single value broadcast to all).")
+    p_col.add_argument("--colors", nargs="+", help="Per-column colors (hex); defaults to the built-in palette.")
+    p_col.add_argument("--emin", type=float, default=-8.0)
+    p_col.add_argument("--emax", type=float, default=2.0)
+    p_col.add_argument("--smear", type=float, default=DEFAULT_SMEAR_EV, help="Plot-only Gaussian broadening sigma (eV).")
+    p_col.add_argument("--xmax", type=float, default=None, help="Fixed DOS x-scale shared across columns.")
+    p_col.add_argument("--output", default="dband_columns.svg")
+    p_col.add_argument("--json", help="Save metrics to JSON file.")
 
     # --- example ---
     p_ex = sub.add_parser("example", help="Render demo with synthetic data.")
@@ -483,6 +568,43 @@ def main() -> None:
             ]
             Path(args.json).write_text(json.dumps(json_out, indent=2), encoding="utf-8")
             print(f"Comparison metrics saved: {args.json}")
+
+    elif args.command == "columns":
+        els = args.elements
+        if len(els) == 1:
+            els = els * len(args.vaspruns)
+        labels = args.labels or [Path(v).parent.name for v in args.vaspruns]
+        colors = args.colors or DEFAULT_COLORS
+        systems = []
+        print(f"{'Column':<22} {'Elem':<5} {'ε_d (eV)':<12} {'Width (eV)':<12} {'Filling':<10}")
+        print("-" * 62)
+        for i, (vr_path, el, label) in enumerate(zip(args.vaspruns, els, labels)):
+            result = _analyze_vasprun(vr_path, [el])
+            d = result["elements"].get(el, {})
+            if "error" in d:
+                print(f"{label:<22} {el:<5} ERROR: {d['error']}")
+                continue
+            print(f"{label:<22} {el:<5} {d['d_band_center']:<12.4f} "
+                  f"{d['d_band_width']:<12.4f} {d['d_band_filling']:<10.4f}")
+            systems.append({
+                "label": label,
+                "energies": np.asarray(result["energies"]),
+                "d_dos": np.asarray(d["d_dos_up"]),
+                "d_band_center": d["d_band_center"],
+                "d_band_width": d["d_band_width"],
+                "d_band_filling": d["d_band_filling"],
+                "color": colors[i % len(colors)],
+            })
+        if systems:
+            out = plot_columns(systems, args.output, args.emin, args.emax, args.smear, args.xmax)
+            print(f"Column plot saved: {out}")
+        if args.json:
+            json_out = [
+                {k: v for k, v in s.items() if k not in ("energies", "d_dos")}
+                for s in systems
+            ]
+            Path(args.json).write_text(json.dumps(json_out, indent=2), encoding="utf-8")
+            print(f"Column metrics saved: {args.json}")
 
     elif args.command == "example":
         demo = _generate_synthetic_dband()

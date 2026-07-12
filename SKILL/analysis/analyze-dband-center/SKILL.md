@@ -62,16 +62,28 @@ mamba run -n modeling python scripts/analyze_dband.py ...
 # Single system
 mamba run -n modeling python scripts/analyze_dband.py single --vasprun vasprun.xml --elements Pt --output dband.svg --json dband.json
 
-# Compare multiple systems
+# Compare multiple systems (overlay; 2-3 systems)
 mamba run -n modeling python scripts/analyze_dband.py compare \
     --vaspruns sys_a/vasprun.xml sys_b/vasprun.xml \
     --labels "Pt(111)" "PtNi(111)" \
     --element Pt \
     --output dband_compare.svg
 
+# Compare d-band centres across several systems (vertical columns; publication style)
+mamba run -n modeling python scripts/analyze_dband.py columns \
+    --vaspruns a/vasprun.xml b/vasprun.xml c/vasprun.xml \
+    --labels "Ni(111)" "Ni+Co-dopant" "Co(111)" \
+    --elements Ni Co Co \
+    --output dband_columns.svg
+
 # Style demo (no vasprun needed)
 mamba run -n modeling python scripts/analyze_dband.py example --output dband_example.svg
 ```
+
+Choosing a layout: use `single` for one system, `compare` (overlay) for 2-3
+systems where the curve shapes overlap, and `columns` (one vertical panel per
+system with a dashed ε_d line) for comparing d-band centres across several
+systems. See `references/plot-styles.md` for the full guide.
 
 ## Runtime Environment
 
@@ -85,12 +97,23 @@ Use the `modeling` mamba environment. It already provides `pymatgen`,
 - d-DOS curve uses alpha 0.22 fill with 1.5 lw solid overlay.
 - d-band center marked with a subtle vertical line + triangle marker.
 - Fermi level is always at 0 eV, marked with a dashed vertical line.
-- Multi-system comparison overlays d-DOS curves with distinct colors.
+- Multi-system comparison overlays d-DOS curves with distinct colors (`compare`),
+  or draws one vertical panel per system with a dashed ε_d line (`columns`).
 - Minor ticks on both axes via `AutoMinorLocator(2)`.
-- y-axis tick labels are hidden by default (DOS units are arbitrary).
 - SVG/PDF text is editable (`svg.fonttype: none`, `pdf.fonttype: 42`).
+
+Comparability conventions (apply consistently across a figure set):
+
+- d-DOS is normalized **per atom** (`states eV⁻¹ atom⁻¹`) so a single dopant and a
+  full slab are comparable; this does not change ε_d/width/filling.
+- Default energy window is trimmed to the d-band (`--emin -8 --emax 2`).
+- Lock the DOS scale with `--ymax` (single/compare) or `--xmax` (columns).
+- A small plot-only Gaussian broadening (`--smear 0.05` eV) is applied for
+  legibility; moments are always computed from the raw DOS.
 
 ## Customization
 
+Read `references/plot-styles.md` to choose a layout (single / compare / columns)
+and for the shared per-atom, window, scale and smearing conventions.
 Read `references/input-schema.md` for CLI flag details and JSON output format.
 Read `references/dband-theory.md` when interpreting d-band analysis results for catalysis discussions.
