@@ -11,7 +11,9 @@ from typing import Any
 
 import numpy as np
 
+import endpoint_render
 import render_core as rc
+import render_style
 
 ENERGY_KEYS = ("energy", "free_energy", "E", "Energy", "dft_energy", "potential_energy")
 
@@ -724,6 +726,8 @@ def _render_overlay_view(
     *,
     width: int,
     height: int,
+    color_mode: str,
+    cmap_name: str,
     show_fixed_halo: bool = True,
 ) -> None:
     """Fade every sampled step of the movers in, oldest to newest; draw the rest solid.
@@ -761,14 +765,21 @@ def _render_overlay_view(
     ads_mask = rc.adsorbate_mask(last)
     items = rc.frame_items(last, frame, alpha=1.0, fixed=fixed, ads_mask=ads_mask, show_fixed_halo=show_fixed_halo)
     n = len(selected)
+    if color_mode == "colormap":
+        last_color = render_style.colormap_rgb(cmap_name, 1.0)
+        items = render_style.recolor_atoms(items, last_color)
     if movers and n > 1:
         mover_mask = None if ads_mask is None else ads_mask[movers]
         for k, atoms in enumerate(selected[:-1]):  # last is already solid, above
             alpha = 0.15 + 0.75 * (k / (n - 2) if n > 2 else 1.0)
             sub = atoms[movers]
-            items += rc.frame_items(
+            mover_items = rc.frame_items(
                 sub, frame, alpha=alpha, fixed=[], show_cell=False, show_fixed_halo=False, ads_mask=mover_mask,
             )
+            if color_mode == "colormap":
+                position = k / (n - 1)
+                mover_items = render_style.recolor_atoms(mover_items, render_style.colormap_rgb(cmap_name, position))
+            items += mover_items
     rc.draw_items(ax, items)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -785,6 +796,8 @@ def render_trajectory_overlay(
     width: int,
     height: int,
     mover_threshold: float,
+    color_mode: str,
+    cmap_name: str,
 ) -> dict[str, Any]:
     """Render Top/Side-a/Side-b PNGs showing where the relaxation moved.
 
@@ -794,7 +807,13 @@ def render_trajectory_overlay(
     solid, from the last frame. Keep ``indices`` short (≤7 or so) — past that
     the fades start to overlap into a blur rather than a readable sequence.
     """
-    result: dict[str, Any] = {"indices": indices, "paths": {}, "error": None}
+    result: dict[str, Any] = {
+        "indices": indices,
+        "paths": {},
+        "color_mode": color_mode,
+        "colormap": cmap_name if color_mode == "colormap" else None,
+        "error": None,
+    }
     selected = unwrap_selected(frames, indices)
     if not selected:
         result["error"] = "no frames to render"
@@ -812,7 +831,9 @@ def render_trajectory_overlay(
             # view whose job is showing site/coverage.
             _render_overlay_view(
                 selected, cam, fixed, movers, path,
-                width=width, height=height, show_fixed_halo=(name != "top"),
+                width=width, height=height,
+                color_mode=color_mode, cmap_name=cmap_name,
+                show_fixed_halo=(name != "top"),
             )
             result["paths"][name] = str(path)
         result["movers"] = movers
@@ -873,12 +894,24 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
     overlay = summary.get("visual_validation", {}).get("overlay") or {}
     overlay_paths = overlay.get("paths") or {}
     if overlay_paths:
+        color_mode = overlay.get("color_mode", "colormap")
+        color_detail = f"time colormap `{overlay.get('colormap')}`" if color_mode == "colormap" else "element/Jmol colors"
         lines.append(
             f"- Overlay PNGs ({', '.join(sorted(overlay_paths))}): atoms that moved more than "
             f"`--mover-threshold` fade in across every sampled frame (faint = oldest, solid = last); "
-            f"everything else renders once, solid, from the last frame."
+            f"everything else renders once, solid, from the last frame; coloring uses {color_detail}."
         )
         lines.append(f"- Atoms shown fading across sampled frames (by index): {overlay.get('movers', [])}")
+        lines.append("")
+    initial_final = summary.get("visual_validation", {}).get("initial_final") or {}
+    initial_final_paths = initial_final.get("paths") or {}
+    if initial_final_paths:
+        colors = initial_final.get("colors") or {}
+        lines.append(
+            f"- Initial/final PNGs ({', '.join(sorted(initial_final_paths))}): "
+            f"initial structure is {colors.get('initial', 'red')}; "
+            f"final structure is {colors.get('final', 'blue')}."
+        )
         lines.append("")
     if selected_extxyz is not None:
         lines.extend([
@@ -915,6 +948,9 @@ def main() -> int:
     parser.add_argument("--desorption-z", type=float, default=2.5, help="Upward shift along the surface normal (Å) that flags possible desorption/lift-off on slabs.")
     parser.add_argument("--mover-threshold", type=float, default=0.25, help="Minimum displacement (Å) across the sampled frames before an atom is faded in across frames instead of drawn once, solid.")
     parser.add_argument("--overlay-max-frames", type=int, default=7, help="Max frames uniformly sampled for the overlay PNGs. Keep this low (~7): movers render at every sampled frame, so more frames means more overlapping fades, not more clarity.")
+    parser.add_argument("--visual-mode", choices=["all", "trajectory", "initial-final"], default="all", help="Which visual PNG set to render.")
+    parser.add_argument("--trajectory-color-mode", choices=["colormap", "element"], default="colormap", help="Color trajectory overlay frames by time colormap or by element/Jmol atom colors.")
+    parser.add_argument("--trajectory-cmap", default="Blues", help="Matplotlib colormap used when --trajectory-color-mode=colormap.")
     parser.add_argument("--zoom-frames", default=None, help="Comma-separated frame indices to also render as a zoomed overlay (e.g. '0,12,30').")
     parser.add_argument("--no-visual", action="store_true", help="Skip PNG rendering entirely.")
     parser.add_argument("--png-width", type=int, default=1600, help="Overlay PNG width.")
@@ -965,7 +1001,9 @@ def main() -> int:
     # --- Visual validation: trajectory-path overlay PNGs + multimodal review gate ---
     visual: dict[str, Any] = {
         "status": "skipped" if args.skip_visual_validation else "pending",
+        "mode": args.visual_mode,
         "overlay": None,
+        "initial_final": None,
         "zoom": None,
         "request_path": None,
         "review_path": None,
@@ -978,12 +1016,19 @@ def main() -> int:
         visual["status"] = "unavailable"
         visual["error"] = "no structural frames to visualize"
     elif not args.no_visual:
-        overlay_indices = uniform_overlay_indices(len(frames), args.overlay_max_frames)
-        visual["overlay"] = render_trajectory_overlay(
-            frames, overlay_indices, outdir, "overlay",
-            width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
-        )
-        if args.zoom_frames:
+        if args.visual_mode in ("all", "trajectory"):
+            overlay_indices = uniform_overlay_indices(len(frames), args.overlay_max_frames)
+            visual["overlay"] = render_trajectory_overlay(
+                frames, overlay_indices, outdir, "overlay",
+                width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
+                color_mode=args.trajectory_color_mode, cmap_name=args.trajectory_cmap,
+            )
+        if args.visual_mode in ("all", "initial-final"):
+            visual["initial_final"] = endpoint_render.render_initial_final_comparison(
+                frames, outdir, "initial_final",
+                width=args.png_width, height=args.png_height,
+            )
+        if args.zoom_frames and visual["overlay"] is not None:
             zoom_idx = sorted({
                 int(tok) for tok in args.zoom_frames.split(",")
                 if tok.strip().lstrip("-").isdigit() and 0 <= int(tok) < len(frames)
@@ -992,24 +1037,41 @@ def main() -> int:
                 visual["zoom"] = render_trajectory_overlay(
                     frames, zoom_idx, outdir, "zoom",
                     width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
+                    color_mode=args.trajectory_color_mode, cmap_name=args.trajectory_cmap,
                 )
-        if visual["overlay"].get("error") and not visual["overlay"].get("paths"):
+        overlay_error = (visual["overlay"] or {}).get("error")
+        initial_final_error = (visual["initial_final"] or {}).get("error")
+        overlay_paths = (visual["overlay"] or {}).get("paths") or {}
+        initial_final_paths = (visual["initial_final"] or {}).get("paths") or {}
+        if not overlay_paths and not initial_final_paths:
             visual["status"] = "unavailable"
-            visual["error"] = visual["overlay"]["error"]
+            visual["error"] = overlay_error or initial_final_error or "no visual artifacts rendered"
 
     request_path = outdir / "visual_review_request.json"
     if visual["status"] not in ("skipped", "unavailable"):
+        rendered_sets = []
+        if (visual["overlay"] or {}).get("paths"):
+            rendered_sets.append("trajectory overlay PNGs")
+        if (visual["initial_final"] or {}).get("paths"):
+            rendered_sets.append("red-initial/blue-final endpoint PNGs")
+        if (visual["zoom"] or {}).get("paths"):
+            rendered_sets.append("zoom PNGs")
+        rendered_description = ", ".join(rendered_sets)
         request = {
             "instruction": (
-                "Inspect the overlay PNGs (and zoom PNGs if present) and decide "
-                "pass/warn/fail: did the relaxation stay physically sane (no "
-                "unintended desorption, dissociation, atoms passing through each "
-                "other, or migration to the wrong site)? Write the result to "
-                "expected_review_file."
+                f"Inspect the rendered visual artifacts ({rendered_description}). "
+                "Decide pass/warn/fail: did the relaxation stay physically sane "
+                "(no unintended desorption, dissociation, atoms passing through "
+                "each other, or migration to the wrong site)? Write the result "
+                "to expected_review_file."
             ),
             "deterministic_verdict": deterministic_verdict,
+            "visual_mode": visual["mode"],
             "overlay": (visual["overlay"] or {}).get("paths"),
+            "initial_final": (visual["initial_final"] or {}).get("paths"),
             "zoom": (visual["zoom"] or {}).get("paths") if visual["zoom"] else None,
+            "trajectory_color_mode": (visual["overlay"] or {}).get("color_mode"),
+            "trajectory_colormap": (visual["overlay"] or {}).get("colormap"),
             "sampled_indices": (visual["overlay"] or {}).get("indices"),
             "n_frames_total": len(frames),
             "expected_review_file": str(outdir / "visual_review.json"),

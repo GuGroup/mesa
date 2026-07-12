@@ -54,8 +54,12 @@ a multimodal review into the verdict. Rendering is pure ASE + matplotlib
 (`render_core.py`) — no aseview, no browser, nothing beyond the `modeling`
 env's existing ase/matplotlib/numpy/Pillow.
 
-Default rendering, designed so the relaxation's *movement* reads at a glance
-without collapsing into a blurred stack of overlapping frames:
+Default `--visual-mode all` rendering writes both trajectory overlays and
+initial/final endpoint comparison views. Use `--visual-mode trajectory` when
+only the path matters, or `--visual-mode initial-final` when only the start/end
+displacement should be reviewed. Trajectory rendering is designed so the
+relaxation's *movement* reads at a glance without collapsing into a blurred
+stack of overlapping frames:
 
 - Uniformly sample up to `--overlay-max-frames` (default **7**) frames across
   the whole trajectory (always keeping first and last), MIC-unwrapped so an
@@ -70,6 +74,10 @@ without collapsing into a blurred stack of overlapping frames:
   frame would make the static substrate's own per-step numerical jitter
   randomly decide which copy lands on top, giving it a mottled look for no
   physical reason.
+- By default, trajectory overlays use `--trajectory-color-mode colormap` with
+  `--trajectory-cmap Blues`: frame/time determines the color, and every atom
+  in that rendered frame copy has the same color. Use
+  `--trajectory-color-mode element` to opt back into element/Jmol atom colors.
 - A small black X (ase-gui's own convention) marks any `FixAtoms`-constrained
   atom in `overlay_side_a.png`/`overlay_side_b.png`; `overlay_top.png` leaves
   it off (the frozen layer sits behind the relaxed one from directly above,
@@ -90,10 +98,15 @@ without collapsing into a blurred stack of overlapping frames:
   (POSCAR/CONTCAR/OUTCAR/vasprun.xml carry no adsorbate concept), so a bare
   VASP-derived trajectory renders with no bonds at all rather than guessing.
 - Atoms render at a ball-and-stick size (`atom_scale=0.72`, small enough that
-  bonds are clearly visible, not close-packed), colored/sized off a
+  bonds are clearly visible, not close-packed). Element-color mode uses the
   Jmol/three.js-style reference table in `render_core.py::_ELEMENT_TABLE`.
-- Render three orthographic views — `overlay_top.png`, `overlay_side_a.png`,
-  `overlay_side_b.png`.
+- In `all` and `trajectory` modes, render three orthographic trajectory views —
+  `overlay_top.png`, `overlay_side_a.png`, `overlay_side_b.png`.
+- Also render endpoint comparison views — `initial_final_top.png`,
+  `initial_final_side_a.png`, `initial_final_side_b.png` — with the initial
+  structure in red and the final structure in blue. These views show net
+  initial-to-final displacement without the intermediate trajectory fades and
+  are written in `all` and `initial-final` modes.
 - `--zoom-frames "0,4,7"` additionally renders `zoom_*.png` restricted to just
   those indices (use after the full overlay to inspect a suspect region
   closely — same fade treatment over the smaller index set).
@@ -103,9 +116,10 @@ Two-pass review (provider-neutral):
 
 1. The analyzer writes `visual_review_request.json` listing the PNGs and the
    result schema, and sets `visual_validation.status = "pending"`.
-2. The agent opens the PNGs, judges whether the relaxation stayed physically sane
-   (no unintended desorption/dissociation/atoms-through-each-other/wrong site),
-   and writes `visual_review.json` (`{"verdict": "pass|warn|fail", "reason": ...,
+2. The agent opens the PNGs listed in `visual_review_request.json`, judges
+   whether the relaxation stayed physically sane (no unintended
+   desorption/dissociation/atoms-through-each-other/wrong site), and writes
+   `visual_review.json` (`{"verdict": "pass|warn|fail", "reason": ...,
    "views_reviewed": [...]}`) into the outdir.
 3. Re-run (or pass `--visual-review <file>`) to ingest it; `status` becomes
    `completed`.
@@ -170,6 +184,7 @@ The single-run analyzer writes:
 | --- | --- |
 | `analysis_summary.json` | Machine-readable overall `verdict`, `deterministic_verdict`, `visual_validation` (status/paths/review), `convergence` (criterion, converged, NSW), `run_parameters` (EDIFFG/NSW), `anomalies` (dissociation/desorption), diagnosis, warnings, selected frames, and output paths. |
 | `overlay_{top,side_a,side_b}.png` | Uniform≤7-frame fading-mover views for multimodal review (see Visual validation above). |
+| `initial_final_{top,side_a,side_b}.png` | Endpoint comparison views: initial structure in red, final structure in blue. |
 | `zoom_{top,side_a,side_b}.png` | Same treatment restricted to the `--zoom-frames` indices, when requested. |
 | `visual_review_request.json` | What the agent must inspect + the result schema for `visual_review.json`. |
 | `visual_review.json` | (agent-written) The multimodal verdict ingested into the overall verdict. |
@@ -230,12 +245,15 @@ investigated.
 
 ## Overlay Review
 
-Open `overlay_{top,side_a,side_b}.png` (and `zoom_*.png` if rendered) directly —
-they are plain static images, no viewer needed. Interpretation:
+Open the PNGs listed in `visual_review_request.json` directly — they are plain
+static images, no viewer needed. Interpretation:
 
 - for each atom shown fading in, the faintest copy is its oldest sampled
-  position and the fully solid copy is its last — read the sequence of fading
-  copies as the steps it moved through, not just a start/end pair;
+  position and the fully solid copy is its last — in default colormap mode,
+  read the color progression as frame/time and the fade as age/visibility;
+- open `initial_final_{top,side_a,side_b}.png` to compare only the endpoints:
+  red is initial, blue is final, so separated red/blue atoms show net motion
+  while overlapping atoms stayed near the same projected position;
 - an atom that renders only once (solid, never fading in) stayed under
   `--mover-threshold` — treat it as effectively stationary, not as "not
   analyzed";
