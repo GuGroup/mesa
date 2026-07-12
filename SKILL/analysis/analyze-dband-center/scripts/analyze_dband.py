@@ -265,8 +265,8 @@ def plot_single_dband(
 
     ax.set_xlim(emin, emax)
     ax.set_ylim(0, ymax)
-    ax.set_xlabel("Energy (eV)")
-    ax.set_ylabel("d-DOS (states eV$^{-1}$ atom$^{-1}$)")
+    ax.set_xlabel(r"$E - E_\mathrm{F}$ (eV)")
+    ax.set_ylabel("d-PDOS (states eV$^{-1}$ atom$^{-1}$)")
     ax.tick_params(axis="y", labelleft=False)
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -345,8 +345,8 @@ def plot_comparison(
     ax.text(0.15, ymax * 0.92, "$E_F$",
             fontsize=9, color="#999999", ha="left", va="top")
 
-    ax.set_xlabel("Energy (eV)")
-    ax.set_ylabel("d-DOS (states eV$^{-1}$ atom$^{-1}$)")
+    ax.set_xlabel(r"$E - E_\mathrm{F}$ (eV)")
+    ax.set_ylabel("d-PDOS (states eV$^{-1}$ atom$^{-1}$)")
     ax.tick_params(axis="y", labelleft=False)
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -429,10 +429,12 @@ def plot_columns(
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    axes[0].set_ylabel("Energy (eV)")
-    axes[-1].text(0.95 * xlim, 0.06 * (emax - emin), "$E_F$",
-                  ha="right", va="bottom", fontsize=8, color="#9aa3ad")
-    fig.text(0.5, 0.008, "Density of states", ha="center", fontsize=10)
+    axes[0].set_ylabel(r"$E - E_\mathrm{F}$ (eV)")
+    # E_F marker at the Fermi level (0), left side of the first panel
+    axes[0].text(0.03 * xlim, 0.0, r"$E_\mathrm{F}$",
+                 ha="left", va="bottom", fontsize=8, color="#9aa3ad", zorder=3,
+                 bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.6))
+    fig.text(0.5, 0.008, "d-PDOS (states eV$^{-1}$ atom$^{-1}$)", ha="center", fontsize=10)
 
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
