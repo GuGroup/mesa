@@ -18,6 +18,17 @@ from skimage.measure import marching_cubes
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
 
+# --- Rendering tunables -------------------------------------------------------
+# Atom marker size (Angstrom): drawn radius = clip(SCALE * covalent_radius, MIN, MAX).
+# Covalent radii are ~0.3 (H) .. ~1.5 (TM); SCALE ~0.5-0.6 gives balanced ball-and-stick.
+ATOM_RADIUS_SCALE = 0.30
+ATOM_RADIUS_MIN = 0.19
+ATOM_RADIUS_MAX = 0.42
+# Isosurface level for the +/- delta-density lobes. The level is the larger of a
+# high percentile of |delta| and a fraction of its peak; lower values -> fuller lobes.
+ISO_PERCENTILE = 96.5
+ISO_MAX_FRACTION = 0.10
+
 
 @dataclass(frozen=True, slots=True)
 class Mesh:
@@ -114,7 +125,7 @@ def lobe_threshold(delta: NDArray[np.float64]) -> float:
     nonzero = abs_values[abs_values > 0.0]
     if len(nonzero) == 0:
         return 1.0
-    return max(float(np.percentile(nonzero, 99.0)), 0.20 * float(nonzero.max()))
+    return max(float(np.percentile(nonzero, ISO_PERCENTILE)), ISO_MAX_FRACTION * float(nonzero.max()))
 
 
 def isosurface_meshes(delta: NDArray[np.float64], structure: Structure, threshold: float) -> list[Mesh]:
@@ -187,7 +198,7 @@ def draw_atoms(ax, structure: Structure, camera: Camera) -> None:
     order = np.argsort(dot_rows(coords, camera.forward))
     for rank, index in enumerate(order):
         xy = projected[index]
-        radius = max(0.11, min(0.20, 0.13 * covalent_radius(numbers[index])))
+        radius = min(ATOM_RADIUS_MAX, max(ATOM_RADIUS_MIN, ATOM_RADIUS_SCALE * covalent_radius(numbers[index])))
         zorder = 5.0 + float(rank) * 0.01
         ax.add_patch(Circle(xy, radius, facecolor=colors[index], edgecolor="black", linewidth=0.35, zorder=zorder))
         offset = radius * 0.30
