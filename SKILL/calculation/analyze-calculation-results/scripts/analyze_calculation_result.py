@@ -20,6 +20,12 @@ ENERGY_KEYS = ("energy", "free_energy", "E", "Energy", "dft_energy", "potential_
 # Fixed white background for the overlay PNGs.
 OVERLAY_BACKGROUND = "#ffffff"
 SEVERITY = {"pass": 0, "warn": 1, "fail": 2}
+LARGE_ENERGY_CHANGE_THRESHOLD_EV = 15.0
+LATE_FMAX_THRESHOLD_EV_PER_A = 3.0
+INITIAL_FMAX_REFERENCE_EV_PER_A = 5.0
+EARLY_STEP_FRACTION = 0.2
+RMSD_TAIL_FRACTION = 0.25
+RMSD_TAIL_DRIFT_THRESHOLD_A = 0.1
 
 
 def json_default(value: Any) -> Any:
@@ -491,6 +497,8 @@ def build_verdict(
         warn.append("energy is not monotonically decreasing")
     if len(diagnosis.get("significant_minima", [])) >= 2:
         warn.append("multiple significant minima — endpoint may be path-dependent")
+    for warning in diagnosis.get("guard_warnings", []):
+        warn.append(str(warning))
 
     if anomalies.get("dissociation_suspected"):
         warn.append(f"{anomalies['n_bonds_removed']} bond(s) broke vs initial (possible dissociation)")
@@ -515,9 +523,25 @@ def build_verdict(
 
 def diagnose(metrics: list[dict[str, Any]], args: argparse.Namespace) -> dict[str, Any]:
     warnings: list[str] = []
+    guard_warnings: list[str] = []
     energies = finite_series(metrics, "energy")
     fmax = finite_series(metrics, "fmax")
+    rmsd_to_initial = finite_series(metrics, "rmsd_to_initial")
     rmsd_step = finite_series(metrics, "rmsd_step")
+
+    initial_energy = next((value for value in energies if value is not None), None)
+    final_energy = next((value for value in reversed(energies) if value is not None), None)
+    energy_change_initial_final: float | None = None
+    large_energy_change = False
+    if initial_energy is not None and final_energy is not None:
+        energy_change_initial_final = float(final_energy - initial_energy)
+        large_energy_change = abs(energy_change_initial_final) >= LARGE_ENERGY_CHANGE_THRESHOLD_EV
+        if large_energy_change:
+            guard_warnings.append(
+                f"Initial-final energy change {energy_change_initial_final:+.3f} eV exceeds "
+                f"{LARGE_ENERGY_CHANGE_THRESHOLD_EV:g} eV; inspect initial/final structures "
+                "and trajectory images for abnormal optimization."
+            )
 
     energy_increases: list[dict[str, Any]] = []
     for i in range(1, len(energies)):
@@ -559,15 +583,76 @@ def diagnose(metrics: list[dict[str, Any]], args: argparse.Namespace) -> dict[st
     if final_fmax is not None and final_fmax > args.high_final_fmax:
         warnings.append(f"Final Fmax {final_fmax:.3f} eV/Å exceeds {args.high_final_fmax:g} eV/Å.")
 
+    initial_fmax = next((value for value in fmax if value is not None), None)
+    early_count = 0
+    late_high_fmax_events: list[dict[str, Any]] = []
+    if fmax:
+        early_count = max(1, min(len(fmax), int(math.ceil(len(fmax) * EARLY_STEP_FRACTION))))
+        for i, value in enumerate(fmax):
+            if value is None or i < early_count:
+                continue
+            if value > LATE_FMAX_THRESHOLD_EV_PER_A:
+                late_high_fmax_events.append({"step": i, "fmax": float(value)})
+    if late_high_fmax_events:
+        guard_warnings.append(
+            f"{len(late_high_fmax_events)} non-early Fmax values exceed "
+            f"{LATE_FMAX_THRESHOLD_EV_PER_A:g} eV/Å; initial Fmax around "
+            f"{INITIAL_FMAX_REFERENCE_EV_PER_A:g} eV/Å can be tolerable, but high force later "
+            "is a warning sign that needs structural review."
+        )
+
+    valid_rmsd = [(i, value) for i, value in enumerate(rmsd_to_initial) if value is not None]
+    rmsd_tail: dict[str, Any] = {
+        "evaluated": False,
+        "converged": None,
+        "drift_A": None,
+        "threshold_A": RMSD_TAIL_DRIFT_THRESHOLD_A,
+        "tail_fraction": RMSD_TAIL_FRACTION,
+    }
+    if len(valid_rmsd) >= 4:
+        tail_count = max(3, int(math.ceil(len(valid_rmsd) * RMSD_TAIL_FRACTION)))
+        tail = valid_rmsd[-tail_count:]
+        tail_drift = float(tail[-1][1] - tail[0][1])
+        rmsd_tail = {
+            "evaluated": True,
+            "converged": abs(tail_drift) <= RMSD_TAIL_DRIFT_THRESHOLD_A,
+            "drift_A": tail_drift,
+            "abs_drift_A": abs(tail_drift),
+            "threshold_A": RMSD_TAIL_DRIFT_THRESHOLD_A,
+            "tail_fraction": RMSD_TAIL_FRACTION,
+            "start_step": tail[0][0],
+            "end_step": tail[-1][0],
+        }
+        if not rmsd_tail["converged"]:
+            guard_warnings.append(
+                f"RMSD-to-initial changes by {tail_drift:+.3f} Å over the final "
+                f"{tail_count} usable frames; a normal optimization should show a "
+                "late linear-to-flat convergence/plateau region rather than continuing drift."
+            )
+
+    warnings.extend(guard_warnings)
+
     return {
         "warnings": warnings,
+        "guard_warnings": guard_warnings,
         "energy_monotonic_decrease": not energy_increases,
         "energy_increases": energy_increases,
+        "initial_energy": initial_energy,
+        "final_energy": final_energy,
+        "energy_change_initial_final": energy_change_initial_final,
+        "large_energy_change": large_energy_change,
+        "large_energy_change_threshold": LARGE_ENERGY_CHANGE_THRESHOLD_EV,
         "force_spikes": force_spikes,
+        "initial_fmax": initial_fmax,
+        "initial_fmax_reference": INITIAL_FMAX_REFERENCE_EV_PER_A,
+        "late_fmax_threshold": LATE_FMAX_THRESHOLD_EV_PER_A,
+        "early_step_fraction": EARLY_STEP_FRACTION,
+        "early_step_count": early_count,
+        "late_high_fmax_events": late_high_fmax_events,
         "rmsd_jumps": rmsd_jumps,
+        "rmsd_tail": rmsd_tail,
         "local_minima": minima,
         "significant_minima": multi_minima,
-        "final_energy": next((value for value in reversed(energies) if value is not None), None),
         "final_fmax": final_fmax,
     }
 
@@ -860,10 +945,22 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
         f"- Trajectory: `{summary.get('trajectory_input')}`",
         f"- OSZICAR: `{summary.get('oszicar_input')}`",
         f"- Frames: {summary['frame_count']}",
-        f"- Energy monotonic decrease: {summary['diagnosis']['energy_monotonic_decrease']}",
-        f"- Final energy: {summary['diagnosis'].get('final_energy')}",
         "",
-        "## Verdict reasons",
+        "## Check Order",
+        "",
+        f"1. Confirm final fmax against the run criterion: "
+        f"{summary['diagnosis'].get('final_fmax')} vs {convergence.get('fmax_threshold')} eV/Å "
+        f"({convergence.get('fmax_threshold_source')}).",
+        f"2. Confirm whether the run stopped because it reached NSW/max ionic steps: "
+        f"{convergence.get('nsw_reached')}.",
+        f"3. Check optimization-warning signals: energy change "
+        f"{summary['diagnosis'].get('energy_change_initial_final')} eV, late high Fmax events "
+        f"{len(summary['diagnosis'].get('late_high_fmax_events', []))}, RMSD tail "
+        f"{(summary['diagnosis'].get('rmsd_tail') or {}).get('converged')}.",
+        "4. Inspect the red/blue initial-final endpoint images for unintended migration, "
+        "dissociation, desorption, or distortion.",
+        "",
+        "## Verdict Reasons",
         "",
     ]
     fail_reasons = convergence.get("fail_reasons", [])
@@ -884,25 +981,23 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
             f"- desorption suspected: {anomalies.get('desorption_suspected')} "
             f"(max upward shift {anomalies.get('max_upward_shift')})",
         ])
-    lines.extend(["", "## Diagnostic warnings", ""])
-    warnings = summary["diagnosis"].get("warnings", [])
-    if warnings:
-        lines.extend(f"- {warning}" for warning in warnings)
-    else:
-        lines.append("- No high-level warnings under the selected thresholds.")
-    lines.extend(["", "## Visual check", ""])
-    overlay = summary.get("visual_validation", {}).get("overlay") or {}
-    overlay_paths = overlay.get("paths") or {}
-    if overlay_paths:
-        color_mode = overlay.get("color_mode", "colormap")
-        color_detail = f"time colormap `{overlay.get('colormap')}`" if color_mode == "colormap" else "element/Jmol colors"
+    rmsd_tail = summary["diagnosis"].get("rmsd_tail") or {}
+    lines.extend([
+        "",
+        "## Guard Notes",
+        "",
+        f"- Energy change warning threshold: "
+        f"{summary['diagnosis'].get('large_energy_change_threshold')} eV.",
+        f"- Early rough-start Fmax near {summary['diagnosis'].get('initial_fmax_reference')} eV/Å can be acceptable; "
+        f"post-early Fmax above {summary['diagnosis'].get('late_fmax_threshold')} eV/Å needs review.",
+        "- RMSD should approach a late plateau; continued tail drift suggests structural drift/distortion.",
+    ])
+    if rmsd_tail.get("evaluated"):
         lines.append(
-            f"- Overlay PNGs ({', '.join(sorted(overlay_paths))}): atoms that moved more than "
-            f"`--mover-threshold` fade in across every sampled frame (faint = oldest, solid = last); "
-            f"everything else renders once, solid, from the last frame; coloring uses {color_detail}."
+            f"- RMSD tail drift: {rmsd_tail.get('drift_A')} Å "
+            f"(threshold {rmsd_tail.get('threshold_A')} Å; converged={rmsd_tail.get('converged')})."
         )
-        lines.append(f"- Atoms shown fading across sampled frames (by index): {overlay.get('movers', [])}")
-        lines.append("")
+    lines.extend(["", "## Image Check", ""])
     initial_final = summary.get("visual_validation", {}).get("initial_final") or {}
     initial_final_paths = initial_final.get("paths") or {}
     if initial_final_paths:
@@ -912,14 +1007,13 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
             f"initial structure is {colors.get('initial', 'red')}; "
             f"final structure is {colors.get('final', 'blue')}."
         )
+        lines.append(
+            "- Use these endpoint images as the visual check. Red/blue separation shows net "
+            "motion from the starting structure to the final structure."
+        )
         lines.append("")
     if selected_extxyz is not None:
-        lines.extend([
-            f"Sampled frames are also in `{selected_extxyz.name}` "
-            "(per-atom `analysis_disp_to_initial` / `analysis_disp_step` arrays included) "
-            "for loading in any ASE-compatible viewer.",
-            "Inspect sampled frames around RMSD jumps, force spikes, energy increases, and local minima.",
-        ])
+        lines.append(f"Selected structural frames are saved in `{selected_extxyz.name}` for optional follow-up.")
     else:
         lines.append("No structural trajectory was available; OSZICAR-only analysis cannot support overlay review.")
     path.write_text("\n".join(lines) + "\n")
@@ -934,27 +1028,27 @@ def main() -> int:
     parser.add_argument("--outdir", default="calculation_result_analysis", help="Output directory.")
     parser.add_argument("--anchor", choices=["auto", "fixed", "bottom", "all", "none"], default="auto", help="Alignment anchor policy for RMSD.")
     parser.add_argument("--bottom-fraction", type=float, default=0.35, help="Bottom z-fraction used for slab alignment when no FixAtoms are present.")
-    parser.add_argument("--sample-count", type=int, default=12, help="Uniform samples to include in selected_frames.extxyz.")
-    parser.add_argument("--top-events", type=int, default=6, help="Maximum events per signal to include in visual sampling.")
-    parser.add_argument("--energy-increase-threshold", type=float, default=0.05, help="Energy increase threshold in eV.")
-    parser.add_argument("--force-jump-threshold", type=float, default=2.0, help="Fmax jump threshold in eV/Å.")
-    parser.add_argument("--rmsd-jump-threshold", type=float, default=0.35, help="Adjacent-frame RMSD jump threshold in Å.")
-    parser.add_argument("--minima-energy-prominence", type=float, default=0.05, help="Energy barrier threshold for significant minima candidates in eV.")
-    parser.add_argument("--minima-rmsd-threshold", type=float, default=0.4, help="RMSD separation threshold for significant minima candidates in Å.")
-    parser.add_argument("--high-final-fmax", type=float, default=0.08, help="Warn when final Fmax exceeds this eV/Å threshold.")
+    parser.add_argument("--sample-count", type=int, default=12, help=argparse.SUPPRESS)
+    parser.add_argument("--top-events", type=int, default=6, help=argparse.SUPPRESS)
+    parser.add_argument("--energy-increase-threshold", type=float, default=0.05, help=argparse.SUPPRESS)
+    parser.add_argument("--force-jump-threshold", type=float, default=2.0, help=argparse.SUPPRESS)
+    parser.add_argument("--rmsd-jump-threshold", type=float, default=0.35, help=argparse.SUPPRESS)
+    parser.add_argument("--minima-energy-prominence", type=float, default=0.05, help=argparse.SUPPRESS)
+    parser.add_argument("--minima-rmsd-threshold", type=float, default=0.4, help=argparse.SUPPRESS)
+    parser.add_argument("--high-final-fmax", type=float, default=0.08, help=argparse.SUPPRESS)
     parser.add_argument("--fmax-threshold", type=float, default=None, help="Force convergence criterion (eV/Å) for the verdict. Default: |EDIFFG| from VASP outputs when present, else 0.05.")
     parser.add_argument("--nsw", type=int, default=None, help="Max ionic steps for the verdict. Default: NSW from VASP outputs when present.")
-    parser.add_argument("--bond-scale", type=float, default=1.2, help="Covalent-radius multiplier for connectivity/dissociation detection.")
-    parser.add_argument("--desorption-z", type=float, default=2.5, help="Upward shift along the surface normal (Å) that flags possible desorption/lift-off on slabs.")
-    parser.add_argument("--mover-threshold", type=float, default=0.25, help="Minimum displacement (Å) across the sampled frames before an atom is faded in across frames instead of drawn once, solid.")
-    parser.add_argument("--overlay-max-frames", type=int, default=7, help="Max frames uniformly sampled for the overlay PNGs. Keep this low (~7): movers render at every sampled frame, so more frames means more overlapping fades, not more clarity.")
-    parser.add_argument("--visual-mode", choices=["all", "trajectory", "initial-final"], default="all", help="Which visual PNG set to render.")
-    parser.add_argument("--trajectory-color-mode", choices=["colormap", "element"], default="colormap", help="Color trajectory overlay frames by time colormap or by element/Jmol atom colors.")
-    parser.add_argument("--trajectory-cmap", default="Blues", help="Matplotlib colormap used when --trajectory-color-mode=colormap.")
-    parser.add_argument("--zoom-frames", default=None, help="Comma-separated frame indices to also render as a zoomed overlay (e.g. '0,12,30').")
+    parser.add_argument("--bond-scale", type=float, default=1.2, help=argparse.SUPPRESS)
+    parser.add_argument("--desorption-z", type=float, default=2.5, help=argparse.SUPPRESS)
+    parser.add_argument("--mover-threshold", type=float, default=0.25, help=argparse.SUPPRESS)
+    parser.add_argument("--overlay-max-frames", type=int, default=7, help=argparse.SUPPRESS)
+    parser.add_argument("--visual-mode", choices=["all", "trajectory", "initial-final"], default="initial-final", help=argparse.SUPPRESS)
+    parser.add_argument("--trajectory-color-mode", choices=["colormap", "element"], default="colormap", help=argparse.SUPPRESS)
+    parser.add_argument("--trajectory-cmap", default="Blues", help=argparse.SUPPRESS)
+    parser.add_argument("--zoom-frames", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--no-visual", action="store_true", help="Skip PNG rendering entirely.")
-    parser.add_argument("--png-width", type=int, default=1600, help="Overlay PNG width.")
-    parser.add_argument("--png-height", type=int, default=1100, help="Overlay PNG height.")
+    parser.add_argument("--png-width", type=int, default=1600, help=argparse.SUPPRESS)
+    parser.add_argument("--png-height", type=int, default=1100, help=argparse.SUPPRESS)
     parser.add_argument("--visual-review", default=None, help="Path to a completed visual_review.json to ingest. Default: <outdir>/visual_review.json if present.")
     parser.add_argument("--skip-visual-validation", action="store_true", help="Skip the multimodal visual gate; overall verdict equals the deterministic verdict (PNGs are still rendered).")
     args = parser.parse_args()
@@ -1050,20 +1144,20 @@ def main() -> int:
     request_path = outdir / "visual_review_request.json"
     if visual["status"] not in ("skipped", "unavailable"):
         rendered_sets = []
-        if (visual["overlay"] or {}).get("paths"):
-            rendered_sets.append("trajectory overlay PNGs")
         if (visual["initial_final"] or {}).get("paths"):
-            rendered_sets.append("red-initial/blue-final endpoint PNGs")
+            rendered_sets.append("red/blue initial-final endpoint PNGs")
+        if not rendered_sets and (visual["overlay"] or {}).get("paths"):
+            rendered_sets.append("rendered structure PNGs")
         if (visual["zoom"] or {}).get("paths"):
-            rendered_sets.append("zoom PNGs")
+            rendered_sets.append("additional zoom PNGs")
         rendered_description = ", ".join(rendered_sets)
         request = {
             "instruction": (
-                f"Inspect the rendered visual artifacts ({rendered_description}). "
-                "Decide pass/warn/fail: did the relaxation stay physically sane "
-                "(no unintended desorption, dissociation, atoms passing through "
-                "each other, or migration to the wrong site)? Write the result "
-                "to expected_review_file."
+                f"Inspect the red/blue initial-final endpoint PNGs ({rendered_description}). "
+                "First confirm final fmax against the selected force criterion and whether "
+                "the run reached NSW/max ionic steps. Then decide pass/warn/fail from the "
+                "endpoint geometry: no unintended desorption, dissociation, severe distortion, "
+                "or migration to the wrong site. Write the result to expected_review_file."
             ),
             "deterministic_verdict": deterministic_verdict,
             "visual_mode": visual["mode"],
