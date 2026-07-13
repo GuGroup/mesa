@@ -11,13 +11,21 @@ from typing import Any
 
 import numpy as np
 
+import endpoint_render
 import render_core as rc
+import render_style
 
 ENERGY_KEYS = ("energy", "free_energy", "E", "Energy", "dft_energy", "potential_energy")
 
 # Fixed white background for the overlay PNGs.
 OVERLAY_BACKGROUND = "#ffffff"
 SEVERITY = {"pass": 0, "warn": 1, "fail": 2}
+LARGE_ENERGY_CHANGE_THRESHOLD_EV = 15.0
+LATE_FMAX_THRESHOLD_EV_PER_A = 3.0
+INITIAL_FMAX_REFERENCE_EV_PER_A = 5.0
+EARLY_STEP_FRACTION = 0.2
+RMSD_TAIL_FRACTION = 0.25
+RMSD_TAIL_DRIFT_THRESHOLD_A = 0.1
 
 
 def json_default(value: Any) -> Any:
@@ -489,6 +497,8 @@ def build_verdict(
         warn.append("energy is not monotonically decreasing")
     if len(diagnosis.get("significant_minima", [])) >= 2:
         warn.append("multiple significant minima — endpoint may be path-dependent")
+    for warning in diagnosis.get("guard_warnings", []):
+        warn.append(str(warning))
 
     if anomalies.get("dissociation_suspected"):
         warn.append(f"{anomalies['n_bonds_removed']} bond(s) broke vs initial (possible dissociation)")
@@ -513,9 +523,25 @@ def build_verdict(
 
 def diagnose(metrics: list[dict[str, Any]], args: argparse.Namespace) -> dict[str, Any]:
     warnings: list[str] = []
+    guard_warnings: list[str] = []
     energies = finite_series(metrics, "energy")
     fmax = finite_series(metrics, "fmax")
+    rmsd_to_initial = finite_series(metrics, "rmsd_to_initial")
     rmsd_step = finite_series(metrics, "rmsd_step")
+
+    initial_energy = next((value for value in energies if value is not None), None)
+    final_energy = next((value for value in reversed(energies) if value is not None), None)
+    energy_change_initial_final: float | None = None
+    large_energy_change = False
+    if initial_energy is not None and final_energy is not None:
+        energy_change_initial_final = float(final_energy - initial_energy)
+        large_energy_change = abs(energy_change_initial_final) >= LARGE_ENERGY_CHANGE_THRESHOLD_EV
+        if large_energy_change:
+            guard_warnings.append(
+                f"Initial-final energy change {energy_change_initial_final:+.3f} eV exceeds "
+                f"{LARGE_ENERGY_CHANGE_THRESHOLD_EV:g} eV; inspect initial/final structures "
+                "and trajectory images for abnormal optimization."
+            )
 
     energy_increases: list[dict[str, Any]] = []
     for i in range(1, len(energies)):
@@ -557,15 +583,76 @@ def diagnose(metrics: list[dict[str, Any]], args: argparse.Namespace) -> dict[st
     if final_fmax is not None and final_fmax > args.high_final_fmax:
         warnings.append(f"Final Fmax {final_fmax:.3f} eV/Å exceeds {args.high_final_fmax:g} eV/Å.")
 
+    initial_fmax = next((value for value in fmax if value is not None), None)
+    early_count = 0
+    late_high_fmax_events: list[dict[str, Any]] = []
+    if fmax:
+        early_count = max(1, min(len(fmax), int(math.ceil(len(fmax) * EARLY_STEP_FRACTION))))
+        for i, value in enumerate(fmax):
+            if value is None or i < early_count:
+                continue
+            if value > LATE_FMAX_THRESHOLD_EV_PER_A:
+                late_high_fmax_events.append({"step": i, "fmax": float(value)})
+    if late_high_fmax_events:
+        guard_warnings.append(
+            f"{len(late_high_fmax_events)} non-early Fmax values exceed "
+            f"{LATE_FMAX_THRESHOLD_EV_PER_A:g} eV/Å; initial Fmax around "
+            f"{INITIAL_FMAX_REFERENCE_EV_PER_A:g} eV/Å can be tolerable, but high force later "
+            "is a warning sign that needs structural review."
+        )
+
+    valid_rmsd = [(i, value) for i, value in enumerate(rmsd_to_initial) if value is not None]
+    rmsd_tail: dict[str, Any] = {
+        "evaluated": False,
+        "converged": None,
+        "drift_A": None,
+        "threshold_A": RMSD_TAIL_DRIFT_THRESHOLD_A,
+        "tail_fraction": RMSD_TAIL_FRACTION,
+    }
+    if len(valid_rmsd) >= 4:
+        tail_count = max(3, int(math.ceil(len(valid_rmsd) * RMSD_TAIL_FRACTION)))
+        tail = valid_rmsd[-tail_count:]
+        tail_drift = float(tail[-1][1] - tail[0][1])
+        rmsd_tail = {
+            "evaluated": True,
+            "converged": abs(tail_drift) <= RMSD_TAIL_DRIFT_THRESHOLD_A,
+            "drift_A": tail_drift,
+            "abs_drift_A": abs(tail_drift),
+            "threshold_A": RMSD_TAIL_DRIFT_THRESHOLD_A,
+            "tail_fraction": RMSD_TAIL_FRACTION,
+            "start_step": tail[0][0],
+            "end_step": tail[-1][0],
+        }
+        if not rmsd_tail["converged"]:
+            guard_warnings.append(
+                f"RMSD-to-initial changes by {tail_drift:+.3f} Å over the final "
+                f"{tail_count} usable frames; a normal optimization should show a "
+                "late linear-to-flat convergence/plateau region rather than continuing drift."
+            )
+
+    warnings.extend(guard_warnings)
+
     return {
         "warnings": warnings,
+        "guard_warnings": guard_warnings,
         "energy_monotonic_decrease": not energy_increases,
         "energy_increases": energy_increases,
+        "initial_energy": initial_energy,
+        "final_energy": final_energy,
+        "energy_change_initial_final": energy_change_initial_final,
+        "large_energy_change": large_energy_change,
+        "large_energy_change_threshold": LARGE_ENERGY_CHANGE_THRESHOLD_EV,
         "force_spikes": force_spikes,
+        "initial_fmax": initial_fmax,
+        "initial_fmax_reference": INITIAL_FMAX_REFERENCE_EV_PER_A,
+        "late_fmax_threshold": LATE_FMAX_THRESHOLD_EV_PER_A,
+        "early_step_fraction": EARLY_STEP_FRACTION,
+        "early_step_count": early_count,
+        "late_high_fmax_events": late_high_fmax_events,
         "rmsd_jumps": rmsd_jumps,
+        "rmsd_tail": rmsd_tail,
         "local_minima": minima,
         "significant_minima": multi_minima,
-        "final_energy": next((value for value in reversed(energies) if value is not None), None),
         "final_fmax": final_fmax,
     }
 
@@ -724,6 +811,8 @@ def _render_overlay_view(
     *,
     width: int,
     height: int,
+    color_mode: str,
+    cmap_name: str,
     show_fixed_halo: bool = True,
 ) -> None:
     """Fade every sampled step of the movers in, oldest to newest; draw the rest solid.
@@ -761,14 +850,21 @@ def _render_overlay_view(
     ads_mask = rc.adsorbate_mask(last)
     items = rc.frame_items(last, frame, alpha=1.0, fixed=fixed, ads_mask=ads_mask, show_fixed_halo=show_fixed_halo)
     n = len(selected)
+    if color_mode == "colormap":
+        last_color = render_style.colormap_rgb(cmap_name, 1.0)
+        items = render_style.recolor_atoms(items, last_color)
     if movers and n > 1:
         mover_mask = None if ads_mask is None else ads_mask[movers]
         for k, atoms in enumerate(selected[:-1]):  # last is already solid, above
             alpha = 0.15 + 0.75 * (k / (n - 2) if n > 2 else 1.0)
             sub = atoms[movers]
-            items += rc.frame_items(
+            mover_items = rc.frame_items(
                 sub, frame, alpha=alpha, fixed=[], show_cell=False, show_fixed_halo=False, ads_mask=mover_mask,
             )
+            if color_mode == "colormap":
+                position = k / (n - 1)
+                mover_items = render_style.recolor_atoms(mover_items, render_style.colormap_rgb(cmap_name, position))
+            items += mover_items
     rc.draw_items(ax, items)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -785,6 +881,8 @@ def render_trajectory_overlay(
     width: int,
     height: int,
     mover_threshold: float,
+    color_mode: str,
+    cmap_name: str,
 ) -> dict[str, Any]:
     """Render Top/Side-a/Side-b PNGs showing where the relaxation moved.
 
@@ -794,7 +892,13 @@ def render_trajectory_overlay(
     solid, from the last frame. Keep ``indices`` short (≤7 or so) — past that
     the fades start to overlap into a blur rather than a readable sequence.
     """
-    result: dict[str, Any] = {"indices": indices, "paths": {}, "error": None}
+    result: dict[str, Any] = {
+        "indices": indices,
+        "paths": {},
+        "color_mode": color_mode,
+        "colormap": cmap_name if color_mode == "colormap" else None,
+        "error": None,
+    }
     selected = unwrap_selected(frames, indices)
     if not selected:
         result["error"] = "no frames to render"
@@ -812,7 +916,9 @@ def render_trajectory_overlay(
             # view whose job is showing site/coverage.
             _render_overlay_view(
                 selected, cam, fixed, movers, path,
-                width=width, height=height, show_fixed_halo=(name != "top"),
+                width=width, height=height,
+                color_mode=color_mode, cmap_name=cmap_name,
+                show_fixed_halo=(name != "top"),
             )
             result["paths"][name] = str(path)
         result["movers"] = movers
@@ -839,10 +945,22 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
         f"- Trajectory: `{summary.get('trajectory_input')}`",
         f"- OSZICAR: `{summary.get('oszicar_input')}`",
         f"- Frames: {summary['frame_count']}",
-        f"- Energy monotonic decrease: {summary['diagnosis']['energy_monotonic_decrease']}",
-        f"- Final energy: {summary['diagnosis'].get('final_energy')}",
         "",
-        "## Verdict reasons",
+        "## Check Order",
+        "",
+        f"1. Confirm final fmax against the run criterion: "
+        f"{summary['diagnosis'].get('final_fmax')} vs {convergence.get('fmax_threshold')} eV/Å "
+        f"({convergence.get('fmax_threshold_source')}).",
+        f"2. Confirm whether the run stopped because it reached NSW/max ionic steps: "
+        f"{convergence.get('nsw_reached')}.",
+        f"3. Check optimization-warning signals: energy change "
+        f"{summary['diagnosis'].get('energy_change_initial_final')} eV, late high Fmax events "
+        f"{len(summary['diagnosis'].get('late_high_fmax_events', []))}, RMSD tail "
+        f"{(summary['diagnosis'].get('rmsd_tail') or {}).get('converged')}.",
+        "4. Inspect the red/blue initial-final endpoint images for unintended migration, "
+        "dissociation, desorption, or distortion.",
+        "",
+        "## Verdict Reasons",
         "",
     ]
     fail_reasons = convergence.get("fail_reasons", [])
@@ -863,30 +981,39 @@ def write_review_markdown(path: Path, summary: dict[str, Any], selected_extxyz: 
             f"- desorption suspected: {anomalies.get('desorption_suspected')} "
             f"(max upward shift {anomalies.get('max_upward_shift')})",
         ])
-    lines.extend(["", "## Diagnostic warnings", ""])
-    warnings = summary["diagnosis"].get("warnings", [])
-    if warnings:
-        lines.extend(f"- {warning}" for warning in warnings)
-    else:
-        lines.append("- No high-level warnings under the selected thresholds.")
-    lines.extend(["", "## Visual check", ""])
-    overlay = summary.get("visual_validation", {}).get("overlay") or {}
-    overlay_paths = overlay.get("paths") or {}
-    if overlay_paths:
+    rmsd_tail = summary["diagnosis"].get("rmsd_tail") or {}
+    lines.extend([
+        "",
+        "## Guard Notes",
+        "",
+        f"- Energy change warning threshold: "
+        f"{summary['diagnosis'].get('large_energy_change_threshold')} eV.",
+        f"- Early rough-start Fmax near {summary['diagnosis'].get('initial_fmax_reference')} eV/Å can be acceptable; "
+        f"post-early Fmax above {summary['diagnosis'].get('late_fmax_threshold')} eV/Å needs review.",
+        "- RMSD should approach a late plateau; continued tail drift suggests structural drift/distortion.",
+    ])
+    if rmsd_tail.get("evaluated"):
         lines.append(
-            f"- Overlay PNGs ({', '.join(sorted(overlay_paths))}): atoms that moved more than "
-            f"`--mover-threshold` fade in across every sampled frame (faint = oldest, solid = last); "
-            f"everything else renders once, solid, from the last frame."
+            f"- RMSD tail drift: {rmsd_tail.get('drift_A')} Å "
+            f"(threshold {rmsd_tail.get('threshold_A')} Å; converged={rmsd_tail.get('converged')})."
         )
-        lines.append(f"- Atoms shown fading across sampled frames (by index): {overlay.get('movers', [])}")
+    lines.extend(["", "## Image Check", ""])
+    initial_final = summary.get("visual_validation", {}).get("initial_final") or {}
+    initial_final_paths = initial_final.get("paths") or {}
+    if initial_final_paths:
+        colors = initial_final.get("colors") or {}
+        lines.append(
+            f"- Initial/final PNGs ({', '.join(sorted(initial_final_paths))}): "
+            f"initial structure is {colors.get('initial', 'red')}; "
+            f"final structure is {colors.get('final', 'blue')}."
+        )
+        lines.append(
+            "- Use these endpoint images as the visual check. Red/blue separation shows net "
+            "motion from the starting structure to the final structure."
+        )
         lines.append("")
     if selected_extxyz is not None:
-        lines.extend([
-            f"Sampled frames are also in `{selected_extxyz.name}` "
-            "(per-atom `analysis_disp_to_initial` / `analysis_disp_step` arrays included) "
-            "for loading in any ASE-compatible viewer.",
-            "Inspect sampled frames around RMSD jumps, force spikes, energy increases, and local minima.",
-        ])
+        lines.append(f"Selected structural frames are saved in `{selected_extxyz.name}` for optional follow-up.")
     else:
         lines.append("No structural trajectory was available; OSZICAR-only analysis cannot support overlay review.")
     path.write_text("\n".join(lines) + "\n")
@@ -901,24 +1028,27 @@ def main() -> int:
     parser.add_argument("--outdir", default="calculation_result_analysis", help="Output directory.")
     parser.add_argument("--anchor", choices=["auto", "fixed", "bottom", "all", "none"], default="auto", help="Alignment anchor policy for RMSD.")
     parser.add_argument("--bottom-fraction", type=float, default=0.35, help="Bottom z-fraction used for slab alignment when no FixAtoms are present.")
-    parser.add_argument("--sample-count", type=int, default=12, help="Uniform samples to include in selected_frames.extxyz.")
-    parser.add_argument("--top-events", type=int, default=6, help="Maximum events per signal to include in visual sampling.")
-    parser.add_argument("--energy-increase-threshold", type=float, default=0.05, help="Energy increase threshold in eV.")
-    parser.add_argument("--force-jump-threshold", type=float, default=2.0, help="Fmax jump threshold in eV/Å.")
-    parser.add_argument("--rmsd-jump-threshold", type=float, default=0.35, help="Adjacent-frame RMSD jump threshold in Å.")
-    parser.add_argument("--minima-energy-prominence", type=float, default=0.05, help="Energy barrier threshold for significant minima candidates in eV.")
-    parser.add_argument("--minima-rmsd-threshold", type=float, default=0.4, help="RMSD separation threshold for significant minima candidates in Å.")
-    parser.add_argument("--high-final-fmax", type=float, default=0.08, help="Warn when final Fmax exceeds this eV/Å threshold.")
+    parser.add_argument("--sample-count", type=int, default=12, help=argparse.SUPPRESS)
+    parser.add_argument("--top-events", type=int, default=6, help=argparse.SUPPRESS)
+    parser.add_argument("--energy-increase-threshold", type=float, default=0.05, help=argparse.SUPPRESS)
+    parser.add_argument("--force-jump-threshold", type=float, default=2.0, help=argparse.SUPPRESS)
+    parser.add_argument("--rmsd-jump-threshold", type=float, default=0.35, help=argparse.SUPPRESS)
+    parser.add_argument("--minima-energy-prominence", type=float, default=0.05, help=argparse.SUPPRESS)
+    parser.add_argument("--minima-rmsd-threshold", type=float, default=0.4, help=argparse.SUPPRESS)
+    parser.add_argument("--high-final-fmax", type=float, default=0.08, help=argparse.SUPPRESS)
     parser.add_argument("--fmax-threshold", type=float, default=None, help="Force convergence criterion (eV/Å) for the verdict. Default: |EDIFFG| from VASP outputs when present, else 0.05.")
     parser.add_argument("--nsw", type=int, default=None, help="Max ionic steps for the verdict. Default: NSW from VASP outputs when present.")
-    parser.add_argument("--bond-scale", type=float, default=1.2, help="Covalent-radius multiplier for connectivity/dissociation detection.")
-    parser.add_argument("--desorption-z", type=float, default=2.5, help="Upward shift along the surface normal (Å) that flags possible desorption/lift-off on slabs.")
-    parser.add_argument("--mover-threshold", type=float, default=0.25, help="Minimum displacement (Å) across the sampled frames before an atom is faded in across frames instead of drawn once, solid.")
-    parser.add_argument("--overlay-max-frames", type=int, default=7, help="Max frames uniformly sampled for the overlay PNGs. Keep this low (~7): movers render at every sampled frame, so more frames means more overlapping fades, not more clarity.")
-    parser.add_argument("--zoom-frames", default=None, help="Comma-separated frame indices to also render as a zoomed overlay (e.g. '0,12,30').")
+    parser.add_argument("--bond-scale", type=float, default=1.2, help=argparse.SUPPRESS)
+    parser.add_argument("--desorption-z", type=float, default=2.5, help=argparse.SUPPRESS)
+    parser.add_argument("--mover-threshold", type=float, default=0.25, help=argparse.SUPPRESS)
+    parser.add_argument("--overlay-max-frames", type=int, default=7, help=argparse.SUPPRESS)
+    parser.add_argument("--visual-mode", choices=["all", "trajectory", "initial-final"], default="initial-final", help=argparse.SUPPRESS)
+    parser.add_argument("--trajectory-color-mode", choices=["colormap", "element"], default="colormap", help=argparse.SUPPRESS)
+    parser.add_argument("--trajectory-cmap", default="Blues", help=argparse.SUPPRESS)
+    parser.add_argument("--zoom-frames", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--no-visual", action="store_true", help="Skip PNG rendering entirely.")
-    parser.add_argument("--png-width", type=int, default=1600, help="Overlay PNG width.")
-    parser.add_argument("--png-height", type=int, default=1100, help="Overlay PNG height.")
+    parser.add_argument("--png-width", type=int, default=1600, help=argparse.SUPPRESS)
+    parser.add_argument("--png-height", type=int, default=1100, help=argparse.SUPPRESS)
     parser.add_argument("--visual-review", default=None, help="Path to a completed visual_review.json to ingest. Default: <outdir>/visual_review.json if present.")
     parser.add_argument("--skip-visual-validation", action="store_true", help="Skip the multimodal visual gate; overall verdict equals the deterministic verdict (PNGs are still rendered).")
     args = parser.parse_args()
@@ -965,7 +1095,9 @@ def main() -> int:
     # --- Visual validation: trajectory-path overlay PNGs + multimodal review gate ---
     visual: dict[str, Any] = {
         "status": "skipped" if args.skip_visual_validation else "pending",
+        "mode": args.visual_mode,
         "overlay": None,
+        "initial_final": None,
         "zoom": None,
         "request_path": None,
         "review_path": None,
@@ -978,12 +1110,19 @@ def main() -> int:
         visual["status"] = "unavailable"
         visual["error"] = "no structural frames to visualize"
     elif not args.no_visual:
-        overlay_indices = uniform_overlay_indices(len(frames), args.overlay_max_frames)
-        visual["overlay"] = render_trajectory_overlay(
-            frames, overlay_indices, outdir, "overlay",
-            width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
-        )
-        if args.zoom_frames:
+        if args.visual_mode in ("all", "trajectory"):
+            overlay_indices = uniform_overlay_indices(len(frames), args.overlay_max_frames)
+            visual["overlay"] = render_trajectory_overlay(
+                frames, overlay_indices, outdir, "overlay",
+                width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
+                color_mode=args.trajectory_color_mode, cmap_name=args.trajectory_cmap,
+            )
+        if args.visual_mode in ("all", "initial-final"):
+            visual["initial_final"] = endpoint_render.render_initial_final_comparison(
+                frames, outdir, "initial_final",
+                width=args.png_width, height=args.png_height,
+            )
+        if args.zoom_frames and visual["overlay"] is not None:
             zoom_idx = sorted({
                 int(tok) for tok in args.zoom_frames.split(",")
                 if tok.strip().lstrip("-").isdigit() and 0 <= int(tok) < len(frames)
@@ -992,24 +1131,41 @@ def main() -> int:
                 visual["zoom"] = render_trajectory_overlay(
                     frames, zoom_idx, outdir, "zoom",
                     width=args.png_width, height=args.png_height, mover_threshold=args.mover_threshold,
+                    color_mode=args.trajectory_color_mode, cmap_name=args.trajectory_cmap,
                 )
-        if visual["overlay"].get("error") and not visual["overlay"].get("paths"):
+        overlay_error = (visual["overlay"] or {}).get("error")
+        initial_final_error = (visual["initial_final"] or {}).get("error")
+        overlay_paths = (visual["overlay"] or {}).get("paths") or {}
+        initial_final_paths = (visual["initial_final"] or {}).get("paths") or {}
+        if not overlay_paths and not initial_final_paths:
             visual["status"] = "unavailable"
-            visual["error"] = visual["overlay"]["error"]
+            visual["error"] = overlay_error or initial_final_error or "no visual artifacts rendered"
 
     request_path = outdir / "visual_review_request.json"
     if visual["status"] not in ("skipped", "unavailable"):
+        rendered_sets = []
+        if (visual["initial_final"] or {}).get("paths"):
+            rendered_sets.append("red/blue initial-final endpoint PNGs")
+        if not rendered_sets and (visual["overlay"] or {}).get("paths"):
+            rendered_sets.append("rendered structure PNGs")
+        if (visual["zoom"] or {}).get("paths"):
+            rendered_sets.append("additional zoom PNGs")
+        rendered_description = ", ".join(rendered_sets)
         request = {
             "instruction": (
-                "Inspect the overlay PNGs (and zoom PNGs if present) and decide "
-                "pass/warn/fail: did the relaxation stay physically sane (no "
-                "unintended desorption, dissociation, atoms passing through each "
-                "other, or migration to the wrong site)? Write the result to "
-                "expected_review_file."
+                f"Inspect the red/blue initial-final endpoint PNGs ({rendered_description}). "
+                "First confirm final fmax against the selected force criterion and whether "
+                "the run reached NSW/max ionic steps. Then decide pass/warn/fail from the "
+                "endpoint geometry: no unintended desorption, dissociation, severe distortion, "
+                "or migration to the wrong site. Write the result to expected_review_file."
             ),
             "deterministic_verdict": deterministic_verdict,
+            "visual_mode": visual["mode"],
             "overlay": (visual["overlay"] or {}).get("paths"),
+            "initial_final": (visual["initial_final"] or {}).get("paths"),
             "zoom": (visual["zoom"] or {}).get("paths") if visual["zoom"] else None,
+            "trajectory_color_mode": (visual["overlay"] or {}).get("color_mode"),
+            "trajectory_colormap": (visual["overlay"] or {}).get("colormap"),
             "sampled_indices": (visual["overlay"] or {}).get("indices"),
             "n_frames_total": len(frames),
             "expected_review_file": str(outdir / "visual_review.json"),

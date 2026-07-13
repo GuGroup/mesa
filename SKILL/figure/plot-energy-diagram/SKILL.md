@@ -37,10 +37,13 @@ The script requires `matplotlib` and `chemdiagrams`. If `chemdiagrams` is missin
 - Keep reaction labels short; use newline or leading spacing only when needed to avoid collisions.
 - Use concise, readable state labels and legend labels. Do not force unexplained abbreviations, but shorten phrases until each label scans cleanly on the axis.
 - Label common zero-energy endpoints once when multiple paths share the same reference.
+- Do not draw a plot title. Keep figure titles and panel labels outside the exported diagram so multi-panel composition stays consistent.
+- Do not draw a horizontal zero-reference line unless the user explicitly requests one. Zero-valued plateaus and shared endpoint labels provide the reference without adding a gray line across the data.
 - Use SVG or PDF for editable manuscript figures; use PNG only for previews.
 - Move label offsets after creating `EnergyDiagram`; `dia.fig` does not exist before `dia = EnergyDiagram(...)`.
 - Treat any inline example snippet as a style reference only: line widths, boxed frame, label weights, annotation style, legend style, and export settings.
-- Keep the energy diagram compact and manuscript-ready: editable SVG/PDF text, bold in-box legend labels, short prominent bold state labels, x-axis state tick bars centered on the axis spine, restrained line widths, and a quiet zero-reference line unless the user asks for another layout.
+- Use a `5.4 × 4 in` default canvas to reduce physical spacing between states. Use wide plateaus, compact bold state labels, tight layout padding, and preserve the full canvas so tight bounding-box cropping does not remove the boxed frame.
+- Keep the energy diagram compact and manuscript-ready: editable SVG/PDF text, bold in-box legend labels, readable state labels, x-axis state tick bars centered on the axis spine, and restrained line widths.
 
 ## Customization
 

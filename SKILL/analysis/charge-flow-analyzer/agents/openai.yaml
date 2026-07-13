@@ -1,0 +1,4 @@
+interface:
+  display_name: "Charge Flow Analyzer"
+  short_description: "Analyze CHGCAR charge redistribution"
+  default_prompt: "Use $charge-flow-analyzer to compare CHGCAR charge redistribution for adsorbate or doped catalyst slabs."

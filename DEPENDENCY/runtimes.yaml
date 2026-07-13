@@ -43,7 +43,7 @@ runtimes:
       - mamba
       - python
     smoke:
-      - mamba run -n modeling python -c "import ase, pymatgen, rdkit, slabuilder; print('mesa-modeling ok')"
+      - mamba run -n modeling python -c "import ase, pymatgen, rdkit, skimage, slabuilder; print('mesa-modeling ok')"
     env_optional:
       - MP_API_KEY
       - PMG_MAPI_KEY
@@ -199,6 +199,8 @@ skills:
   balance-reaction-pathway: mesa-general
   evaluate-energy-diagram: mesa-general
   assemble-alkaline-her-descriptors: mesa-general
+  analyze-dband-center: mesa-modeling
+  charge-flow-analyzer: mesa-modeling
   build-slab-models: mesa-modeling
   build-gas-phase-models: mesa-modeling
   analyze-calculation-results: mesa-modeling
@@ -209,6 +211,7 @@ skills:
   manage-vasp-jobs: mesa-vasp-submit
   relax-uma-trajectory: mesa-uma
   calculate-uma-vibrational-frequencies: mesa-uma
+  plot-dos: mesa-modeling
   plot-energy-diagram: mesa-manuscript
   plot-sabatier-volcano: mesa-manuscript
   render-adsorbate-structure-grid: mesa-manuscript

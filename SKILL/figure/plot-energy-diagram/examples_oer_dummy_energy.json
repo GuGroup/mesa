@@ -18,7 +18,7 @@
   },
   "ylabel": "$\\Delta G$ (eV)",
   "xlabel": "OER Coordinate",
-  "figsize": [5.2, 3.5],
+  "figsize": [5.4, 4],
   "x_number_min_max": [0.5, 3.5],
   "zero_label_positions": [0, 4],
   "legend_loc": "upper left"
