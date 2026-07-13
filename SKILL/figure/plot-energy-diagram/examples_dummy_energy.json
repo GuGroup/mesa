@@ -22,7 +22,7 @@
   },
   "ylabel": "$\\Delta G_{\\mathrm{rel}}$ (eV)",
   "xlabel": "Reaction Coordinate",
-  "figsize": [6, 4],
+  "figsize": [5.4, 4],
   "fontsize": 10,
   "x_number_min_max": [0.5, 4.5],
   "zero_label_positions": [0, 5]

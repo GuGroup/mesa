@@ -33,7 +33,7 @@ EXAMPLE_SPEC: dict[str, Any] = {
     },
     "ylabel": r"$\Delta G_{\mathrm{rel}}$ (eV)",
     "xlabel": "Reaction Coordinate",
-    "figsize": [6, 4],
+    "figsize": [5.4, 4],
     "fontsize": 10,
     "x_number_min_max": [0.5, 4.5],
     "zero_label_positions": [0, 5],
@@ -43,11 +43,11 @@ EXAMPLE_SPEC: dict[str, Any] = {
 STYLE_DEFAULTS: dict[str, Any] = {
     "ylabel": r"$\Delta G_{\mathrm{rel}}$ (eV)",
     "xlabel": "Reaction Coordinate",
-    "figsize": [5.4, 3.6],
-    "fontsize": 8,
+    "figsize": [5.4, 4],
+    "fontsize": 10,
     "x_number_min_max": [0.5, 4.5],
     "zero_label_positions": [0, 5],
-    "show_zero_line": True,
+    "show_zero_line": False,
     "show_state_ticks": True,
     "legend_loc": "upper right",
 }
@@ -102,15 +102,15 @@ def plot(spec: dict[str, Any], output: str) -> Path:
             "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans", "sans-serif"],
             "svg.fonttype": "none",
             "pdf.fonttype": 42,
-            "font.size": 8,
-            "axes.linewidth": 0.9,
-            "ytick.major.width": 0.8,
-            "xtick.major.width": 0.8,
+            "font.size": 10,
+            "axes.linewidth": 1.2,
+            "ytick.major.width": 1.1,
+            "xtick.major.width": 1.1,
             "legend.frameon": False,
         }
     )
 
-    dia = EnergyDiagram(figsize=tuple(spec.get("figsize", [6, 4])), fontsize=spec.get("fontsize", 10))
+    dia = EnergyDiagram(figsize=tuple(spec.get("figsize", [5.4, 4])), fontsize=spec.get("fontsize", 10))
     labels = list(spec["data"])
     colors = dict(spec.get("colors", {}))
     for idx, label in enumerate(labels):
@@ -128,12 +128,12 @@ def plot(spec: dict[str, Any], output: str) -> Path:
             color=colors.get(label),
             path_name=label,
             linetypes=1,
-            lw_connector=1.35,
-            lw_plateau=1.9,
-            width_plateau=0.58,
+            lw_connector=1.7,
+            lw_plateau=2.1,
+            width_plateau=0.63,
         )
 
-    if spec.get("show_zero_line", True):
+    if spec.get("show_zero_line", False):
         dia.ax.axhline(0, color="#CFCECE", lw=0.8, zorder=0)
 
     if all_drawn_values:
@@ -144,23 +144,21 @@ def plot(spec: dict[str, Any], output: str) -> Path:
 
     number_range = spec.get("x_number_min_max")
     if number_range:
-        dia.add_numbers_auto(n_decimals=2, x_min_max=tuple(number_range), fontsize=7.5)
+        dia.add_numbers_auto(n_decimals=2, x_min_max=tuple(number_range), fontsize=9)
     else:
-        dia.add_numbers_auto(n_decimals=2, fontsize=7.5)
+        dia.add_numbers_auto(n_decimals=2, fontsize=9)
 
     for x_ref in spec.get("zero_label_positions", []):
-        dia.ax.text(float(x_ref), 0.06, "0.00", ha="center", va="bottom", fontsize=7.5, color="#767676")
+        dia.ax.text(float(x_ref), 0.06, "0.00", ha="center", va="bottom", fontsize=9, color="#767676")
 
     dia.set_diagram_style("boxed")
     if spec.get("x_labels"):
-        dia.set_xlabels(spec["x_labels"], fontsize=10, weight="bold")
-    dia.ax.set_ylabel(spec.get("ylabel", r"$\Delta G_{\mathrm{rel}}$ (eV)"), fontsize=11, weight="bold")
-    dia.ax.set_xlabel(spec.get("xlabel", "Reaction Coordinate"), fontsize=11, weight="bold", labelpad=10)
-    if spec.get("title"):
-        dia.ax.set_title(spec["title"], fontsize=9, weight="bold")
-    dia.ax.tick_params(axis="y", labelsize=8, length=3)
+        dia.set_xlabels(spec["x_labels"], fontsize=9.5, weight="bold")
+    dia.ax.set_ylabel(spec.get("ylabel", r"$\Delta G_{\mathrm{rel}}$ (eV)"), fontsize=14, weight="bold")
+    dia.ax.set_xlabel(spec.get("xlabel", "Reaction Coordinate"), fontsize=12, weight="bold", labelpad=8)
+    dia.ax.tick_params(axis="y", labelsize=10, length=4)
     if spec.get("show_state_ticks", True):
-        dia.ax.tick_params(axis="x", which="major", length=6, width=1.1, direction="out", pad=9)
+        dia.ax.tick_params(axis="x", which="major", length=6, width=1.2, direction="out", pad=9)
         x_count = max((len(values) for values in spec["data"].values()), default=0)
         ymin, ymax = dia.ax.get_ylim()
         tick_half_len = (ymax - ymin) * 0.023
@@ -170,18 +168,19 @@ def plot(spec: dict[str, Any], output: str) -> Path:
                 ymin - tick_half_len,
                 ymin + tick_half_len,
                 color="#272727",
-                lw=1.1,
+                lw=1.2,
                 zorder=4,
                 clip_on=False,
             )
     else:
         dia.ax.tick_params(axis="x", length=0)
     for spine in dia.ax.spines.values():
-        spine.set_linewidth(0.9)
+        spine.set_linewidth(1.2)
         spine.set_color("#272727")
+        spine.set_position(("outward", -0.6))
 
     legend_handles = [
-        Line2D([0], [0], color=colors.get(label), lw=2.5, label=label)
+        Line2D([0], [0], color=colors.get(label), lw=2.7, label=label)
         for label in spec["data"]
         if colors.get(label)
     ]
@@ -189,24 +188,24 @@ def plot(spec: dict[str, Any], output: str) -> Path:
         dia.ax.legend(
             handles=legend_handles,
             frameon=False,
-            fontsize=8,
+            fontsize=9,
             loc=spec.get("legend_loc", "upper right"),
             ncol=1,
             handlelength=1.8,
             handletextpad=0.5,
-            prop={"weight": "bold", "size": 8},
+            prop={"weight": "bold", "size": 9},
         )
 
-    offset = mtransforms.ScaledTranslation(-4 / 72, 0, dia.fig.dpi_scale_trans)
+    offset = mtransforms.ScaledTranslation(-6 / 72, 0, dia.fig.dpi_scale_trans)
     for tick in dia.ax.get_xticklabels():
         tick.set_fontweight("bold")
-        tick.set_fontsize(10)
+        tick.set_fontsize(9.5)
         tick.set_transform(tick.get_transform() + offset)
 
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    dia.fig.tight_layout()
-    dia.fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    dia.fig.tight_layout(pad=0.3)
+    dia.fig.savefig(output_path, dpi=200)
     plt.close(dia.fig)
     return output_path
 
