@@ -56,6 +56,10 @@ from ase.vibrations import Vibrations
 from fairchem.core import FAIRChemCalculator, pretrained_mlip
 
 atoms = read(input_poscar, format="vasp")
+if task_name == "omol":
+    atoms.pbc = False
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
 
 predictor = pretrained_mlip.get_predict_unit(model, device=device)
 atoms.calc = FAIRChemCalculator(predictor, task_name=task_name)

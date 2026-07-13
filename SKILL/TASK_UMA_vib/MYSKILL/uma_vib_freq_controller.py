@@ -218,6 +218,7 @@ def _resolve_uma_vib_config(
     hints = _inspect_poscar_lightly(poscar_path)
     device, device_reason = _decide_device(execution_mode)
     vibration_decision = _decide_vibration_indices(hints)
+    task_name, task_reason = _decide_task_name(vibration_decision["structure_type"])
     warnings = list(vibration_decision.get("warnings") or [])
 
     lower_poscar = str(poscar_path).lower()
@@ -228,7 +229,7 @@ def _resolve_uma_vib_config(
 
     decision_reasons = [
         "Defaulted to UMA model uma-s-1p2 for broad MESA frequency coverage.",
-        "Defaulted to UMA task_name omat for crystal and materials structures.",
+        task_reason,
         device_reason,
         "Selected finite-difference displacement delta=0.01 and nfree=2 for a minimal ASE Vibrations workflow.",
         vibration_decision["reason"],
@@ -247,7 +248,7 @@ def _resolve_uma_vib_config(
         "vib_cache": "vib_cache/vib",
         "uma": {
             "model": "uma-s-1p2",
-            "task_name": "omat",
+            "task_name": task_name,
             "device": device,
         },
         "vibration": {
@@ -283,6 +284,7 @@ def _decide_vibration_indices(hints: dict[str, Any]) -> dict[str, Any]:
     n_atoms = hints.get("atom_count")
     movable_indices = [int(index) for index in hints.get("movable_indices") or []]
     has_vacuum = bool(hints.get("has_large_vacuum_axis"))
+    looks_molecular = _looks_like_molecule_or_cluster(hints)
     warnings: list[str] = []
 
     if not isinstance(n_atoms, int) or n_atoms <= 0:
@@ -296,9 +298,12 @@ def _decide_vibration_indices(hints: dict[str, Any]) -> dict[str, Any]:
         }
 
     if n_atoms <= max_all_atoms:
-        structure_type = "molecule_or_small_cluster"
-        if has_vacuum:
+        if looks_molecular:
+            structure_type = "molecule_or_small_cluster"
+        elif has_vacuum:
             structure_type = "surface_or_adsorbate_or_cluster"
+        else:
+            structure_type = "small_bulk_or_material"
         return {
             "indices": None,
             "launch_allowed": True,
@@ -349,6 +354,20 @@ def _decide_vibration_indices(hints: dict[str, Any]) -> dict[str, Any]:
         "reason": reason,
         "warnings": warnings,
     }
+
+
+def _decide_task_name(structure_type: str) -> tuple[str, str]:
+    if structure_type == "molecule_or_small_cluster":
+        return "omol", "Selected UMA task_name omol because the POSCAR looks like a molecule or isolated cluster."
+    return "omat", "Selected UMA task_name omat for periodic materials, surfaces, adsorbates, or unresolved structures."
+
+
+def _looks_like_molecule_or_cluster(hints: dict[str, Any]) -> bool:
+    comment = str(hints.get("comment") or "").lower()
+    comment_tokens = ("molecule", "mol", "cluster", "gas")
+    if any(token in comment for token in comment_tokens):
+        return True
+    return bool(hints.get("has_molecular_vacuum_box"))
 
 
 def _check_required_outputs(
@@ -517,6 +536,7 @@ def _inspect_poscar_lightly(poscar_path: Path) -> dict[str, Any]:
         "comment": None,
         "lattice_lengths": [],
         "has_large_vacuum_axis": False,
+        "has_molecular_vacuum_box": False,
     }
     try:
         text = poscar_path.read_text(encoding="utf-8")
@@ -557,6 +577,10 @@ def _inspect_poscar_lightly(poscar_path: Path) -> dict[str, Any]:
     hints["elements"] = elements
     hints["counts"] = counts
     hints["atom_count"] = n_atoms
+    if lattice_lengths:
+        positive_lengths = [length for length in lattice_lengths if length > 0]
+        shortest = min(positive_lengths) if positive_lengths else 0
+        hints["has_molecular_vacuum_box"] = bool(n_atoms <= 50 and shortest >= 10.0)
 
     coord_mode_index = counts_line_index + 1
     if coord_mode_index < len(lines) and lines[coord_mode_index].lower().startswith("s"):

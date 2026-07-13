@@ -66,6 +66,9 @@ decisions.
 2. Check only that the POSCAR exists, is non-empty, and can be opened.
 3. Inspect the POSCAR and runtime environment enough to decide UMA and vibration
    settings.
+   Molecular or isolated-cluster POSCARs should resolve to `task_name=omol`;
+   periodic materials, slabs, surfaces, adsorbates, and unresolved structures
+   should resolve to `task_name=omat`.
 4. Write `results/resolved_uma_vib_config.json`.
 5. Run locally or submit `EXTSKILL/scripts/run_uma_vib_freq.qsub.sh`.
 6. The qsub script creates `results/`, `logs/`, and `vib_cache/`, then runs the

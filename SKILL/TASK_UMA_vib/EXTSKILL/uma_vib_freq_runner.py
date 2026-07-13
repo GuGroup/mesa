@@ -32,6 +32,13 @@ def frequency_payload(frequencies):
     return values, n_imaginary
 
 
+def prepare_atoms_for_task(atoms, task_name):
+    if task_name == "omol":
+        atoms.pbc = False
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
+
+
 def main():
     config_path = Path("results/resolved_uma_vib_config.json")
     result_json = "results/uma_vib_freq.json"
@@ -57,6 +64,7 @@ def main():
         nfree = config["vibration"]["nfree"]
 
         atoms = read(input_poscar, format="vasp")
+        prepare_atoms_for_task(atoms, task_name)
 
         predictor = pretrained_mlip.get_predict_unit(model, device=device)
         atoms.calc = FAIRChemCalculator(predictor, task_name=task_name)

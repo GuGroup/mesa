@@ -92,8 +92,12 @@ controller-selected values, not placeholders.
 ```
 
 Use executable fallback settings when no stronger POSCAR or runtime reason is
-available: `model=uma-s-1p2`, `task_name=omat`, `device=cuda` when available
-otherwise `cpu`, `delta=0.01`, and `nfree=2`.
+available: `model=uma-s-1p2`, `device=cuda` when available otherwise `cpu`,
+`delta=0.01`, and `nfree=2`. Select `task_name=omol` when the POSCAR looks like
+a molecule or isolated cluster, such as a small structure in a large molecular
+vacuum box or a POSCAR comment indicating a molecule/cluster. Select
+`task_name=omat` for periodic materials, slabs, surfaces, adsorbates, and
+unresolved structures.
 
 ## Structure-Size Logic
 
@@ -107,6 +111,10 @@ Use this minimal policy:
 | Small structure | Displace all atoms with `indices: null`. |
 | POSCAR has Selective Dynamics and a manageable movable subset | Displace only movable atom indices. |
 | Large structure without identifiable local atoms | Write the resolved config but stop before launch with `needs_human_review`. |
+
+Small structures are not automatically molecules. Use lattice/comment hints to
+distinguish isolated molecular boxes from small periodic material cells before
+choosing `uma.task_name`.
 
 Do not run relaxation in this task. If relaxation provenance is not obvious from
 the POSCAR path, record a warning but continue when the structure is small enough
