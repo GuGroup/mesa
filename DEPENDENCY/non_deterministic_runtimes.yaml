@@ -1,0 +1,100 @@
+version: 1
+
+handoff:
+  default_project: project/mos
+  default_initialization_dir: project/mos/initialization
+  output_markdown: dependency_handoff.md
+  output_json: machine_profile.json
+  analyzer_output_markdown: nondeterministic_profile.md
+  analyzer_output_json: nondeterministic_profile.json
+  status_markdown: initialize_status.md
+  events_jsonl: initialize_events.jsonl
+  runtime_plan_dir: runtime_plans
+  scheduler_policy: deferred_until_final_stage
+  install_policy: do_not_install_without_explicit_yes
+
+runtimes:
+  mesa-uma:
+    description: FAIRChem/UMA runtime for MLIP relaxation trajectories and finite-displacement vibrations.
+    deterministic:
+      python: machine-specific
+      required_imports:
+        - ase
+        - fairchem.core.FAIRChemCalculator
+        - fairchem.core.pretrained_mlip
+      optional_env:
+        - HF_TOKEN
+        - HF_HOME
+        - MESA_UMA_DEVICE
+        - CUDA_VISIBLE_DEVICES
+        - PYTHON_BIN
+      smoke: "python -c \"import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')\""
+      checkpoint_policy: Do not download UMA model/checkpoint files without explicit user approval.
+    codex_must_decide:
+      cuda:
+        inspect:
+          - nvidia-smi
+          - nvcc --version
+          - 'python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"'
+        choose:
+          - cpu_debug
+          - cuda_runtime_matching_driver_and_torch
+      checkpoints:
+        inspect:
+          - HF_TOKEN
+          - HF_HOME
+          - local model cache/path
+        do_not_download_without_yes: true
+      scheduler:
+        policy: deferred_until_final_stage
+        inspect_later:
+          - qsub
+          - sbatch
+
+  mesa-adsorbdiff:
+    description: AdsorbDiff runtime for adsorbate placement, diffusion sampling, and optional MLFF relaxation.
+    deterministic:
+      python: "3.10"
+      required_imports:
+        - ase
+        - numpy
+        - yaml
+        - lmdb
+        - torch
+      optional_env:
+        - HF_TOKEN
+        - HF_HOME
+        - CUDA_VISIBLE_DEVICES
+      checkpoint_names:
+        - PT_zeroshot_painn.pt
+        - PT_fewshot_eqv2_cond.pt
+        - gemnet_oc_base_s2ef_2M.pt
+      baseline_commands:
+        - conda create -n adsorbdiff python=3.10
+        - conda activate adsorbdiff
+        - 'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/<CUDA_TAG>'
+        - 'pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-<TORCH_VERSION>+<CUDA_TAG>.html'
+      smoke: "python -c \"import ase, lmdb, torch, yaml; print('mesa-adsorbdiff ok')\""
+      checkpoint_policy: Do not download AdsorbDiff/OCP checkpoint files without explicit user approval.
+    codex_must_decide:
+      cuda:
+        inspect:
+          - nvidia-smi
+          - nvcc --version
+          - 'python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"'
+        choose:
+          - cpu_not_recommended
+          - cu118
+          - cu121
+          - cu124
+      checkpoints:
+        inspect:
+          - HF_TOKEN
+          - HF_HOME
+          - local checkpoint paths
+        do_not_download_without_yes: true
+      scheduler:
+        policy: deferred_until_final_stage
+        inspect_later:
+          - qsub
+          - sbatch

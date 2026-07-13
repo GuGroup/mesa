@@ -47,6 +47,12 @@ The user or project context must specify:
 - desired search role, such as strategy papers, benchmark papers, method
   papers, or general background.
 
+`search-papers-with-mcp` is search-only. It should recommend Domain Foundation,
+Computational Proof-Strategy, and Legacy Anchor papers, save a search handoff
+and manual-download queue, then stop. Do not download PDFs, call paper
+extraction skills, or proceed to strategy generation from the paper-search
+step.
+
 If papers must be downloaded manually or cannot be accessed through the
 available tools, stop and ask the user rather than fabricating source content.
 
