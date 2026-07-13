@@ -16,9 +16,9 @@ MESA is an end-to-end agent for catalyst discovery and mechanistic analysis.
 It connects literature understanding, atomistic modeling, calculation planning,
 result analysis, figure generation, and paper drafting into one agent-driven loop.
 
-The goal is simple: move from a research question to a publication-ready quality
-computational chemistry manuscript with every claim grounded in explicit
-calculations and reviewable evidence.
+In practice, MESA is meant to move from a research question to a
+publication-ready quality computational chemistry manuscript, with every claim
+grounded in explicit calculations and reviewable evidence.
 
-Our aim is simple: build an agent that can do research better than a PhD student.
-That is the direction we are working toward.
+Our direction is simple: build an agent that can do research better than a PhD
+student. That is what we are working toward.
