@@ -72,6 +72,7 @@ def main():
         vib.run()
 
         frequencies = vib.get_frequencies()
+        Path(output_freq).unlink(missing_ok=True)
         vib.summary(log=output_freq)
         frequencies_cm_minus_1, n_imaginary_modes = frequency_payload(frequencies)
 
