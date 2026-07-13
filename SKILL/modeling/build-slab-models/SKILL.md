@@ -11,7 +11,7 @@ For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this 
 
 Use this skill to generate clean slabs only. Stop at validated slab files and metadata. Use `place-adsorbates-with-adsorbdiff` after this skill when the next step is adsorption-site identification and adsorbate placement.
 
-The `slabuilder` engine this skill drives is vendored in this repo (`./slabuilder`) and installed with the project, so no external checkout is required.
+The `slabuilder` engine this skill drives is vendored in this repo (`ENVIRONMENT/build_tools/slabuilder`) and installed with the project, so no external checkout is required.
 
 For end-to-end surface reaction modeling, use this skill as the slab gate in
 `surface-reaction-modeling-workflow`: do not place adsorbates until the bulk,
