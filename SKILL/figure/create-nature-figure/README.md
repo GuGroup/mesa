@@ -1,45 +1,18 @@
-# `nature-figure` skill
+# `create-nature-figure` skill
 
-`nature-figure` is a publication-grade figure workflow for Nature-family and other high-impact scientific manuscripts. It supports Python and R backends, but the backend must be selected before drawing.
+Python workflow for publication-grade Nature-family and other high-impact
+scientific figures.
 
 ## Capabilities
 
-- Define the figure contract before plotting: conclusion, evidence logic, panel map, export needs, and review risks.
-- Route to Python (`matplotlib` / `seaborn`) or R (`ggplot2`, `patchwork`, `ComplexHeatmap`) and use only the selected backend.
-- Provide publication-oriented defaults for palettes, typography, panel structure, and editable SVG/PDF export.
-- Use on-demand references for chart types, common patterns, design theory, demos, and QA.
+- Define the conclusion, evidence logic, panel map, export needs, and review
+  risks before plotting.
+- Build and assemble figures with matplotlib and seaborn.
+- Apply publication-oriented defaults for palettes, typography, panel structure,
+  and editable SVG/PDF export.
+- Load detailed chart, design, demo, and QA references only when needed.
 
-## Required Gate
+## Runtime
 
-If the user has not chosen a backend, ask exactly:
-
-```text
-Python or R?
-```
-
-Stop until the user answers. Do not guess, generate mock data, or switch backends mid-task.
-
-## Structure
-
-```text
-nature-figure/
-  SKILL.md
-  manifest.yaml
-  static/core/
-  static/fragments/backend/
-  references/
-  assets/
-```
-
-## Default Workflow
-
-1. Load the manifest and core contract.
-2. Resolve the backend.
-3. Load the selected backend fragment only.
-4. Write or infer the figure contract.
-5. Build, export, and visually inspect the figure through the chosen backend.
-6. Report generated files and any remaining scientific or rendering risks.
-
-## Status
-
-Stable for local scientific-figure work when the backend runtime is available.
+The skill is mapped to `mesa-manuscript`. If Python or a required plotting
+package is unavailable, report the dependency blocker before rendering.

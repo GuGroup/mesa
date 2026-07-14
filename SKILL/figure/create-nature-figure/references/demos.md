@@ -5,8 +5,8 @@ Use this file when a user asks for a `figures4papers` look, cites the older
 instead of only abstract style rules.
 
 The bundled examples live under `../assets/figures4papers/`. They are reference
-materials for the Python track only. Keep the normal `nature-figure` contract first:
-define the scientific claim, pick Python or R, and only then adapt a demo pattern.
+materials for the Python workflow. Keep the normal `create-nature-figure`
+contract first: define the scientific claim, then adapt a demo pattern.
 
 ## How to use the demos
 
@@ -51,7 +51,7 @@ define the scientific claim, pick Python or R, and only then adapt a demo patter
 
 The original `scientific-figure-making` skill focused on publication-ready
 matplotlib figures and the figures4papers house style. In this repository, that
-guidance is folded into `nature-figure`:
+guidance is folded into `create-nature-figure`:
 
 - `api.md` contains the palette, helper signatures, and export conventions.
 - `common-patterns.md` expands the reusable layout patterns.
