@@ -42,10 +42,23 @@ bulk create/import
 -> adsorbate placement
 ```
 
-Use `import-bulk-structure` for Materials Project retrieval or source-bulk
-registration. Preserve source metadata, including Materials Project initial
-magnetic moments (`initial_magmoms`) when present, in sidecar metadata and
-handoff notes.
+Use `import-bulk-structure` for source-bulk resolution before optimization. It
+owns Materials Project retrieval, local/source-bulk registration, and direct
+bulk unit-cell creation when no source artifact exists but the recipe provides
+enough crystallographic information to construct one. Preserve source metadata,
+including Materials Project initial magnetic moments (`initial_magmoms`) when
+present, in sidecar metadata and handoff notes.
+
+Resolve the source bulk in this order:
+
+1. import an authorized Materials Project source when the recipe identifies or
+   authorizes MP candidate selection;
+2. register an authorized local or code-generated bulk artifact when one exists;
+3. create the bulk unit cell directly when no import/register source exists and
+   the recipe specifies enough composition, lattice, prototype, Wyckoff/site, or
+   structure-generation instructions;
+4. stop and return to recipe generation or missing-evidence recording when the
+   recipe lacks enough information to import, register, or create the bulk.
 
 Bulk optimization and clean slab optimization belong to the calculation domain
 and inherit the active backend policy from root `workflow.md`. Modeling skills
@@ -67,8 +80,8 @@ files.
 
 # Model Types
 
-Use `import-bulk-structure` for recipe-backed source bulk import or registration
-before bulk optimization.
+Use `import-bulk-structure` for recipe-backed source bulk import, registration,
+or direct bulk unit-cell creation before bulk optimization.
 
 Use `build-slab-models` for clean slab models, surface cells, terminations, and
 surface model variants requested by a recipe.

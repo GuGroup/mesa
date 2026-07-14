@@ -27,10 +27,9 @@ Slab generation must start from an accepted optimized bulk artifact.
 - Use `--bulk-file <POSCAR|CIF|extxyz>` for the optimized bulk handoff.
 - Do not use `--formula`, `mp-*`, `--search-mode`, `--max-results`, or
   `--entry-index` to fetch Materials Project structures during slab generation.
-- Use `import-bulk-structure` first when the source bulk comes from Materials
-  Project or another source registry, then complete the required bulk
-  optimization under the root calculation policy, then run this skill with the
-  optimized bulk file.
+- Use `import-bulk-structure` first to import, register, or directly create the
+  source bulk, then complete the required bulk optimization under the root
+  calculation policy, then run this skill with the optimized bulk file.
 
 The script retains `--formula` only to fail old direct-MP calls with a clear
 migration error. It does not fetch MP structures.
@@ -174,7 +173,8 @@ Before handing a clean slab back for clean slab optimization and later adsorbate
 placement, have:
 
 - optimized bulk path and relaxation provenance;
-- source bulk identifier such as MP id when applicable;
+- source bulk identifier such as MP id, local path, or direct-creation
+  provenance when applicable;
 - preserved source metadata, including initial magnetic moments when present;
 - Miller index;
 - selected termination index;
