@@ -46,7 +46,9 @@ def main() -> int:
     write_csv(records_csv, records)
     write_json(manifest_json, {
         "schema_version": 1,
-        "skill_or_script_used": "missing-evidence-recorder",
+        "source_recipe": spec["source_recipe"],
+        "source_procedure_id": spec["procedure_id"],
+        "skill_or_script_used": "record-missing-evidence",
         "command": [
             "python",
             "scripts/record_missing_evidence.py",
@@ -91,6 +93,10 @@ def validate_spec(spec: dict[str, Any]) -> None:
         raise SystemExit(f"status must be one of {sorted(ALLOWED_STATUS)}")
     if not spec.get("reason"):
         raise SystemExit("reason is required")
+    if not spec.get("procedure_id"):
+        raise SystemExit("procedure_id is required")
+    if not spec.get("source_recipe"):
+        raise SystemExit("source_recipe is required")
     if spec.get("not_substituted_with_proxy") is not True:
         raise SystemExit("not_substituted_with_proxy must be true")
     requirements = spec.get("requirements")

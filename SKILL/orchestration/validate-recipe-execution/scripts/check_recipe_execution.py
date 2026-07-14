@@ -22,6 +22,7 @@ REQUIRED_MANIFEST_FIELDS = [
     "caveats",
 ]
 ALLOWED_ACCEPTANCE = {"accepted", "accepted-with-caveat", "exploratory", "failed", "excluded"}
+MISSING_EVIDENCE_ACCEPTANCE = {"blocked", "unresolved"}
 
 
 def main() -> int:
@@ -37,10 +38,33 @@ def main() -> int:
     ]
     shared_roots = unique_paths([path for path in shared_roots if path.exists()])
 
-    calc_dirs = discover_calculation_dirs(recipe_root)
     records: list[dict[str, Any]] = []
     path_issues: list[dict[str, Any]] = []
     declared_outputs: set[Path] = set()
+
+    calc_dirs = discover_calculation_dirs(recipe_root) if recipe_root.is_dir() else []
+    if not recipe_root.is_dir():
+        path_issues.append(
+            issue(
+                "error",
+                recipe_root,
+                "missing_recipe_root",
+                recipe_root,
+                "recipe root does not exist or is not a directory",
+                project_root,
+            )
+        )
+    elif not calc_dirs:
+        path_issues.append(
+            issue(
+                "error",
+                recipe_root,
+                "no_calculations",
+                recipe_root,
+                "recipe root contains no P*/calculations/C* directories",
+                project_root,
+            )
+        )
 
     for calc_dir in calc_dirs:
         record, issues, outputs = check_calculation(calc_dir, recipe_root, project_root, shared_roots)
@@ -176,7 +200,10 @@ def check_calculation(
     validation = manifest.get("validation_status")
     record["acceptance_state"] = acceptance
     record["validation_status"] = validation
-    if acceptance not in ALLOWED_ACCEPTANCE:
+    allowed_acceptance = set(ALLOWED_ACCEPTANCE)
+    if manifest.get("skill_or_script_used") == "record-missing-evidence":
+        allowed_acceptance.update(MISSING_EVIDENCE_ACCEPTANCE)
+    if acceptance not in allowed_acceptance:
         issues.append(issue("error", calc_dir, "invalid_acceptance_state", manifest_path, f"invalid acceptance_state: {acceptance!r}", project_root))
     if not manifest.get("command"):
         issues.append(issue("warning", calc_dir, "empty_command", manifest_path, "command is empty or missing", project_root))
