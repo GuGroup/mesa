@@ -25,13 +25,9 @@ the clean slab, choose calculation backends, or place adsorbates.
 Slab generation must start from an accepted optimized bulk artifact.
 
 - Use `--bulk-file <POSCAR|CIF|extxyz>` for the optimized bulk handoff.
-- Do not use `--formula`, `mp-*`, `--search-mode`, `--max-results`, or
-  `--entry-index` to fetch Materials Project structures during slab generation.
 - Use `import-bulk-structure` first to import, register, or directly create the
   source bulk, then complete the required bulk optimization under the root
   calculation policy, then run this skill with the optimized bulk file.
-
-The script accepts `--formula` only to reject direct Materials Project or formula inputs. It does not fetch MP structures.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
@@ -86,7 +82,6 @@ mamba run -n modeling python scripts/build_slab_model.py \
 | Keyword | Required | Meaning |
 | --- | --- | --- |
 | `--bulk-file` | yes | Optimized bulk structure file (POSCAR/CIF/extxyz/...). This is the only valid bulk input for slab generation. |
-| `--formula` | no, disabled | Disabled direct Materials Project/formula input. If provided, the script exits without generating a slab. |
 | `--miller H K L` | yes | Surface Miller index, e.g. `1 1 1`. |
 | `--backend` | no | Slab backend: `auto`, `catkit`, `pymatgen`, or `surfaxe`. |
 | `--prefer-symmetry` | no | In `auto` mode, prefer pymatgen symmetry/non-polar filtering. |

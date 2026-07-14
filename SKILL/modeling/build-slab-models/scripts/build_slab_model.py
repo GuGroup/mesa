@@ -207,12 +207,8 @@ def main() -> int:
         description="Build clean slab models with slabuilder.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--formula", help="Disabled direct Materials Project/formula input. This script exits if it is provided.")
-    parser.add_argument("--bulk-file", help="Optimized bulk structure file (POSCAR/CIF/extxyz/...). Required for slab generation.")
+    parser.add_argument("--bulk-file", required=True, help="Optimized bulk structure file (POSCAR/CIF/extxyz/...).")
     parser.add_argument("--miller", nargs=3, type=int, required=True, metavar=("H", "K", "L"), help="Surface Miller index.")
-    parser.add_argument("--search-mode", choices=["formula", "material_id", "chemsys", "elements"], default=None, help="Disabled; Materials Project fetch is not part of slab generation.")
-    parser.add_argument("--max-results", type=int, default=5, help="Disabled; Materials Project fetch is not part of slab generation.")
-    parser.add_argument("--entry-index", type=int, default=0, help="Disabled; Materials Project fetch is not part of slab generation.")
     parser.add_argument("--backend", choices=["auto", "catkit", "pymatgen", "surfaxe"], default="auto", help="Slab generation backend.")
     parser.add_argument("--prefer-symmetry", action="store_true", help="When backend is auto, prefer pymatgen symmetry/non-polar filtering.")
     parser.add_argument("--target-n-atoms", type=int, default=60, help="Target total atom count used by automatic layer/supercell selection.")
@@ -232,19 +228,6 @@ def main() -> int:
     parser.add_argument("--min-distance", type=float, default=0.5, help="Minimum interatomic distance threshold for validation in Angstrom.")
     parser.add_argument("--outdir", default="slabuilder_outputs/slabs", help="Output directory for POSCAR and metadata files.")
     args = parser.parse_args()
-
-    if args.formula:
-        raise SystemExit(
-            "Direct Materials Project/formula slab generation is disabled. "
-            "Use import-bulk-structure to import the source bulk, optimize it "
-            "under the root calculation policy, then rerun build-slab-models "
-            "with --bulk-file <optimized-bulk>."
-        )
-    if not args.bulk_file:
-        raise SystemExit(
-            "Provide --bulk-file <optimized-bulk>. Direct Materials "
-            "Project/formula inputs are disabled for slab generation."
-        )
 
     try:
         from slabuilder import generate_slab
