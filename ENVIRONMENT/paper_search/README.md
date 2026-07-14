@@ -17,10 +17,10 @@ fallback is not legal or appropriate.
 ## Agent orchestration
 
 The pipeline is orchestrated as a LangGraph `StateGraph`
-(`CatalystLiteratureGraph`) of nine nodes:
+(`CatalystLiteratureGraph`) of eleven nodes:
 
 ```text
-query_planner -> search -> relevance_grading -> resolve_download -> parse
+intake -> query_planner -> search -> relevance_grading -> resolve_download -> parse
   -> paperqa_index -> evidence_extraction -> claim_validation -> gap_ranking
   -> (loop back to query_planner while gaps remain) -> report_writer
 ```
@@ -88,7 +88,7 @@ paper-search run --material RuO2 --reaction HER --out runs/ruo2 \
 The graph can be run and inspected node-by-node in LangGraph Studio:
 
 ```bash
-uv run --extra studio langgraph dev --allow-blocking
+uv run --frozen --extra studio langgraph dev --allow-blocking
 ```
 
 `--allow-blocking` is required (the pipeline is synchronous; the dev server's
@@ -111,12 +111,13 @@ per-node progress in code, `CatalystLiteratureGraph(config).stream(...)`.
 
 ## Documentation
 
-The full documentation is built with MkDocs Material and deployed through
-GitHub Actions to GitHub Pages:
+The checked-in documentation source is under `docs/`. Build it locally with:
 
-- Site: https://kangmg.github.io/SearchAgent/
-- Source: `docs/`
-- Workflow: `.github/workflows/docs.yml`
+```bash
+uv run --frozen --extra docs mkdocs build --strict
+```
+
+This package does not currently define a documentation deployment workflow.
 
 ## Pipeline
 
@@ -204,7 +205,7 @@ The adapter looks for `.md`, `.markdown`, or `.json` files under `{output_dir}`.
 ## Run
 
 ```bash
-uv run paper-search run \
+uv run --frozen paper-search run \
   --material RuO2 \
   --reaction HER \
   --out data/runs/ruo2-her \
@@ -253,7 +254,7 @@ OmegaConf. The CLI loads `./config.yaml` automatically when present, or accepts
 an explicit YAML config file:
 
 ```bash
-uv run paper-search run \
+uv run --frozen paper-search run \
   --material RuO2 \
   --reaction HER \
   --out data/runs/ruo2-her \
@@ -278,9 +279,10 @@ semantic_scholar:
 ```
 
 Shell environment variables still take priority over `.env` values. Use
-`.env.example` as a template for local secrets. LLM settings are represented in
-config for future structured extraction, but the current extraction path is
-still the deterministic baseline described below.
+`.env.example` as a template for local secrets. LLM settings select the
+extraction path. Deterministic mode uses the rule-based extractor; full agent
+mode first attempts structured LLM extraction and falls back to the
+deterministic extractor when necessary.
 
 Research direction can be supplied either as `research.prompt` in YAML, with
 structured `research.decision_criteria` / `research.constraints`, or at runtime
@@ -296,11 +298,11 @@ failures are recorded in the manifest and do not stop the remaining papers. Use
 
 ## Current extraction scope
 
-The included extractor is a deterministic baseline. It captures evidence blocks
-where the requested material, reaction alias, surface/facet context, and Miller
-index pattern occur together. LLM-based schema extraction can be added on top of
-the saved `*.blocks.json` files without changing the search/download/parser
-layers.
+Deterministic mode captures evidence blocks where the requested material,
+reaction alias, surface/facet context, and Miller-index pattern occur together.
+Full agent mode applies structured LLM extraction to parsed text first and
+persists the resulting claims; if that path is unavailable or produces no
+claims, it falls back to the deterministic extractor over saved block files.
 
 ## Decision-support scope
 
