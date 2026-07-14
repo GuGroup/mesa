@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-TASK_ID = "TASK_ADSORBDIFF_POSCAR_PREPARE"
+TASK_ID = "place-adsorbates-with-adsorbdiff.poscar-prepare"
 
 
 def parse_float_tokens(line: str, expected: int | None = None) -> list[float]:

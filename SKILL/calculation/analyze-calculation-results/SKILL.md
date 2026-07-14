@@ -1,6 +1,10 @@
 ---
 name: analyze-calculation-results
-description: Analyze existing UMA/MLIP or VASP relaxation outputs for endpoint acceptance: force convergence, NSW/max-step termination, abnormal energy/force/RMSD behavior, and red/blue initial-final image review. Use before accepting catalyst relaxation endpoints for energetics or claims.
+description: >-
+  Analyze existing UMA/MLIP or VASP relaxation outputs for endpoint acceptance,
+  including force convergence, NSW/max-step termination, abnormal
+  energy/force/RMSD behavior, and red/blue initial-final image review. Use before
+  accepting catalyst relaxation endpoints for energetics or claims.
 ---
 
 For MESA end-to-end work, read `SKILL/calculation/workflow.md` first.

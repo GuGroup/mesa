@@ -1,12 +1,12 @@
 ---
 name: uma-vib-freq-extskill
-description: External fixed-execution layer for TASK_UMA_VIB_FREQ, containing the UMA finite-displacement vibration runner and the qsub wrapper that executes controller-resolved settings without making scientific decisions.
+description: External fixed-execution layer for calculate-uma-vibrational-frequencies, containing the UMA finite-displacement vibration runner and the qsub wrapper that executes controller-resolved settings without making scientific decisions.
 ---
 
 # uma-vib-freq-extskill
 
 `uma-vib-freq-extskill` contains the fixed execution components for
-`TASK_UMA_VIB_FREQ`. These files do not decide UMA or vibration settings. They
+`calculate-uma-vibrational-frequencies`. These files do not decide UMA or vibration settings. They
 execute the settings already written by the controller in
 `results/resolved_uma_vib_config.json`.
 

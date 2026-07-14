@@ -719,7 +719,7 @@ def realize_one(fig: dict[str, Any], root: Path, project_root: Path, force: bool
         manifest = structure_manifest(fig, project_root, source_dir / f"{base}.manifest.json")
         record["source_files"].append(str(manifest))
         record["command"] = (
-            "mamba run -n modeling python SKILL/adsorbate-structure-grid/scripts/build_grid_figure.py "
+            "mamba run -n modeling python SKILL/figure/render-adsorbate-structure-grid/scripts/build_grid_figure.py "
             f"--input {manifest} --output {exported_dir / (base + '.png')}"
         )
         exported = structure_grid_from_overlays(
@@ -731,10 +731,10 @@ def realize_one(fig: dict[str, Any], root: Path, project_root: Path, force: bool
         if exported:
             record["state"] = "realized"
             record["notes"].append("Rendered a structure grid from existing analyzer overlay PNGs.")
-            record["notes"].append("Also prepared an adsorbate-structure-grid manifest for rerendering in the modeling environment.")
+            record["notes"].append("Also prepared a render-adsorbate-structure-grid manifest for rerendering in the modeling environment.")
         else:
             record["state"] = "source-ready"
-            record["notes"].append("Prepared an adsorbate-structure-grid manifest; run the recorded command to render structure images.")
+            record["notes"].append("Prepared a render-adsorbate-structure-grid manifest; run the recorded command to render structure images.")
 
     else:
         exported = copy_existing_exports(fig, project_root, exported_dir, base, force)

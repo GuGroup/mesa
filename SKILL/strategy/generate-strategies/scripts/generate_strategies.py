@@ -20,7 +20,7 @@ MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
 STRATEGY_PROMPT = """You are generating computational chemistry strategies for a target materials or chemistry task.
 
 You will receive saved extraction artifacts from earlier workflow steps:
-1. Experimental extraction from TASK_EXTRACT_DATA_FROM_PDF.
+1. Experimental extraction from extract-data-from-experiment.
 2. Paper decomposition from decompose-chemistry-paper-pdf.
 3. General paper insight from extract-general-insight-pdf.
 
@@ -269,7 +269,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=[],
         help=(
-            "Saved output from TASK_EXTRACT_DATA_FROM_PDF. May be repeated. "
+            "Saved output from extract-data-from-experiment. May be repeated. "
             "Used only as benchmark constraints, not as experimental strategy input."
         ),
     )

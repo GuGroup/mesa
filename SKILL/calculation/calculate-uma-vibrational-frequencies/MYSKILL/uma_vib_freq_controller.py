@@ -1,4 +1,4 @@
-"""MESA TASK_UMA_VIB_FREQ controller."""
+"""MESA calculate-uma-vibrational-frequencies controller."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-TASK_ID = "TASK_UMA_VIB_FREQ"
+TASK_ID = "calculate-uma-vibrational-frequencies"
 SKILL_NAME = "uma_vib_freq_controller"
 
 FORBIDDEN_USER_SETTING_KEYS = {
@@ -223,7 +223,7 @@ def _resolve_uma_vib_config(
     lower_poscar = str(poscar_path).lower()
     if "relax" not in lower_poscar:
         warnings.append(
-            "No obvious relaxation provenance in the POSCAR path; TASK_UMA_VIB_FREQ assumes the structure is already relaxed."
+            "No obvious relaxation provenance in the POSCAR path; calculate-uma-vibrational-frequencies assumes the structure is already relaxed."
         )
 
     decision_reasons = [

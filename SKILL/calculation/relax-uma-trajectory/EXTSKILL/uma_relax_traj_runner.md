@@ -1,12 +1,12 @@
 ---
 name: uma-relax-traj-runner
-description: Fixed UMA/ASE relaxation trajectory runner for TASK_UMA_RELAX_TRAJECTORY. Use to read results/resolved_uma_config.json, attach FAIRChem/UMA through ASE, run relaxation, write relax.traj and relaxed/POSCAR, and save results/uma_relax_traj.json without deciding scientific settings.
+description: Fixed UMA/ASE relaxation trajectory runner for relax-uma-trajectory. Use to read results/resolved_uma_config.json, attach FAIRChem/UMA through ASE, run relaxation, write relax.traj and relaxed/POSCAR, and save results/uma_relax_traj.json without deciding scientific settings.
 ---
 
 # uma-relax-traj-runner
 
 `uma-relax-traj-runner` is the fixed execution runner for
-`TASK_UMA_RELAX_TRAJECTORY`. It reads `results/resolved_uma_config.json`, reads
+`relax-uma-trajectory`. It reads `results/resolved_uma_config.json`, reads
 the input POSCAR, attaches the FAIRChem/UMA calculator through ASE, runs
 relaxation, and writes the trajectory plus final relaxed POSCAR.
 

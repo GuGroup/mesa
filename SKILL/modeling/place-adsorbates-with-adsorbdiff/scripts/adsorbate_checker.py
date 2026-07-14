@@ -15,7 +15,7 @@ from typing import Any
 SKILL_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = SKILL_DIR / "assets" / "AdsorbDiff"
 DEFAULT_DB = DEFAULT_REPO / "adsorbdiff" / "placement" / "pkls" / "adsorbates.pkl"
-TASK_ID = "TASK_ADSORBDIFF_ADSORBATE_CHECK"
+TASK_ID = "place-adsorbates-with-adsorbdiff.adsorbate-check"
 
 
 def load_adsorbate_db(repo: Path, db_path: Path) -> dict[int, tuple[Any, ...]]:

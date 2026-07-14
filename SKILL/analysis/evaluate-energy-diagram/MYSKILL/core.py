@@ -55,7 +55,7 @@ def evaluate_energy_table(input_data: dict[str, Any], context: dict[str, Any] | 
 
 
 def run(input_data: dict, context: dict | None = None) -> dict:
-    """Execute the integrated TASK_REACTION_ENERGY_EVALUATION skill.
+    """Execute the integrated evaluate-energy-diagram skill.
 
     Energy input can be CSV-based (`csv_path` or `csv_text`) or dictionary-based
     (`energy_data`, `reaction_energies`, `steps` + `energies`, or catalyst->step

@@ -44,7 +44,11 @@ result = run(input_data, context={"workdir": "."})
 CLI:
 
 ```bash
-python MYSKILL/reaction_energy_evaluation.py --input examples/input_dict_oer.example.json --output examples/output.generated.json --verbose
+cd SKILL/analysis/evaluate-energy-diagram
+python MYSKILL/reaction_energy_evaluation.py \
+  --input ../../../project/<project_name>/inputs/energy_diagram.json \
+  --output ../../../project/<project_name>/analysis/energy_diagram_evaluation.json \
+  --verbose
 ```
 
 ## Modular structure

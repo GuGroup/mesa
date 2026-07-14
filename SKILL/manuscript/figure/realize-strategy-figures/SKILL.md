@@ -48,7 +48,7 @@ project/<project>/strategy_execution/<strategy_id>_figure/
 - `benchmark-comparison`: generate a compact PNG comparison chart from
   benchmark JSON artifacts.
 - `calculation-diagnostic`: collect existing analyzer/contact-sheet PNGs.
-- `structure-grid`: write an `adsorbate-structure-grid` source manifest. If
+- `structure-grid`: write a `render-adsorbate-structure-grid` source manifest. If
   existing analyzer overlay PNGs are available, compose a real grid PNG from
   those images; otherwise leave the candidate `source-ready` with the
   recorded specialized-renderer command.

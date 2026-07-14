@@ -1,4 +1,4 @@
-# Manifest schema — `adsorbate-structure-grid`
+# Manifest schema — `render-adsorbate-structure-grid`
 
 The manifest is a single JSON object describing one grid figure. Relative
 structure/image paths resolve against the manifest file's directory unless

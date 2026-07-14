@@ -51,9 +51,9 @@ Optional:
 Run:
 
 ```bash
-python3 /path/to/update-strategies-from-manuscript/scripts/update_strategies_from_manuscript.py \
-  --original-strategies /path/to/generated_strategies.py \
-  --manuscript /path/to/manuscript_or_result.md \
+python3 SKILL/strategy/update-strategies-from-manuscript/scripts/update_strategies_from_manuscript.py \
+  --original-strategies project/<project_name>/strategy/generated_strategies.py \
+  --manuscript project/<project_name>/manuscript_or_result.md \
   --completed-strategy-id S1 \
   --target-task "..." \
   --material-domain "..."

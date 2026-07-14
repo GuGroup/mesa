@@ -13,6 +13,7 @@ needed.
 - `render-adsorbate-structure-grid`
 - `plot-energy-diagram`
 - `plot-sabatier-volcano`
+- `plot-dos`
 - `create-nature-figure`
 
 # Entry Requirements

@@ -11,6 +11,8 @@ calculations, hide missing data, or promote proxies into full proof.
 - `evaluate-energy-diagram`
 - `construct-energy-diagram`
 - `assemble-alkaline-her-descriptors`
+- `analyze-dband-center`
+- `charge-flow-analyzer`
 
 Use `analyze-calculation-results` from the calculation domain for trajectory or
 optimization sanity checks before higher-level analysis.

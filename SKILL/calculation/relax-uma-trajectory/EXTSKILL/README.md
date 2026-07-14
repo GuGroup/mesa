@@ -1,12 +1,12 @@
 ---
 name: uma-relax-traj-extskill
-description: External fixed-execution layer for TASK_UMA_RELAX_TRAJECTORY, containing the UMA relaxation trajectory runner and the qsub wrapper that executes controller-resolved settings without making scientific decisions.
+description: External fixed-execution layer for relax-uma-trajectory, containing the UMA relaxation trajectory runner and the qsub wrapper that executes controller-resolved settings without making scientific decisions.
 ---
 
 # uma-relax-traj-extskill
 
 `uma-relax-traj-extskill` contains the fixed execution components for
-`TASK_UMA_RELAX_TRAJECTORY`. These files do not decide UMA scientific settings.
+`relax-uma-trajectory`. These files do not decide UMA scientific settings.
 They execute the settings already written by the controller in
 `results/resolved_uma_config.json`.
 

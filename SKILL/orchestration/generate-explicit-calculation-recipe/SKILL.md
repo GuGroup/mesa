@@ -94,7 +94,7 @@ See `references/recipe-schema.md` for the JSON field contract.
 After creating or updating this skill, validate the skill folder:
 
 ```bash
-python3 /home/ytk/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
+uv run --with pyyaml "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" \
   SKILL/orchestration/generate-explicit-calculation-recipe
 ```
 

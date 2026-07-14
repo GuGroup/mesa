@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""No-op external tool wrapper for TASK_REACTION_ENERGY_EVALUATION.
+"""No-op external tool wrapper for evaluate-energy-diagram.
 
 The current implementation uses only the Python standard library.  This module
 keeps the MESA skill layout extensible for future VASP parsers, databases, or

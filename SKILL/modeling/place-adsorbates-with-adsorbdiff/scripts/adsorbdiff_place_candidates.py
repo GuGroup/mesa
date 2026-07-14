@@ -15,7 +15,7 @@ from typing import Any
 SKILL_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = SKILL_DIR / "assets" / "AdsorbDiff"
 DEFAULT_DB = DEFAULT_REPO / "adsorbdiff" / "placement" / "pkls" / "adsorbates.pkl"
-TASK_ID = "TASK_ADSORBDIFF_PLACE_CANDIDATES"
+TASK_ID = "place-adsorbates-with-adsorbdiff.place-candidates"
 
 
 def load_json(path: Path) -> dict[str, Any]:

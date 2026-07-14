@@ -108,7 +108,7 @@ Schema:
 FIGURE_ROUTES = [
     {
         "type": "structure-grid",
-        "skill": "adsorbate-structure-grid",
+        "skill": "render-adsorbate-structure-grid",
         "keywords": [
             "optimized adsorption configuration",
             "optimized adsorption configurations",
@@ -124,7 +124,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "structure-grid",
-        "skill": "adsorbate-structure-grid",
+        "skill": "render-adsorbate-structure-grid",
         "keywords": [
             "computational model",
             "model structure",
@@ -151,7 +151,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "energy-diagram",
-        "skill": "energy-diagram-plotter",
+        "skill": "plot-energy-diagram",
         "keywords": [
             "free-energy diagram",
             "free energy diagram",
@@ -187,7 +187,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "descriptor-comparison",
-        "skill": "nature-figure",
+        "skill": "create-nature-figure",
         "keywords": [
             "adsorption free-energy comparison",
             "adsorption free energy comparison",
@@ -226,7 +226,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "electronic-descriptor",
-        "skill": "nature-figure",
+        "skill": "create-nature-figure",
         "keywords": [
             "projected density of states",
             "density of states",
@@ -239,7 +239,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "electronic-descriptor",
-        "skill": "nature-figure",
+        "skill": "create-nature-figure",
         "keywords": [
             "charge density difference",
             "charge transfer",
@@ -252,7 +252,7 @@ FIGURE_ROUTES = [
     },
     {
         "type": "calculation-diagnostic",
-        "skill": "TASK_CALCULATION_RESULT_ANALYZER",
+        "skill": "analyze-calculation-results",
         "keywords": [
             "local geometry analysis",
             "geometry analysis",

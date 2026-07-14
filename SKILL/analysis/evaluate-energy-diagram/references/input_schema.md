@@ -1,4 +1,4 @@
-# Input Schema for TASK_REACTION_ENERGY_EVALUATION
+# Input Schema for `evaluate-energy-diagram`
 
 ## Accepted input container
 

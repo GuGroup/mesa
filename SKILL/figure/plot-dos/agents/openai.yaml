@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plot Density of States"
+  short_description: "Plot DOS and projected DOS data"
+  default_prompt: "Use $plot-dos to create density-of-states plots from accepted DOS or projected-DOS data."
