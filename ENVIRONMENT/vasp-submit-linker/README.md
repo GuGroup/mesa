@@ -120,14 +120,19 @@ vasp-job show <job_uid_or_scheduler_id>
 vasp-job list --limit 20
 ```
 
-Typical flow:
+Preparation-only review and live submission are separate alternatives:
 
 ```bash
+# Prepare and inspect without submitting.
 vasp-job prepare input.yml
+
+# Or, after explicit submission approval, prepare and submit in one command.
 vasp-job submit input.yml
-vasp-job status <job_uid>
-vasp-job show <job_uid>
 ```
+
+Do not chain `prepare input.yml` and `submit input.yml` expecting the second
+command to reuse the first generated job directory; a spec without an explicit
+`job_dir` receives a new job UID each time.
 
 Every command prints one JSON object. On success, `prepare` returns `job_uid` and `remote_dir`; `submit` also returns `scheduler_id`. Keep `job_uid` for later status and metadata lookups.
 

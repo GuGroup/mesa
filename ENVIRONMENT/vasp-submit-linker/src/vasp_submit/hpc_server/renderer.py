@@ -73,7 +73,7 @@ def template_search_roots(config: dict[str, Any]) -> list[Path]:
         roots.append(Path(config["template_root"]).expanduser())
     roots.append(Path.cwd())
     module_path = Path(__file__).resolve()
-    for parent_index in (2, 3, 4):
+    for parent_index in (1, 2, 3, 4):
         try:
             root = module_path.parents[parent_index]
         except IndexError:
@@ -237,15 +237,11 @@ def prepare_job(
         raise FileExistsError(f"{directory} exists and is not empty; set project.overwrite: true")
 
     submit_script = render_template_submit_script(spec, config)
-    directory.mkdir(parents=True, exist_ok=True)
+    poscar = resolve_poscar_content(spec["structure"], spec_base_dir or Path.cwd())
 
     normalized_yaml = dump_yaml(spec)
-    preserved_path = preserve_input_spec(spec, config, original_yaml or normalized_yaml, str(spec["project"]["job_dir"]))
+    directory.mkdir(parents=True, exist_ok=True)
     write_text(directory / "input.yml", normalized_yaml)
-    write_text(directory / ".vasp_submit_input_spec", str(preserved_path))
-    write_job_metadata(directory, spec, config, preserved_path)
-
-    poscar = resolve_poscar_content(spec["structure"], spec_base_dir or Path.cwd())
     write_text(directory / "POSCAR", poscar)
 
     write_vasp_inputs_with_vasp_ase(spec, config, directory)
@@ -253,6 +249,10 @@ def prepare_job(
     submit_path = directory / "submit_vasp.sh"
     write_text(submit_path, submit_script)
     submit_path.chmod(0o755)
+
+    preserved_path = preserve_input_spec(spec, config, original_yaml or normalized_yaml, str(spec["project"]["job_dir"]))
+    write_text(directory / ".vasp_submit_input_spec", str(preserved_path))
+    write_job_metadata(directory, spec, config, preserved_path)
     return directory
 
 
@@ -269,16 +269,23 @@ def submit_job(directory: Path) -> dict[str, Any]:
         return {"ok": False, "returncode": proc.returncode, "stderr": proc.stderr.strip()}
     match = re.search(r"\b(\d+)\b", proc.stdout)
     scheduler_id = match.group(1) if match else None
+    if scheduler_id is None:
+        return {
+            "ok": False,
+            "returncode": proc.returncode,
+            "scheduler_id": None,
+            "stdout": proc.stdout.strip(),
+            "stderr": "qsub succeeded but returned no scheduler ID",
+        }
     metadata_path = directory / ".vasp_submit_metadata.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
-    if scheduler_id:
-        write_text(directory / ".vasp_submit_scheduler_id", scheduler_id)
-        metadata["scheduler_id"] = scheduler_id
-        metadata["state"] = "submitted"
-        metadata["submitted_at"] = now_iso()
-        write_text(metadata_path, json.dumps(metadata, ensure_ascii=True, indent=2))
-        if metadata.get("index_path"):
-            write_text(Path(metadata["index_path"]), json.dumps(metadata, ensure_ascii=True, indent=2))
+    write_text(directory / ".vasp_submit_scheduler_id", scheduler_id)
+    metadata["scheduler_id"] = scheduler_id
+    metadata["state"] = "submitted"
+    metadata["submitted_at"] = now_iso()
+    write_text(metadata_path, json.dumps(metadata, ensure_ascii=True, indent=2))
+    if metadata.get("index_path"):
+        write_text(Path(metadata["index_path"]), json.dumps(metadata, ensure_ascii=True, indent=2))
     return {
         "ok": True,
         "job_uid": metadata.get("job_uid") or directory.name,

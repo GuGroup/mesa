@@ -20,4 +20,4 @@ build-backend = "hatchling.build"
 packages = ["src/vasp_submit"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"templates" = "templates"
+"templates" = "vasp_submit/templates"

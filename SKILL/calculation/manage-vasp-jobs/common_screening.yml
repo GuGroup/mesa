@@ -9,7 +9,7 @@
 # evidence.
 #
 # Usage:
-#   vasp-job prepare spec.yml --common /path/to/SKILL/TASK_VASP_JOB/common_screening.yml
+#   vasp-job prepare spec.yml --common /path/to/SKILL/manage-vasp-jobs/common_screening.yml
 # or in-spec:
 #   extends: common_screening.yml
 # then add task params in the job spec, e.g. screening slab:
