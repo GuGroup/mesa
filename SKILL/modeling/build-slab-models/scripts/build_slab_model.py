@@ -207,12 +207,12 @@ def main() -> int:
         description="Build clean slab models with slabuilder.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--formula", help="Deprecated direct Materials Project/formula input. This script exits if it is provided.")
+    parser.add_argument("--formula", help="Disabled direct Materials Project/formula input. This script exits if it is provided.")
     parser.add_argument("--bulk-file", help="Optimized bulk structure file (POSCAR/CIF/extxyz/...). Required for slab generation.")
     parser.add_argument("--miller", nargs=3, type=int, required=True, metavar=("H", "K", "L"), help="Surface Miller index.")
-    parser.add_argument("--search-mode", choices=["formula", "material_id", "chemsys", "elements"], default=None, help="Deprecated; Materials Project fetch is disabled during slab generation.")
-    parser.add_argument("--max-results", type=int, default=5, help="Deprecated; Materials Project fetch is disabled during slab generation.")
-    parser.add_argument("--entry-index", type=int, default=0, help="Deprecated; Materials Project fetch is disabled during slab generation.")
+    parser.add_argument("--search-mode", choices=["formula", "material_id", "chemsys", "elements"], default=None, help="Disabled; Materials Project fetch is not part of slab generation.")
+    parser.add_argument("--max-results", type=int, default=5, help="Disabled; Materials Project fetch is not part of slab generation.")
+    parser.add_argument("--entry-index", type=int, default=0, help="Disabled; Materials Project fetch is not part of slab generation.")
     parser.add_argument("--backend", choices=["auto", "catkit", "pymatgen", "surfaxe"], default="auto", help="Slab generation backend.")
     parser.add_argument("--prefer-symmetry", action="store_true", help="When backend is auto, prefer pymatgen symmetry/non-polar filtering.")
     parser.add_argument("--target-n-atoms", type=int, default=60, help="Target total atom count used by automatic layer/supercell selection.")

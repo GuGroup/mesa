@@ -62,7 +62,7 @@ replace a requested calculation with an easier proxy.
 # Active Skill Organization
 
 Use active skill names from the current `SKILL/` tree. Do not use retired
-`TASK_*` names except when reading archived `legacy/` material.
+`TASK_*` names except when reading archived material.
 
 - `literature/`: `extract-data-from-experiment`,
   `search-papers-with-mcp`, `extract-strategy-paper`,

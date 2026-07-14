@@ -31,8 +31,7 @@ Slab generation must start from an accepted optimized bulk artifact.
   source bulk, then complete the required bulk optimization under the root
   calculation policy, then run this skill with the optimized bulk file.
 
-The script retains `--formula` only to fail old direct-MP calls with a clear
-migration error. It does not fetch MP structures.
+The script accepts `--formula` only to reject direct Materials Project or formula inputs. It does not fetch MP structures.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
@@ -87,7 +86,7 @@ mamba run -n modeling python scripts/build_slab_model.py \
 | Keyword | Required | Meaning |
 | --- | --- | --- |
 | `--bulk-file` | yes | Optimized bulk structure file (POSCAR/CIF/extxyz/...). This is the only valid bulk input for slab generation. |
-| `--formula` | no, disabled | Deprecated direct Materials Project/formula input. If provided, the script exits with a migration error. |
+| `--formula` | no, disabled | Disabled direct Materials Project/formula input. If provided, the script exits without generating a slab. |
 | `--miller H K L` | yes | Surface Miller index, e.g. `1 1 1`. |
 | `--backend` | no | Slab backend: `auto`, `catkit`, `pymatgen`, or `surfaxe`. |
 | `--prefer-symmetry` | no | In `auto` mode, prefer pymatgen symmetry/non-polar filtering. |
