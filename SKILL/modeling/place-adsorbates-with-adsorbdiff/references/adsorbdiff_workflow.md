@@ -112,7 +112,7 @@ environment is configured for PyTorch distributed execution.
   gap decisions, plus seed/config/checkpoint resolution, GemNet validation
   policy, runtime CPU/GPU selection, and downstream handoff count.
 - Keep raw sampled trajectories and converted LMDBs under the task workdir.
-- Pass selected final structures to UMA relaxation or DFT handoff after checking
+- Pass selected final structures to the calculation workflow after checking
   atom counts, adsorbate identity, periodic cell, and obvious overlap/anomaly
   flags.
 - Preserve exact dataset/checkpoint/config paths in the MESA output envelope so

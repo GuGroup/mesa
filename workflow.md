@@ -71,7 +71,8 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
   `update-strategies-from-manuscript`.
 - `orchestration/`: `generate-explicit-calculation-recipe`,
   `validate-recipe-execution`, `record-missing-evidence`.
-- `modeling/`: `build-slab-models`, `build-gas-phase-models`,
+- `modeling/`: `import-bulk-structure`, `build-slab-models`,
+  `build-gas-phase-models`,
   `place-adsorbates-with-adsorbdiff`,
   `propose-surface-models-from-literature`.
 - `calculation/`: `relax-uma-trajectory`,
@@ -101,13 +102,19 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 
 # Test Calculation Policy
 
+The active calculation execution backend for this test project is UMA only.
+Treat UMA outputs as the authoritative calculation results for this test.
+
 For this test project:
 
 - Prepare VASP-compatible input files when useful for interoperability.
-- Do not submit VASP jobs unless the project policy changes.
+- Do not execute or submit VASP jobs unless the project policy changes.
 - Do not use `manage-vasp-jobs` to submit calculations in this test. Use it
   only for preparation, dry-run, status inspection, or future policy-enabled
   VASP work.
+- Use `relax-uma-trajectory` for structure relaxations, including bulk and
+  clean-slab optimization.
+- Use `calculate-uma-vibrational-frequencies` for vibrational calculations.
 - If local GPU UMA execution is requested, run UMA locally on the GPU node; do
   not submit UMA through qsub unless explicitly required.
 

@@ -1,6 +1,6 @@
 ---
 name: place-adsorbates-with-adsorbdiff
-description: Plan, set up, run, and validate AdsorbDiff adsorbate placement workflows from AdeeshKolluru/AdsorbDiff for surface-adsorbate systems. Use when Codex receives a POSCAR slab plus an adsorbate request, must check AdsorbDiff adsorbate identities, tag/prepare slab atoms, decide placement and sampling settings that were formerly human choices, prepare OC20/OCP-style LMDB sampling inputs, generate diffusion sampling and MLFF relaxation commands, manage AdsorbDiff checkpoints, or integrate candidate adsorption geometries with MESA/MLIP relaxation and DFT handoff workflows.
+description: Plan, set up, run, and validate AdsorbDiff adsorbate placement workflows from AdeeshKolluru/AdsorbDiff for surface-adsorbate systems. Use when Codex receives a POSCAR slab plus an adsorbate request, must check AdsorbDiff adsorbate identities, tag/prepare slab atoms, decide placement and sampling settings that were formerly human choices, prepare OC20/OCP-style LMDB sampling inputs, generate diffusion sampling and MLFF relaxation commands, manage AdsorbDiff checkpoints, or integrate candidate adsorption geometries with MESA calculation-workflow handoffs.
 ---
 
 For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
@@ -31,8 +31,8 @@ The vendored upstream repository is in `assets/AdsorbDiff` at commit
    and use `scripts/adsorbdiff_workflow.py` on the candidate LMDB or another
    explicit LMDB.
 5. Treat AdsorbDiff outputs as candidate adsorption geometries. Pass selected
-   candidates into UMA relaxation or the MESA DFT handoff skill for final
-   relaxation/validation.
+   candidates into the calculation workflow for final relaxation and validation
+   under the root calculation policy.
 
 ## POSCAR-First Controller
 
@@ -133,8 +133,9 @@ python scripts/adsorbdiff_workflow.py --input adsorbdiff.input.json --workdir ru
 - For POSCAR-first workflows, let the controller infer surface side/thickness,
   candidate count, seed, diffusion config, GemNet validation, and handoff count
   unless the user gives a hard scientific or budget constraint.
-- Do not generate `POTCAR` contents or VASP production inputs from this skill.
-  Use downstream MESA DFT handoff skills for VASP preparation.
+- Do not generate calculator production inputs from this skill. Use the
+  calculation workflow for calculator-specific preparation under the root
+  calculation policy.
 - Preserve AdsorbDiff and dependency license notices from `assets/AdsorbDiff`
   when copying or packaging outputs.
 

@@ -16,13 +16,20 @@ Calculations must be authorized by explicit recipe artifacts.
 
 # Test Calculation Policy
 
+The root `workflow.md` is the source of truth for calculation backend policy.
+Under the current root policy, the active execution backend is UMA only and UMA
+outputs are treated as authoritative for this test project.
+
 For this test project:
 
 - Prepare VASP-compatible input files when useful for interoperability.
-- Do not submit VASP jobs unless the project policy changes.
+- Do not execute or submit VASP jobs unless the project policy changes.
 - Do not use `manage-vasp-jobs` to submit calculations in this test. Use it
   only for preparation, dry-run, status inspection, or future policy-enabled
   VASP work.
+- Use `relax-uma-trajectory` for structure relaxations, including bulk and
+  clean-slab optimization.
+- Use `calculate-uma-vibrational-frequencies` for vibrational calculations.
 - If local GPU UMA execution is requested, run UMA locally on the GPU node; do
   not submit UMA through qsub unless explicitly required.
 
@@ -68,8 +75,8 @@ Record:
 # VASP Job Management
 
 Use `manage-vasp-jobs` only for VASP input preparation, dry-run/status
-inspection, or future policy-enabled VASP work during this test. Do not submit
-VASP jobs.
+inspection, or future policy-enabled VASP work during this test. Do not execute
+or submit VASP jobs.
 
 When VASP-compatible files are prepared but not run, state that boundary in the
 recipe-local manifest.

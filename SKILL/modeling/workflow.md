@@ -8,6 +8,7 @@ missing recipe requirements.
 
 # Skills
 
+- `import-bulk-structure`
 - `build-slab-models`
 - `build-gas-phase-models`
 - `place-adsorbates-with-adsorbdiff`
@@ -28,7 +29,46 @@ Before modeling, read:
 Model required structures based on explicit recipe artifacts, not from memory or
 from a loose reading of the strategy.
 
+# Surface Preparation
+
+When a recipe requires a slab, surface, or adsorbate configuration, keep the
+modeling/calculation handoff in this order:
+
+```text
+bulk create/import
+-> bulk optimization
+-> slab build
+-> clean slab optimization
+-> adsorbate placement
+```
+
+Use `import-bulk-structure` for Materials Project retrieval or source-bulk
+registration. Preserve source metadata, including Materials Project initial
+magnetic moments (`initial_magmoms`) when present, in sidecar metadata and
+handoff notes.
+
+Bulk optimization and clean slab optimization belong to the calculation domain
+and inherit the active backend policy from root `workflow.md`. Modeling skills
+must not choose a calculation backend on their own.
+
+Use `build-slab-models` only after an accepted optimized bulk artifact exists.
+Pass that optimized artifact through `--bulk-file`; do not let slab generation
+fetch a fresh Materials Project or formula-derived bulk directly.
+
+Use a recipe-authorized adsorbate-placement skill only after an accepted
+optimized clean slab artifact exists. AdsorbDiff is one available placement
+path, not the only valid future path.
+
+If the recipe or execution plan does not authorize a required predecessor, or if
+its accepted artifact and provenance are missing, stop before the dependent slab
+build or adsorbate placement. Return to explicit recipe generation, execution
+planning, or missing-evidence recording. Do not edit generated recipe status
+files.
+
 # Model Types
+
+Use `import-bulk-structure` for recipe-backed source bulk import or registration
+before bulk optimization.
 
 Use `build-slab-models` for clean slab models, surface cells, terminations, and
 surface model variants requested by a recipe.
@@ -36,8 +76,9 @@ surface model variants requested by a recipe.
 Use `build-gas-phase-models` for gas-phase molecules, reference species, and
 isolated species required by a recipe.
 
-Use `place-adsorbates-with-adsorbdiff` for adsorbate placement on recipe-backed
-slabs when adsorption configurations are required.
+Use a recipe-authorized adsorbate-placement skill for adsorbate placement on an
+optimized clean slab. `place-adsorbates-with-adsorbdiff` is one available
+operation-specific skill when its method matches the recipe.
 
 Use `propose-surface-models-from-literature` only when the recipe or strategy
 requires literature-guided surface model proposal and the needed literature
@@ -83,3 +124,5 @@ model without rereading raw files:
   explicitly permits a bounded proxy.
 - Do not mark a recipe satisfied by a model that lacks required metadata or
   recipe-local provenance.
+- Do not choose the calculation backend in modeling skills; inherit it from the
+  root workflow during calculation-domain steps.
