@@ -17,8 +17,7 @@ cd $SGE_O_WORKDIR
 
 module load vasp/6.3.2-vtst-vaspsol-beef-intel
 
-VASP="/home/shared/programs/vasp/5.4.4+vtst+vaspsol+beef/vasp.5.4.4/bin/vasp_gam"
-mpirun -machinefile $TMPDIR/machines -n $NSLOTS $VASP
+mpirun -machinefile $TMPDIR/machines -n $NSLOTS vasp_gam
 exit_code=$?
 
 date -Is > .vasp_submit_finished

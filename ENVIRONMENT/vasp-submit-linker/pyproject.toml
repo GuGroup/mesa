@@ -18,4 +18,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vasp_submit"]
-artifacts = ["templates"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"templates" = "templates"
