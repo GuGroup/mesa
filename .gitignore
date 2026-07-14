@@ -78,7 +78,6 @@ SKILL/**/tests/
 !SKILL/orchestration/validate-recipe-execution/tests/**
 
 # Local manuscript review trials
-SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/
 **/draft.txt
 **/draft*.txt
 
