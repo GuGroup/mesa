@@ -18,7 +18,7 @@ def pymatgen_to_ase(structure: Structure) -> Atoms:
     """Convert a pymatgen Structure (or Slab) to an ASE Atoms object.
 
     Uses pymatgen's AseAtomsAdaptor, which is the maintained, recommended
-    bridge (replaces the deprecated mpinterfaces.utils.get_ase_slab).
+    bridge (replaces mpinterfaces.utils.get_ase_slab).
     """
     return AseAtomsAdaptor.get_atoms(structure)
 
