@@ -23,6 +23,21 @@ for each reaction state and returns relative free energies referenced to the fir
 
 Transition states are not currently supported.
 
+## Run
+
+From the repository root:
+
+```bash
+cd SKILL/analysis/construct-energy-diagram
+mamba run -n modeling python -m MYSKILL.tools.start \
+  --reaction ../../../project/<project_name>/inputs/reaction.json \
+  --mapping ../../../project/<project_name>/inputs/map.json \
+  --output ../../../project/<project_name>/analysis/relative_free_energies.json
+```
+
+The runner reads only the two supplied JSON files and the OUTCAR paths declared
+inside `map.json`; it has no built-in author-local data paths.
+
 ⸻
 
 Inputs
