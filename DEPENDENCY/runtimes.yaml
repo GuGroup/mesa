@@ -148,14 +148,15 @@ runtimes:
     description: FAIRChem/UMA runtime for MLIP single-point, relaxation trajectory, and finite-displacement vibration tasks.
     cwd: DEPENDENCY/uma
     spec: DEPENDENCY/uma/runtime.md
-    run_prefix: python
+    environment_spec: ENVIRONMENT/fairchem/environment.yml
+    run_prefix: mamba run -n fairchem
     install:
       - See DEPENDENCY/uma/runtime.md
     check_tools:
-      - python
+      - mamba
       - qsub
     smoke:
-      - python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
+      - mamba run -n fairchem python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
     env_optional:
       - HF_TOKEN
       - HF_HOME

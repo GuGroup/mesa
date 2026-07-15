@@ -7,6 +7,19 @@ For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying th
 
 # mesa-uma-vib-freq
 
+## Runtime Environment
+
+Run this skill in the configured UMA runtime:
+
+```bash
+mamba run -n fairchem
+```
+
+The existing machine-local `fairchem` mamba environment provides ASE and
+FAIRChem/UMA. Its major package specification is recorded at
+`ENVIRONMENT/fairchem/environment.yml`; do not assume a bootstrap-created
+`mesa-uma` env exists.
+
 `calculate-uma-vibrational-frequencies` is a minimal MESA skill for UMA-based
 finite-displacement vibrational frequency calculation. The upstream task
 provides only a POSCAR path, preferably a relaxed POSCAR. The controller decides

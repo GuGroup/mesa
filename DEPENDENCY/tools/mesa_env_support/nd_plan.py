@@ -91,7 +91,11 @@ def build_runtime_plan(runtime_name: str, profile: dict[str, Any], contracts: di
         deterministic = {}
 
     cuda_choice = choose_cuda_tag(profile, runtime_name)
-    env_name = "adsorbdiff" if runtime_name == "mesa-adsorbdiff" else runtime_name
+    env_name = str(
+        deterministic.get("environment_name")
+        or ("adsorbdiff" if runtime_name == "mesa-adsorbdiff" else runtime_name)
+    )
+    environment_policy = str(deterministic.get("environment_policy") or "create_or_update")
     python_version = str(deterministic.get("python") or "3.11")
     if python_version == "machine-specific":
         python_version = "3.11"
@@ -108,26 +112,44 @@ def build_runtime_plan(runtime_name: str, profile: dict[str, Any], contracts: di
     if checkpoints.get("HF_TOKEN") != "SET":
         warnings.append("HF_TOKEN is missing; gated/private checkpoint downloads will require it later.")
 
-    commands: list[dict[str, Any]] = [
-        {
-            "id": "create-env",
-            "title": f"Create `{env_name}` environment",
-            "kind": "command",
-            "category": "environment",
-            "cwd": str(REPO_ROOT),
-            "command": f"mamba create -y -n {env_name} python={python_version}",
-            "requires_yes": True,
-        },
-        {
-            "id": "install-torch",
-            "title": f"Install PyTorch for {cuda_choice['cuda_tag']}",
-            "kind": "command",
-            "category": "environment",
-            "cwd": str(REPO_ROOT),
-            "command": f"mamba run -n {env_name} python -m pip install torch torchvision torchaudio --index-url {cuda_choice['torch_index_url']}",
-            "requires_yes": True,
-        },
-    ]
+    commands: list[dict[str, Any]] = []
+    if environment_policy == "existing_external":
+        commands.append(
+            {
+                "id": "reuse-existing-env",
+                "title": f"Use existing `{env_name}` environment",
+                "kind": "notification",
+                "category": "environment",
+                "message": (
+                    f"`{runtime_name}` is configured to reuse the existing external "
+                    f"`{env_name}` mamba environment. The plan does not create or "
+                    "modify that environment."
+                ),
+            }
+        )
+    else:
+        commands.extend(
+            [
+                {
+                    "id": "create-env",
+                    "title": f"Create `{env_name}` environment",
+                    "kind": "command",
+                    "category": "environment",
+                    "cwd": str(REPO_ROOT),
+                    "command": f"mamba create -y -n {env_name} python={python_version}",
+                    "requires_yes": True,
+                },
+                {
+                    "id": "install-torch",
+                    "title": f"Install PyTorch for {cuda_choice['cuda_tag']}",
+                    "kind": "command",
+                    "category": "environment",
+                    "cwd": str(REPO_ROOT),
+                    "command": f"mamba run -n {env_name} python -m pip install torch torchvision torchaudio --index-url {cuda_choice['torch_index_url']}",
+                    "requires_yes": True,
+                },
+            ]
+        )
 
     if runtime_name == "mesa-adsorbdiff":
         cuda_tag = cuda_choice["cuda_tag"]
@@ -149,7 +171,7 @@ def build_runtime_plan(runtime_name: str, profile: dict[str, Any], contracts: di
                 "posix_shell": True,
             }
         )
-    else:
+    elif environment_policy != "existing_external":
         commands.append(
             {
                 "id": "install-uma-packages",
@@ -201,6 +223,10 @@ def build_runtime_plan(runtime_name: str, profile: dict[str, Any], contracts: di
         "warnings": warnings,
         "decisions": {
             "cuda": cuda_choice,
+            "environment": {
+                "name": env_name,
+                "policy": environment_policy,
+            },
             "scheduler": {
                 "policy": scheduler.get("policy", "deferred_until_final_stage"),
                 "detected": detected_scheduler if isinstance(detected_scheduler, list) else [],
