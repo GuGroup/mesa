@@ -32,4 +32,4 @@ env_vars = [
 # Because cwd is EXTERNAL/paper-search-mcp, ../../DEPENDENCY/.env resolves to
 # repo/DEPENDENCY/.env.
 [mcp_servers.paper_search.env]
-PAPER_SEARCH_MCP_ENV_FILE = "../../DEPENDENCY/.env"
+PAPER_SEARCH_MCP_ENV_FILE = "../DEPENDENCY/.env"
