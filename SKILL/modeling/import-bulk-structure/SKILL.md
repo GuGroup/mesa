@@ -60,7 +60,7 @@ Start only from recipe-authorized requirements:
    - import, registration, or creation timestamp and command provenance.
 4. Write an unoptimized bulk structure artifact and sidecar metadata.
 5. Hand the artifact to the calculation workflow for bulk optimization under the
-   root calculation policy.
+   active project profile's calculation policy.
 
 ## Direct Bulk Creation
 
@@ -102,4 +102,4 @@ Before handing the bulk to optimization, provide:
 - Do not build a slab in this skill.
 - Do not fetch Materials Project structures from `build-slab-models`.
 - Do not choose a calculation backend here; inherit the active calculation
-  policy from the root workflow during the later calculation step.
+  policy from the project profile during the later calculation step.

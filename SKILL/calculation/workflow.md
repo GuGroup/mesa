@@ -1,8 +1,9 @@
 # Calculation Domain Workflow
 
-Use this manual for recipe-backed calculations, VASP-input preparation policy,
-UMA relaxation, UMA vibrations, calculation result checks, and reaction-pathway
-bookkeeping.
+Use this manual for recipe-backed calculations, active backend execution,
+calculation result checks, and reaction-pathway bookkeeping. The active project
+may be UMA/MLIP-only, VASP-only, or another policy explicitly defined by the
+project profile.
 
 Calculations must be authorized by explicit recipe artifacts.
 
@@ -14,24 +15,19 @@ Calculations must be authorized by explicit recipe artifacts.
 - `manage-vasp-jobs`
 - `balance-reaction-pathway`
 
-# Test Calculation Policy
+# Calculation Policy
 
-The root `workflow.md` is the source of truth for calculation backend policy.
-Under the current root policy, the active execution backend is UMA only and UMA
-outputs are treated as authoritative for this test project.
+The active `project/<project_name>/project_profile.md` is the source of truth
+for calculation backend policy. Do not restate or override the active backend
+here. Before running calculation skills, read the project profile and apply its
+backend, submission, scheduler, artifact-generation, and acceptance rules.
 
-For this test project:
-
-- Prepare VASP-compatible input files when useful for interoperability.
-- Do not execute or submit VASP jobs unless the project policy changes.
-- Do not use `manage-vasp-jobs` to submit calculations in this test. Use it
-  only for preparation, dry-run, status inspection, or future policy-enabled
-  VASP work.
-- Use `relax-uma-trajectory` for structure relaxations, including bulk and
-  clean-slab optimization.
-- Use `calculate-uma-vibrational-frequencies` for vibrational calculations.
-- If local GPU UMA execution is requested, run UMA locally on the GPU node; do
-  not submit UMA through qsub unless explicitly required.
+Do not prepare VASP-compatible files by default. Prepare them only when the
+active policy allows VASP-related artifacts and a recipe, interoperability
+need, or user instruction specifically calls for them. In a UMA/MLIP-only
+project, use UMA skills for evidence-producing calculations and do not create
+VASP job folders unless the project policy explicitly permits input-only
+interoperability artifacts.
 
 # Entry Requirements
 
@@ -57,7 +53,8 @@ P###_<procedure_slug>/calculations/C###_<calculation_slug>/execution/
 ```
 
 Include relaxed structures, trajectories, logs, inputs, generated
-VASP-compatible inputs when useful, and manifest entries.
+backend-specific inputs or interoperability artifacts only when policy permits
+them, and manifest entries.
 
 # UMA Vibrations
 
@@ -72,14 +69,17 @@ Record:
 - failed, imaginary, unstable, or caveated modes;
 - acceptance state and caveats.
 
-# VASP Job Management
+# Backend-Specific Job Management
 
-Use `manage-vasp-jobs` only for VASP input preparation, dry-run/status
-inspection, or future policy-enabled VASP work during this test. Do not execute
-or submit VASP jobs.
+Use `manage-vasp-jobs` only when the active project profile allows VASP
+preparation, dry-run/status inspection, or execution. If the active project is
+UMA/MLIP-only and does not allow VASP artifacts, do not use `manage-vasp-jobs`
+and do not call the `vasp-job` CLI.
 
-When VASP-compatible files are prepared but not run, state that boundary in the
-recipe-local manifest.
+When backend-specific files are prepared but not run, state that boundary in
+the recipe-local manifest. Examples include "UMA relaxation only; no VASP
+input generated" or "VASP input prepared for interoperability only; no VASP
+execution".
 
 # Reaction Pathway Bookkeeping
 

@@ -15,7 +15,8 @@ in a cubic box, writes POSCAR and metadata, and stops.
 
 Do not use this skill for slab generation, adsorbate placement on surfaces,
 calculation input generation, relaxation, static energies, or frequency calculations.
-Use the calculation workflow after this skill for calculation setup under the root calculation policy.
+Use the calculation workflow after this skill for calculation setup under the
+active project profile's calculation policy.
 
 ## Charge and Spin Boundary
 
@@ -33,8 +34,9 @@ set spin-related inputs without guessing:
   a dipole correction in downstream calculation setup).
 
 The calculation workflow owns the final calculator-specific inputs. It may read
-`spin_reference`/`dipole_hint` and translate them under the root calculation
-policy. This skill never writes calculator execution inputs.
+`spin_reference`/`dipole_hint` and translate them under the active project
+profile's calculation policy. This skill never writes calculator execution
+inputs.
 
 ## Quick Start
 

@@ -555,7 +555,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, help="Project directory, e.g. project/mos_0629_2.")
+    parser.add_argument("--project", required=True, help="Project directory, e.g. project/<project_name>.")
     parser.add_argument("--strategy-id", default="S1", help="Strategy id for output folder naming.")
     parser.add_argument("--citation-sources", default="", help="Override citation_sources.json path.")
     parser.add_argument("--selected-strategy", default="", help="Override selected_strategy.json path.")

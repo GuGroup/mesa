@@ -4,7 +4,7 @@ from __future__ import annotations
 from .common import *
 from .nd_status import append_initialize_event, write_initialize_status
 
-def execute_runtime_plan(plan_path: Path, yes: bool, continue_on_error: bool = False, project_dir: Path = DEFAULT_INITIALIZATION_DIR) -> int:
+def execute_runtime_plan(plan_path: Path, yes: bool, continue_on_error: bool = False, project_dir: Path | None = None) -> int:
     resolved_plan = repo_path(plan_path) or plan_path
     if not resolved_plan.is_file():
         print(f"Runtime plan: MISSING {resolved_plan}", file=sys.stderr)
@@ -15,7 +15,7 @@ def execute_runtime_plan(plan_path: Path, yes: bool, continue_on_error: bool = F
         return 1
 
     runtime = str(plan.get("runtime", "unknown-runtime"))
-    project_out = repo_path(project_dir) or DEFAULT_INITIALIZATION_DIR
+    project_out = initialization_dir(project_dir)
     print("\nRuntime plan executor")
     print(f"  runtime: {runtime}")
     print(f"  plan: {resolved_plan}")

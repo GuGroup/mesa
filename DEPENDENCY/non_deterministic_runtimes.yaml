@@ -1,8 +1,8 @@
 version: 1
 
 handoff:
-  default_project: project/mos
-  default_initialization_dir: project/mos/initialization
+  default_project: project/<project_name>
+  default_initialization_dir: project/<project_name>/initialization
   output_markdown: dependency_handoff.md
   output_json: machine_profile.json
   analyzer_output_markdown: nondeterministic_profile.md

@@ -22,3 +22,23 @@ grounded in explicit calculations and reviewable evidence.
 
 Our direction is simple: build an agent that can do research better than a PhD
 student. That is what we are working toward.
+
+## Fresh Clone Setup
+
+After cloning, expose only the initialization skill to Codex. The
+`initialize-mesa` skill will synchronize the rest of this repository's skills
+during initialization.
+
+```bash
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -sfn "$PWD/SKILL/init/initialize-mesa" \
+  "${CODEX_HOME:-$HOME/.codex}/skills/initialize-mesa"
+```
+
+Then run `initialize-mesa` from Codex. It will run the repository bootstrap
+checks and link the remaining MESA skills into `$CODEX_HOME/skills` or
+`~/.codex/skills`. To check the environment directly:
+
+```bash
+bash DEPENDENCY/bootstrap.sh
+```

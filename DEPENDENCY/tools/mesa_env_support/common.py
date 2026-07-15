@@ -21,8 +21,9 @@ import urllib.request
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY = REPO_ROOT / "DEPENDENCY" / "runtimes.yaml"
 DEFAULT_HANDOFF_CONTRACT = REPO_ROOT / "DEPENDENCY" / "non_deterministic_runtimes.yaml"
-DEFAULT_PROJECT_DIR = REPO_ROOT / "project" / "mos"
-DEFAULT_INITIALIZATION_DIR = DEFAULT_PROJECT_DIR / "initialization"
+PROJECT_ROOT = REPO_ROOT / "project"
+PROJECT_PROFILE_FILENAME = "project_profile.md"
+INITIALIZATION_DIR_NAME = "initialization"
 DEPENDENCY_ENV = REPO_ROOT / "DEPENDENCY" / ".env"
 ENV_EXAMPLE = REPO_ROOT / "DEPENDENCY" / ".env.example"
 LEGACY_ROOT_ENV = REPO_ROOT / ".env"
@@ -192,6 +193,30 @@ def display_path(path: Path) -> str:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
+
+def discover_project_profiles() -> list[Path]:
+    if not PROJECT_ROOT.is_dir():
+        return []
+    return sorted(path for path in PROJECT_ROOT.glob(f"*/{PROJECT_PROFILE_FILENAME}") if path.is_file())
+
+def default_initialization_dir() -> Path:
+    profiles = discover_project_profiles()
+    if len(profiles) == 1:
+        return profiles[0].parent / INITIALIZATION_DIR_NAME
+    if not profiles:
+        raise SystemExit(
+            "No active MESA project profile found. Provide "
+            "--output-dir project/<project_name>/initialization or run initialize-mesa "
+            "to create project/<project_name>/project_profile.md."
+        )
+    choices = "\n".join(f"  - {display_path(path.parent / INITIALIZATION_DIR_NAME)}" for path in profiles)
+    raise SystemExit("Multiple MESA project profiles found. Provide an explicit initialization directory:\n" + choices)
+
+def initialization_dir(path_value: Path | str | None) -> Path:
+    resolved = repo_path(path_value)
+    if resolved is not None:
+        return resolved
+    return default_initialization_dir()
 def command_tool(command: str) -> str | None:
     try:
         parts = shlex.split(command)

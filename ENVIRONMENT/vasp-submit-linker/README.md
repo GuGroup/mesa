@@ -8,10 +8,11 @@ Run this from the repository checkout on the Mirae login node:
 
 ```bash
 cd ~/runners/vasp-submit-linker
-uv tool install --python 3.11 . --constraint constraints.txt --force
+CFLAGS="${CFLAGS:-} -std=gnu99" uv tool install --python 3.11 --editable . --constraint constraints.txt --force
 ```
 
-`--python 3.11` is intentional for Mirae: it keeps the scientific Python stack on available wheels and avoids source builds that require newer system compilers.
+`--python 3.11` is intentional for Mirae. The CFLAGS prefix keeps Pillow source
+builds compatible with compilers that default to pre-C99 mode.
 
 Check the installed command:
 

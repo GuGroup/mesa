@@ -63,6 +63,7 @@ data/
 tmp/
 temp/
 project/
+.omo/init-deep/
 
 # Jupyter
 .ipynb_checkpoints/

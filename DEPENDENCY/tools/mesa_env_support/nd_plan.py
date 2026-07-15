@@ -7,7 +7,7 @@ from .nd_status import append_initialize_event, contract_output_names, safe_file
 
 def ensure_nondeterministic_profile(
     profile_path: Path,
-    output_dir: Path,
+    output_dir: Path | None,
     contracts_path: Path,
     auto_analyze: bool = True,
 ) -> dict[str, Any]:
@@ -16,12 +16,13 @@ def ensure_nondeterministic_profile(
         if not auto_analyze:
             raise SystemExit(
                 f"Missing non-deterministic profile: {resolved_profile}\n"
-                "Run: uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic"
+                "Run: uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py "
+                "analyze-nondeterministic --output-dir project/<project_name>/initialization"
             )
         status = write_nondeterministic_analysis(output_dir, contracts_path)
         if status != 0:
             raise SystemExit("Could not generate non-deterministic profile.")
-        generated_default = (repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR) / "nondeterministic_profile.json"
+        generated_default = initialization_dir(output_dir) / "nondeterministic_profile.json"
         if not resolved_profile.is_file() and generated_default.is_file():
             resolved_profile = generated_default
     if not resolved_profile.is_file():
@@ -307,17 +308,20 @@ def render_runtime_plan(plan: dict[str, Any]) -> str:
 
 def write_runtime_plan(
     runtime_name: str,
-    output_dir: Path,
-    project_dir: Path,
-    profile_path: Path,
+    output_dir: Path | None,
+    project_dir: Path | None,
+    profile_path: Path | None,
     contracts_path: Path,
     auto_analyze: bool = True,
 ) -> int:
     contracts_path = repo_path(contracts_path) or DEFAULT_HANDOFF_CONTRACT
     contracts = load_handoff_contract(contracts_path)
     names = contract_output_names(contracts)
-    project_out = repo_path(project_dir) or DEFAULT_INITIALIZATION_DIR
-    profile_resolved = repo_path(profile_path) or profile_path
+    project_out = initialization_dir(project_dir)
+    if profile_path is None:
+        profile_resolved = project_out / names["analyzer_json"]
+    else:
+        profile_resolved = repo_path(profile_path) or profile_path
     profile = ensure_nondeterministic_profile(profile_resolved, project_out, contracts_path, auto_analyze)
     plan = build_runtime_plan(runtime_name, profile, contracts, profile_resolved)
 

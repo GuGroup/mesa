@@ -131,9 +131,9 @@ runtimes:
     spec: ENVIRONMENT/vasp-submit-linker/pyproject.toml
     run_prefix: vasp-job
     install:
-      - uv tool install --python 3.11 . --constraint constraints.txt --force
+      - CFLAGS="${CFLAGS:-} -std=gnu99" uv tool install --python 3.11 --editable . --constraint constraints.txt --force
     update:
-      - uv tool install --python 3.11 . --constraint constraints.txt --force
+      - CFLAGS="${CFLAGS:-} -std=gnu99" uv tool install --python 3.11 --editable . --constraint constraints.txt --force
     check_tools:
       - uv
       - vasp-job
@@ -240,3 +240,4 @@ skills:
   number-manuscript-equations: mesa-manuscript
   nature-reviewer: no-runtime
   initialize-mesa: no-runtime
+  start-research: no-runtime

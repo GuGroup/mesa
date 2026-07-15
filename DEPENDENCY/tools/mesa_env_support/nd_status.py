@@ -27,7 +27,7 @@ def safe_filename(value: str) -> str:
     return cleaned.strip("._") or "runtime"
 
 def append_initialize_event(
-    output_dir: Path,
+    output_dir: Path | None,
     event: str,
     status: str,
     message: str,
@@ -35,7 +35,7 @@ def append_initialize_event(
     contracts: dict[str, Any] | None = None,
 ) -> Path:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     event_path = out_dir / names["events_jsonl"]
     record: dict[str, Any] = {
@@ -50,9 +50,9 @@ def append_initialize_event(
         fh.write(json.dumps(record, sort_keys=True) + "\n")
     return event_path
 
-def read_recent_events(output_dir: Path, limit: int = 20, contracts: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def read_recent_events(output_dir: Path | None, limit: int = 20, contracts: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     event_path = out_dir / names["events_jsonl"]
     if not event_path.is_file():
         return []
@@ -67,9 +67,9 @@ def read_recent_events(output_dir: Path, limit: int = 20, contracts: dict[str, A
             events.append(event)
     return events
 
-def status_artifact_state(output_dir: Path, contracts: dict[str, Any] | None = None) -> dict[str, Any]:
+def status_artifact_state(output_dir: Path | None, contracts: dict[str, Any] | None = None) -> dict[str, Any]:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     plan_dir = out_dir / names["runtime_plan_dir"]
     plan_jsons = sorted(plan_dir.glob("*_plan.json")) if plan_dir.is_dir() else []
     return {
@@ -86,13 +86,14 @@ def status_artifact_state(output_dir: Path, contracts: dict[str, Any] | None = N
     }
 
 def render_initialize_status(
-    output_dir: Path,
+    output_dir: Path | None,
     events: list[dict[str, Any]],
     contracts: dict[str, Any] | None = None,
     headline: str | None = None,
 ) -> str:
     state = status_artifact_state(output_dir, contracts)
     out_dir = Path(state["output_dir"])
+    out_dir_arg = shlex.quote(display_path(out_dir))
     lines = [
         "# MESA Initialize Status",
         "",
@@ -126,25 +127,25 @@ def render_initialize_status(
             "## Safe Next Commands",
             "",
             "- Analyze machine-specific facts:",
-            "  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir {out_dir_arg}`",
             "- Generate a non-deterministic runtime plan:",
-            "  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma --project-dir {out_dir_arg}`",
             "- Dry-run a saved runtime plan:",
-            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')}`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')} --project-dir {out_dir_arg}`",
             "- Execute a saved runtime plan only after reviewing it:",
-            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')} --yes`",
+            f"  `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan {display_path(Path(state['runtime_plan_dir']) / 'mesa-uma_plan.json')} --project-dir {out_dir_arg} --yes`",
             "",
         ]
     )
     return "\n".join(lines)
 
 def write_initialize_status(
-    output_dir: Path,
+    output_dir: Path | None,
     contracts: dict[str, Any] | None = None,
     headline: str | None = None,
 ) -> Path:
     names = contract_output_names(contracts)
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     events = read_recent_events(out_dir, contracts=contracts)
     status_path = out_dir / names["status_markdown"]
