@@ -89,9 +89,17 @@ outputs.
 
 See `references/recipe-schema.md` for the JSON field contract.
 
-## Output Validation
+## Validation
 
-After running the generator on a selected strategy artifact, check that:
+After creating or updating this skill, validate the skill folder:
+
+```bash
+uv run --with pyyaml "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" \
+  SKILL/orchestration/generate-explicit-calculation-recipe
+```
+
+For functional validation, run the generator on a selected strategy artifact and
+check that:
 
 - every source procedure has exactly one `P###` folder;
 - every `P###/procedure.json` contains the original procedure text;
