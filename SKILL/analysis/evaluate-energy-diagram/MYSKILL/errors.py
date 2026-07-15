@@ -1,4 +1,4 @@
-"""Custom exceptions for TASK_REACTION_ENERGY_EVALUATION."""
+"""Custom exceptions for evaluate-energy-diagram."""
 
 from __future__ import annotations
 

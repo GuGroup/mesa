@@ -1,11 +1,11 @@
-"""Constants for TASK_REACTION_ENERGY_EVALUATION."""
+"""Constants for evaluate-energy-diagram."""
 
 from __future__ import annotations
 
 import re
 from typing import Any
 
-TASK_ID = "TASK_REACTION_ENERGY_EVALUATION"
+TASK_ID = "evaluate-energy-diagram"
 SKILL_NAME = "reaction_energy_evaluation"
 
 DEFAULT_OER_TOTAL_FREE_ENERGY_EV = 4.92

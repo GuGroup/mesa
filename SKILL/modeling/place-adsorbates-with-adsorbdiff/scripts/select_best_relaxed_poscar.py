@@ -15,7 +15,7 @@ from ase import Atoms
 from ase.io import read, write
 
 
-TASK_ID = "TASK_ADSORBDIFF_SELECT_BEST_RELAXED"
+TASK_ID = "place-adsorbates-with-adsorbdiff.select-best-relaxed"
 
 
 def json_safe(value: Any) -> Any:

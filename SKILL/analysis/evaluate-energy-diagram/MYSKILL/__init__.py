@@ -1,4 +1,4 @@
-"""TASK_REACTION_ENERGY_EVALUATION public package interface."""
+"""evaluate-energy-diagram public package interface."""
 
 from .core import evaluate_energy_table, run
 

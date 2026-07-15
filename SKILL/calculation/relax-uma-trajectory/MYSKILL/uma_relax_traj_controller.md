@@ -1,12 +1,12 @@
 ---
 name: uma-relax-traj-controller
-description: Decide UMA relaxation trajectory settings for TASK_UMA_RELAX_TRAJECTORY from only a POSCAR path, write results/resolved_uma_config.json, run or submit the fixed runner, verify relax.traj and relaxed/POSCAR, and return the standard MESA skill output envelope.
+description: Decide UMA relaxation trajectory settings for relax-uma-trajectory from only a POSCAR path, write results/resolved_uma_config.json, run or submit the fixed runner, verify relax.traj and relaxed/POSCAR, and return the standard MESA skill output envelope.
 ---
 
 # uma-relax-traj-controller
 
 `uma-relax-traj-controller` is the MESA decision layer for
-`TASK_UMA_RELAX_TRAJECTORY`. It receives only a POSCAR path as required input,
+`relax-uma-trajectory`. It receives only a POSCAR path as required input,
 decides all UMA execution settings, writes the resolved settings, invokes the
 fixed runner, and checks whether the trajectory and final relaxed POSCAR were
 created.
@@ -64,7 +64,7 @@ settings, decision reasons, and controller metadata.
 
 ```json
 {
-  "task_id": "TASK_UMA_RELAX_TRAJECTORY",
+  "task_id": "relax-uma-trajectory",
   "input_poscar": "POSCAR",
   "outputs": {
     "trajectory": "relax.traj",

@@ -42,7 +42,7 @@ Strict rules:
    - electrochemical_free_energy_formalism
 2. Do not add descriptor analysis, electronic-structure analysis, results, discussion, or standalone limitations sections.
 3. Do not mention internal workflow language, including: strategy, procedure, workflow, source, digest, JSON, artifact, manifest, skill, prompt, mapper, realizer, writer, P001-style ids, C001-style ids, file paths, project paths, or code filenames.
-4. Translate internal tool names into public method language. Do not write names such as TASK_UMA_vib, alkaline-her-free-energy-bookkeeper, or methods-evidence-collector.
+4. Translate internal tool names into public method language. Do not write names such as calculate-uma-vibrational-frequencies, alkaline-her-free-energy-bookkeeper, or methods-evidence-collector.
 5. Do not invent missing details such as exact slab-builder arguments, slab dimensions, or convergence settings when not supplied.
 6. Keep text factual and Methods-like. Avoid claims about catalytic performance, superiority, experimental validation, or mechanistic conclusions.
 7. Mention descriptor/electronic-structure methods only if they are part of the four provided sections. If not provided, omit them.

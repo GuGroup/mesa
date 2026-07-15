@@ -1,12 +1,12 @@
 ---
 name: uma-vib-freq-runner
-description: Fixed UMA/ASE finite-displacement vibrational frequency runner for TASK_UMA_VIB_FREQ. Use to read results/resolved_uma_vib_config.json, attach FAIRChem/UMA through ASE, run ASE Vibrations, write vib.freq, populate vib_cache, and save results/uma_vib_freq.json without deciding scientific settings.
+description: Fixed UMA/ASE finite-displacement vibrational frequency runner for calculate-uma-vibrational-frequencies. Use to read results/resolved_uma_vib_config.json, attach FAIRChem/UMA through ASE, run ASE Vibrations, write vib.freq, populate vib_cache, and save results/uma_vib_freq.json without deciding scientific settings.
 ---
 
 # uma-vib-freq-runner
 
 `uma-vib-freq-runner` is the fixed execution runner for
-`TASK_UMA_VIB_FREQ`. It reads `results/resolved_uma_vib_config.json`, reads the
+`calculate-uma-vibrational-frequencies`. It reads `results/resolved_uma_vib_config.json`, reads the
 input POSCAR, attaches the FAIRChem/UMA calculator through ASE, runs ASE
 finite-displacement vibrations, and writes frequency artifacts.
 

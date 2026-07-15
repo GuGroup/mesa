@@ -28,10 +28,10 @@ Typical cases:
 Create a missing-evidence spec, then run:
 
 ```bash
-python scripts/record_missing_evidence.py \
-  --input missing_evidence_spec.json \
-  --outdir path/to/unresolved_evidence \
-  --project-root /path/to/project-root
+python3 SKILL/orchestration/record-missing-evidence/scripts/record_missing_evidence.py \
+  --input project/<project_name>/missing_evidence_spec.json \
+  --outdir project/<project_name>/strategy_execution/S1_explicit_recipe/P006_example/calculations/C001_example/execution \
+  --project-root .
 ```
 
 For the input schema, read `references/input-schema.md`.

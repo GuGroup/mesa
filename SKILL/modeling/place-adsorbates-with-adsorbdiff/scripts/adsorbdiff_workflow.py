@@ -19,7 +19,7 @@ import yaml
 SKILL_DIR = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = SKILL_DIR / "scripts"
 DEFAULT_REPO = SKILL_DIR / "assets" / "AdsorbDiff"
-TASK_ID = "TASK_ADSORBDIFF_PLACEMENT"
+TASK_ID = "place-adsorbates-with-adsorbdiff.placement"
 
 
 def read_json(path: Path) -> dict[str, Any]:

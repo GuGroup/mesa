@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render single slab/adsorbate structures to publication-style PNGs.
 
-This module is the rendering half of the ``adsorbate-structure-grid`` skill. It
+This module is the rendering half of the ``render-adsorbate-structure-grid`` skill. It
 loads an ASE-readable structure, renders a fixed-but-overridable "paper" view
 (shaded jmol spheres, bonds on, dashed halo around FixAtoms-constrained atoms)
 for the ``top`` / ``side_a`` / ``side_b`` camera directions with the pure-ASE +

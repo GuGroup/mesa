@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# noqa: SIZE_OK
 from __future__ import annotations
 
 import argparse
@@ -16,13 +17,13 @@ def json_default(value: Any) -> Any:
         return str(value)
     try:
         import numpy as np
-
+    except ImportError:
+        return str(value)
+    else:
         if isinstance(value, (np.integer,)):
             return int(value)
         if isinstance(value, (np.floating,)):
             return float(value)
-    except Exception:
-        pass
     return str(value)
 
 
@@ -43,7 +44,7 @@ def load_local_bulk_structure(path: Path):
 
     try:
         return Structure.from_file(str(path))
-    except Exception:
+    except (OSError, ValueError):
         from ase.io import read as ase_read
         from pymatgen.io.ase import AseAtomsAdaptor
 
@@ -206,12 +207,8 @@ def main() -> int:
         description="Build clean slab models with slabuilder.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--formula", help="Formula, chemical system, or MP id (Materials Project fetch). Mutually exclusive with --bulk-file.")
-    parser.add_argument("--bulk-file", help="Local bulk structure file (POSCAR/CIF/extxyz/...). Starts slab generation from this structure and skips the Materials Project fetch. Mutually exclusive with --formula.")
+    parser.add_argument("--bulk-file", required=True, help="Optimized bulk structure file (POSCAR/CIF/extxyz/...).")
     parser.add_argument("--miller", nargs=3, type=int, required=True, metavar=("H", "K", "L"), help="Surface Miller index.")
-    parser.add_argument("--search-mode", choices=["formula", "material_id", "chemsys", "elements"], default=None, help="Materials Project search mode. If omitted, mp-* inputs use material_id and all others use formula.")
-    parser.add_argument("--max-results", type=int, default=5, help="Maximum Materials Project bulk candidates to fetch before sorting.")
-    parser.add_argument("--entry-index", type=int, default=0, help="Bulk candidate index after slabuilder sorting.")
     parser.add_argument("--backend", choices=["auto", "catkit", "pymatgen", "surfaxe"], default="auto", help="Slab generation backend.")
     parser.add_argument("--prefer-symmetry", action="store_true", help="When backend is auto, prefer pymatgen symmetry/non-polar filtering.")
     parser.add_argument("--target-n-atoms", type=int, default=60, help="Target total atom count used by automatic layer/supercell selection.")
@@ -233,47 +230,30 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        from slabuilder import fetch_bulk_structures, generate_slab
+        from slabuilder import generate_slab
         from slabuilder.structure_understanding import validate_structure_packet
         from slabuilder.utils import save_structure
-    except Exception as exc:
+    except ImportError as exc:
         raise SystemExit(
             "Could not import slabuilder. Install it in the active environment. "
             f"Original error: {exc}"
         )
 
-    if bool(args.formula) == bool(args.bulk_file):
-        raise SystemExit("Provide exactly one of --formula or --bulk-file.")
+    import types
 
-    if args.bulk_file:
-        import types
-
-        bulk_path = Path(args.bulk_file).expanduser().resolve()
-        if not bulk_path.is_file():
-            raise SystemExit(f"--bulk-file not found: {bulk_path}")
-        structure = load_local_bulk_structure(bulk_path)
-        entry = types.SimpleNamespace(
-            structure=structure,
-            formula=structure.composition.reduced_formula,
-            mpid="local",
-            energy_above_hull=None,
-        )
-        bulk_source = "local"
-        search_mode = "local"
-        args.entry_index = 0
-    else:
-        search_mode = args.search_mode
-        if search_mode is None:
-            search_mode = "material_id" if args.formula.startswith("mp-") else "formula"
-
-        entries = fetch_bulk_structures(args.formula, max_results=args.max_results, search_mode=search_mode)
-        if not entries:
-            raise SystemExit(f"No bulk structures found for {args.formula!r}.")
-        if args.entry_index < 0 or args.entry_index >= len(entries):
-            raise SystemExit(f"--entry-index {args.entry_index} out of range for {len(entries)} entries.")
-
-        entry = entries[args.entry_index]
-        bulk_source = "mp"
+    bulk_path = Path(args.bulk_file).expanduser().resolve()
+    if not bulk_path.is_file():
+        raise SystemExit(f"--bulk-file not found: {bulk_path}")
+    structure = load_local_bulk_structure(bulk_path)
+    entry = types.SimpleNamespace(
+        structure=structure,
+        formula=structure.composition.reduced_formula,
+        mpid="local",
+        energy_above_hull=None,
+    )
+    bulk_source = "optimized_bulk_file"
+    search_mode = "bulk_file"
+    args.entry_index = 0
     supercell = None
     if args.supercell_na or args.supercell_nb:
         if not (args.supercell_na and args.supercell_nb):

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Import Bulk Structure"
+  short_description: "Resolve bulk crystals before relaxation"
+  default_prompt: "Use $import-bulk-structure to import, register, or directly create a source bulk crystal and preserve metadata before optimization."

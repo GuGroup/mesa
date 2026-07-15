@@ -21,7 +21,7 @@ submission. The values below are conservative defaults for Nature-family style w
 |---|---|
 | Core conclusion | One-sentence claim exists and every panel maps to it |
 | Archetype | Figure has a declared archetype and panel hierarchy |
-| Backend exclusivity | The selected backend produced all plotting, previews, exports, and visual QA renders |
+| Python rendering | Python produced all plotting, previews, exports, and visual QA renders |
 | Final size | Single-column about 89 mm or double-column about 183 mm, height not above target journal limit |
 | Text size | Body/tick/legend text is readable at final size, usually 5-7 pt for dense journal figures |
 | Panel labels | Lowercase, bold, near top-left, typically 8 pt at final size |
@@ -84,11 +84,8 @@ normalizing it away.
 
 ## Export checks
 
-Run only the export block for the selected backend. If that backend is unavailable,
-stop and report the missing runtime/package instead of producing a substitute export
-with the other language.
-
-### Python
+If Python is unavailable, stop and report the missing runtime/package instead of
+claiming a substitute export.
 
 ```python
 import matplotlib as mpl
@@ -97,22 +94,6 @@ mpl.rcParams["pdf.fonttype"] = 42
 fig.savefig("figure.svg", bbox_inches="tight")
 fig.savefig("figure.pdf", bbox_inches="tight")
 fig.savefig("figure.tiff", dpi=600, bbox_inches="tight")
-```
-
-### R
-
-```r
-svglite::svglite("figure.svg", width = width_mm / 25.4, height = height_mm / 25.4)
-print(plot)
-dev.off()
-
-grDevices::cairo_pdf("figure.pdf", width = width_mm / 25.4, height = height_mm / 25.4, family = "Arial")
-print(plot)
-dev.off()
-
-ragg::agg_tiff("figure.tiff", width = width_mm / 25.4, height = height_mm / 25.4, units = "in", res = 600)
-print(plot)
-dev.off()
 ```
 
 Open the SVG/PDF after export and verify that text can be selected, labels do not

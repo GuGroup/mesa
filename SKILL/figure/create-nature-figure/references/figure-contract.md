@@ -17,7 +17,7 @@ Create a short contract in working notes or in the response:
 Core conclusion:
 Figure archetype:
 Target journal/output:
-Backend: Python or R
+Implementation: Python
 Final size:
 Panel map:
   a:

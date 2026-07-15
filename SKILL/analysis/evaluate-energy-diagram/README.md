@@ -1,10 +1,13 @@
-# TASK_REACTION_ENERGY_EVALUATION
+# Evaluate Energy Diagram
 
 ## Purpose
 
-`TASK_REACTION_ENERGY_EVALUATION` is a modular MESA skill for evaluating DFT reaction-energy diagrams and extracting lightweight experimental context in the same workflow.
+`evaluate-energy-diagram` is a modular MESA skill for evaluating DFT
+reaction-energy diagrams and extracting lightweight experimental context in the
+same workflow.
 
-It integrates the former TASK1 experimental-information extraction role with the former TASK2 reaction-energy evaluation role, while keeping a stable public interface:
+It combines experimental-context extraction with reaction-energy evaluation
+while keeping a stable public interface:
 
 ```python
 from MYSKILL.reaction_energy_evaluation import run
@@ -18,7 +21,7 @@ The previous monolithic reaction evaluator mixed input parsing, reaction detecti
 ## Directory structure
 
 ```text
-TASK_REACTION_ENERGY_EVALUATION/
+SKILL/analysis/evaluate-energy-diagram/
 ├── SKILL.md
 ├── README.md
 ├── MYSKILL/
@@ -50,14 +53,6 @@ TASK_REACTION_ENERGY_EVALUATION/
 │   ├── input_schema.md
 │   ├── reaction_nomenclature.md
 │   └── llm_evaluation_protocol.md
-├── examples/
-│   ├── input_csv_no3rr.example.json
-│   ├── input_dict_her.example.json
-│   ├── input_dict_oer.example.json
-│   └── no3rr_energy.example.csv
-└── tests/
-    ├── test_reaction_energy_evaluation.py
-    └── test_module_boundaries.py
 ```
 
 ## Inputs
@@ -146,35 +141,19 @@ The deterministic evaluator does not call an LLM. If a future LLM layer is used 
 
 ## Run
 
-From the skill directory:
+From the repository root:
 
 ```bash
+cd SKILL/analysis/evaluate-energy-diagram
 python MYSKILL/reaction_energy_evaluation.py \
-  --input examples/input_dict_oer.example.json \
-  --output examples/output.generated.json \
+  --input ../../../project/<project_name>/inputs/energy_diagram.json \
+  --output ../../../project/<project_name>/analysis/energy_diagram_evaluation.json \
   --verbose
 ```
 
-From the parent directory:
-
-```bash
-python TASK_REACTION_ENERGY_EVALUATION/MYSKILL/reaction_energy_evaluation.py \
-  --input TASK_REACTION_ENERGY_EVALUATION/examples/input_dict_oer.example.json \
-  --output /tmp/mesa_reaction_output.json \
-  --verbose
-```
-
-## Test
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-or from the parent directory:
-
-```bash
-python -m unittest discover -s TASK_REACTION_ENERGY_EVALUATION/tests -v
-```
+Create the input JSON from one of the inline schemas in this README or
+`references/input_schema.md`; this repository does not bundle run-specific
+example inputs.
 
 ## Limitations
 

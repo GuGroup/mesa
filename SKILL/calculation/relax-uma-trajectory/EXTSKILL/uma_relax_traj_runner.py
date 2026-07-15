@@ -1,4 +1,4 @@
-"""Fixed UMA relaxation trajectory runner for TASK_UMA_RELAX_TRAJECTORY."""
+"""Fixed UMA relaxation trajectory runner for relax-uma-trajectory."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-TASK_ID = "TASK_UMA_RELAX_TRAJECTORY"
+TASK_ID = "relax-uma-trajectory"
 SKILL_NAME = "uma_relax_traj_runner"
 
 
@@ -229,7 +229,7 @@ def _build_relaxation_target(atoms: Any, relax_type: str) -> Any:
             from ase.filters import UnitCellFilter  # type: ignore
 
             return UnitCellFilter(atoms)
-    raise ValueError("relax_type must be geometry or cell for TASK_UMA_RELAX_TRAJECTORY.")
+    raise ValueError("relax_type must be geometry or cell for relax-uma-trajectory.")
 
 
 def _optimizer_class(optimizer_name: str) -> Any:

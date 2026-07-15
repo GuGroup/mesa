@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Public entrypoint for TASK_REACTION_ENERGY_EVALUATION.
+"""Public entrypoint for evaluate-energy-diagram.
 
 The implementation is intentionally modular.  This file keeps the stable public
 `run(input_data, context)` API and CLI while delegating parsing, reaction

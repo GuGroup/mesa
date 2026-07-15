@@ -1,6 +1,6 @@
 ---
 name: build-slab-models
-description: Build DFT-ready clean slab models with slabuilder. Use when Codex needs to fetch or select Materials Project bulk structures, generate Miller-index slabs, choose terminations, tune target atom count, lateral size, slab thickness, supercell repeats, layer counts, fix bottom support layers by fraction or explicit layer count, and validate clean slab quality before adsorption or calculation workflows.
+description: Build DFT-ready clean slab models from an already optimized bulk structure with slabuilder. Use when Codex needs to generate Miller-index slabs, choose terminations, tune target atom count, lateral size, slab thickness, supercell repeats, layer counts, fix bottom support layers by fraction or explicit layer count, and validate clean slab quality before clean-slab optimization or adsorbate placement.
 ---
 
 For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this skill.
@@ -9,64 +9,55 @@ For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this 
 
 ## Scope
 
-Use this skill to generate clean slabs only. Stop at validated slab files and metadata. Use `place-adsorbates-with-adsorbdiff` after this skill when the next step is adsorption-site identification and adsorbate placement.
+Use this skill to generate clean slabs only. Stop at validated slab files and
+metadata. The higher-level surface order is defined in
+`SKILL/modeling/workflow.md`.
 
-The `slabuilder` engine this skill drives is vendored in this repo (`ENVIRONMENT/build_tools/slabuilder`) and installed with the project, so no external checkout is required.
+The `slabuilder` engine this skill drives is vendored in this repo
+(`ENVIRONMENT/build_tools/slabuilder`) and installed with the project, so no
+external checkout is required.
 
-For end-to-end surface reaction modeling, use this skill as the slab gate in
-`surface-reaction-modeling-workflow`: do not place adsorbates until the bulk,
-Miller index, termination, and validation status are explicit.
+This skill does not import source bulk structures, optimize the bulk, optimize
+the clean slab, choose calculation backends, or place adsorbates.
 
-## Bulk source: Materials Project or local/code-generated
+## Bulk Source Policy
 
-Slab generation starts from a bulk structure. There are two entry points:
+Slab generation must start from an accepted optimized bulk artifact.
 
-- **`--formula` (Materials Project fetch)**: fetches bulk candidates from MP. An
-  API key must be set as `MP_API_KEY` or `PMG_MAPI_KEY` (or in a `.env` file in
-  the working directory). MP fetch fails immediately without it.
-- **`--bulk-file <POSCAR|CIF|extxyz>` (local or code-generated bulk)**: starts
-  from a bulk structure you already have and **skips the MP fetch entirely**. Use
-  this when the bulk is multicomponent and absent from MP, or when you built the
-  bulk in code. The recorded metadata sets `bulk_source: local`, `mpid: local`,
-  and `bulk_file: <path>`.
-
-`--formula` and `--bulk-file` are mutually exclusive; provide exactly one. With
-`--bulk-file`, the `--search-mode`/`--max-results`/`--entry-index` options are
-ignored.
+- Use `--bulk-file <POSCAR|CIF|extxyz>` for the optimized bulk handoff.
+- Use `import-bulk-structure` first to import, register, or directly create the
+  source bulk, then complete the required bulk optimization under the root
+  calculation policy, then run this skill with the optimized bulk file.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
-  --bulk-file path/to/bulk_POSCAR \
+  --bulk-file path/to/optimized_bulk_POSCAR \
   --miller 1 1 1
 ```
 
 ## Quick Start
 
-Use the bundled script for a direct Python workflow. Script paths are relative
-to this skill directory.
+Script paths are relative to this skill directory.
 
 Minimal required options:
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
-  --formula Pt \
+  --bulk-file path/to/optimized_bulk_POSCAR \
   --miller 1 1 1
 ```
 
 Full option example:
 
-This example shows every common option. Omit `--write-extxyz` for the default
-POSCAR-only output policy. Use `--all-terminations` only for deliberate
-enumeration; normal workflows choose one termination at a time with
+This example shows every common slab-generation option. Omit `--write-extxyz`
+for the default POSCAR-only output policy. Use `--all-terminations` only for
+deliberate enumeration; normal workflows choose one termination at a time with
 `--termination`.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
-  --formula Pt \
+  --bulk-file path/to/optimized_bulk_POSCAR \
   --miller 1 1 1 \
-  --search-mode formula \
-  --max-results 5 \
-  --entry-index 0 \
   --backend auto \
   --prefer-symmetry \
   --target-n-atoms 60 \
@@ -90,12 +81,8 @@ mamba run -n modeling python scripts/build_slab_model.py \
 
 | Keyword | Required | Meaning |
 | --- | --- | --- |
-| `--formula` | one of | Formula, chemical system, element set, or `mp-*` id to fetch from Materials Project. Exactly one of `--formula` / `--bulk-file` is required. |
-| `--bulk-file` | one of | Local/code-generated bulk file (POSCAR/CIF/extxyz/...). Skips the MP fetch. Exactly one of `--formula` / `--bulk-file` is required. |
+| `--bulk-file` | yes | Optimized bulk structure file (POSCAR/CIF/extxyz/...). This is the only valid bulk input for slab generation. |
 | `--miller H K L` | yes | Surface Miller index, e.g. `1 1 1`. |
-| `--search-mode` | no | Materials Project lookup mode: `formula`, `material_id`, `chemsys`, or `elements`; omitted values auto-detect `mp-*` ids. |
-| `--max-results` | no | Number of MP bulk candidates fetched before slabuilder sorting. |
-| `--entry-index` | no | Candidate index after sorting; use this when the lowest-energy candidate is not desired. |
 | `--backend` | no | Slab backend: `auto`, `catkit`, `pymatgen`, or `surfaxe`. |
 | `--prefer-symmetry` | no | In `auto` mode, prefer pymatgen symmetry/non-polar filtering. |
 | `--target-n-atoms` | no | Target total atom count for automatic layer and supercell selection. |
@@ -117,47 +104,72 @@ mamba run -n modeling python scripts/build_slab_model.py \
 
 ## Workflow
 
-1. Confirm material, Miller index, and DFT-readiness policy.
-2. Obtain the bulk. With `--bulk-file`, start from the provided local/code-generated bulk. Otherwise fetch from MP: use a specific MP id when supplied; otherwise select the lowest energy-above-hull candidate returned by slabuilder.
+1. Confirm the recipe-authorized optimized bulk artifact, Miller index, and
+   handoff metadata.
+2. Start from the optimized bulk artifact with `--bulk-file`. Preserve inherited
+   source metadata such as MP id and initial magnetic moments in sidecar
+   metadata and handoff notes; do not refetch MP in this skill.
 3. Generate compact slabs with target-based sizing.
 4. Screen terminations before selection when the surface is multicomponent,
    oxide, nitride, oxynitride, carbide, sulfide, perovskite, polar, or otherwise
    chemically ambiguous. Use `--all-terminations` and inspect
    `termination_summary.json`. The heuristic `score`/`recommended_termination`
-   here is a safety triage, not an energy ranking — for the autonomous,
-   energy-based choice on ambiguous surfaces, hand the top candidates to
-   `surface-reaction-modeling-workflow`'s **termination DFT screening loop**
-   (low-level DFT surface energy), which selects by γ.
+   here is a safety triage, not an energy ranking. When an ambiguous surface
+   requires energy-based screening, return the top candidates to the
+   recipe-backed execution plan; do not run that calculation in this skill.
 5. Save exactly one selected termination as `POSCAR` and JSON metadata once a
-   single safe candidate exists, the DFT screening loop has chosen one, or
-   `--termination N` is given.
+   single safe candidate exists, recipe-backed energy screening has chosen one,
+   or `--termination N` is given.
 6. Validate atom count, cell sanity, minimum distance, tags, and metadata.
-7. Report MP id, Miller index, termination, backend, atom count, lateral lengths, slab thickness, vacuum, fixed atom count, validation status, warnings, and output paths.
+7. Report source bulk path, inherited source identifiers, Miller index,
+   termination, backend, atom count, lateral lengths, slab thickness, vacuum,
+   fixed atom count, validation status, warnings, and output paths.
 
 ## Defaults
 
-- Keep `max_atoms=120` unless the user explicitly asks for a larger non-DFT-ready model.
-- Use compact target-based sizing: `target_n_atoms=60`, `target_lateral_size=7.5`, `target_slab_thickness=6`, `vacuum=15`.
-- Leave `backend=auto` unless the task requires `catkit`, `pymatgen`, or `surfaxe`.
-- Prefer compact, square-like in-plane cells. Slabuilder estimates an appropriate 2D copy count from the initial surface unit cell's area and atom count, then scores non-diagonal 2D transforms for near-90° angle, similar a/b lengths, target side length/area, and atom-count control. In CatKit workflows this scoring is repeated against the actual CatKit surface cell before writing POSCAR, so an estimator-good matrix that makes an oblique final cell should be rejected when a better square-like alternative is available.
-- Bottom fixing defaults to `--fix-ratio 0.4`: the bottom 40% of the slab's material thickness is fixed, measured in c-axis fractional coordinates (tilt-safe, independent of added vacuum). Change the fraction with `--fix-ratio`, or pass `--fix-layers N` to fix an explicit layer count instead (overrides the ratio).
+- Keep `max_atoms=120` unless the user explicitly asks for a larger
+  non-DFT-ready model.
+- Use compact target-based sizing: `target_n_atoms=60`,
+  `target_lateral_size=7.5`, `target_slab_thickness=6`, `vacuum=15`.
+- Leave `backend=auto` unless the task requires `catkit`, `pymatgen`, or
+  `surfaxe`.
+- Prefer compact, square-like in-plane cells. Slabuilder estimates an
+  appropriate 2D copy count from the initial surface unit cell's area and atom
+  count, then scores non-diagonal 2D transforms for near-90° angle, similar a/b
+  lengths, target side length/area, and atom-count control. In CatKit workflows
+  this scoring is repeated against the actual CatKit surface cell before
+  writing POSCAR, so an estimator-good matrix that makes an oblique final cell
+  should be rejected when a better square-like alternative is available.
+- Bottom fixing defaults to `--fix-ratio 0.4`: the bottom 40% of the slab's
+  material thickness is fixed, measured in c-axis fractional coordinates
+  (tilt-safe, independent of added vacuum). Change the fraction with
+  `--fix-ratio`, or pass `--fix-layers N` to fix an explicit layer count instead
+  (overrides the ratio).
 - Save one termination with `--termination N` only after checking whether more
   than one generated termination exists. For ambiguous surfaces, run
   `--all-terminations` first and require an explicit choice when
   `recommended_termination_candidates` has multiple values or
   `selection_warnings` is non-empty.
-- Save POSCAR and metadata by default. Add `--write-extxyz` only when an extxyz artifact or POSCAR/extxyz index map is needed.
-- Save only stoichiometric terminations by default. In the CatKit backend this uses CatKit's `stoich` layer mode; `--allow-nonstoichiometric` switches CatKit to `trim` so O-rich/O-poor or reconstructed surface compositions can be saved intentionally.
-- Prefer automatic layer selection. Use explicit `--n-layers`, `--supercell-na`, or `--supercell-nb` only when requested or needed.
-- Select the bulk candidate with `--entry-index` (default 0) after `--max-results` fetches; use `--search-mode` / a `mp-…` id for exact lookups.
-- Ask before generation when bulk candidate, termination, or atom-count policy is scientifically ambiguous.
+- Save POSCAR and metadata by default. Add `--write-extxyz` only when an extxyz
+  artifact or POSCAR/extxyz index map is needed.
+- Save only stoichiometric terminations by default. In the CatKit backend this
+  uses CatKit's `stoich` layer mode; `--allow-nonstoichiometric` switches CatKit
+  to `trim` so O-rich/O-poor or reconstructed surface compositions can be saved
+  intentionally.
+- Prefer automatic layer selection. Use explicit `--n-layers`, `--supercell-na`,
+  or `--supercell-nb` only when requested or needed.
+- Ask before generation when termination or atom-count policy is scientifically
+  ambiguous.
 
 ## Handoff Contract
 
-Before handing a slab to surface-site inspection, `place-adsorbates-with-adsorbdiff`, or
-`vasp-job`, have:
+Before handing a clean slab back for clean slab optimization and later adsorbate
+placement, have:
 
-- selected MP id / bulk candidate;
+- optimized bulk path and relaxation provenance;
+- source bulk identifier such as MP id, local path, or direct-creation
+  provenance when applicable;
+- preserved source metadata, including initial magnetic moments when present;
 - Miller index;
 - selected termination index;
 - `termination_summary.json` for ambiguous surfaces;
@@ -166,6 +178,9 @@ Before handing a slab to surface-site inspection, `place-adsorbates-with-adsorbd
 
 ## Boundaries
 
+- Do not import or fetch source bulk structures in this skill.
+- Do not perform bulk optimization or clean slab optimization in this skill.
+- Do not choose a calculation backend in this skill.
 - Do not place adsorbates in this skill.
 - Do not submit calculation jobs in this skill.
 - Do not claim adsorption energies, surface energies, or reaction barriers from generated structures alone.

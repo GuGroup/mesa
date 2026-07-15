@@ -23,10 +23,10 @@ exist outside the recipe folder only when recipe-local manifests link to them.
 Run the checker on a strategy recipe root:
 
 ```bash
-python scripts/check_recipe_execution.py \
-  --recipe-root project/mos_0629_2/strategy_execution/S1_explicit_recipe \
-  --project-root /home/ytk/MLwork/agent/mesa_0630 \
-  --outdir project/mos_0629_2/strategy_execution/S1_recipe_execution_gate
+python3 SKILL/orchestration/validate-recipe-execution/scripts/check_recipe_execution.py \
+  --recipe-root project/<project_name>/strategy_execution/S1_explicit_recipe \
+  --project-root . \
+  --outdir project/<project_name>/strategy_execution/S1_recipe_execution_gate
 ```
 
 The checker automatically treats sibling strategy shared roots such as

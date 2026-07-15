@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed UMA/ASE vibrational frequency runner for TASK_UMA_VIB_FREQ."""
+"""Fixed UMA/ASE vibrational frequency runner for calculate-uma-vibrational-frequencies."""
 
 import json
 from pathlib import Path

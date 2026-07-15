@@ -1,6 +1,6 @@
 # Default operating stance
 
-The older Python/matplotlib rules in this skill remain valid. The skill also supports R, especially `ggplot2 + patchwork + ComplexHeatmap + ggrepel + svglite/cairo_pdf + ragg`.
+Use the Python/matplotlib rules in this skill for all plotting and export work.
 
 ## Color policy
 
@@ -20,13 +20,19 @@ Prefer **unified method families across all panels** over maximal hue separation
 
 ## User-facing privacy rule
 
-Do not disclose private local paths, private filenames, chat-attachment names, internal reference filenames, template identifiers, or the provenance of private working materials in user-facing replies, generated code comments, figure legends, reports, or manuscript text. Use generic descriptions such as "the provided R template collection", "a private working draft", or "the internal figure contract". If the user provides a private plotting template collection, use it only as an internal adaptation source and do not reveal its path, filenames, or provenance. Only reveal an exact path or source file when the user explicitly asks for that audit trail.
+Do not disclose private local paths, private filenames, chat-attachment names,
+internal reference filenames, template identifiers, or the provenance of private
+working materials in user-facing replies, generated code comments, figure
+legends, reports, or manuscript text. Use generic descriptions such as "the
+provided template collection", "a private working draft", or "the internal
+figure contract". Only reveal an exact path or source file when the user
+explicitly asks for that audit trail.
 
 ## When to load this skill
 
-- Python or R figures for **papers, slides, or reports** targeting Nature, Science, Cell, NeurIPS, ICLR, or similar venues.
+- Python figures for **papers, slides, or reports** targeting Nature, Science, Cell, NeurIPS, ICLR, or similar venues.
 - Requests involving **grouped bars, trend lines, heatmaps, radar plots, multi-panel grids**, or **PDF/SVG/high-DPI** output.
-- Any mention of "Nature style", "publication figure", "paper figure", "SCI figure", "figures4papers", "scientific-figure-making", "R plotting template", or "high-quality scientific plot".
+- Any mention of "Nature style", "publication figure", "paper figure", "SCI figure", "figures4papers", "scientific-figure-making", or "high-quality scientific plot".
 - Requests to improve a figure's logic, aesthetics, panel layout, figure legend, export quality, or journal-readiness.
 
 ## When NOT to load

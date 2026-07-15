@@ -72,9 +72,12 @@ project/
 *.tmp
 SKILL/**/assets/
 SKILL/**/tests/
+!SKILL/analysis/construct-energy-diagram/tests/
+!SKILL/analysis/construct-energy-diagram/tests/**
+!SKILL/orchestration/validate-recipe-execution/tests/
+!SKILL/orchestration/validate-recipe-execution/tests/**
 
 # Local manuscript review trials
-SKILL/TASK_MANUSCRIPT_LOOP/tests/manual/
 **/draft.txt
 **/draft*.txt
 
@@ -84,3 +87,5 @@ ENVIRONMENT/**/.venv/
 ENVIRONMENT/**/__pycache__/
 ENVIRONMENT/paper_search/docs/
 ENVIRONMENT/paper_search/tests/
+!ENVIRONMENT/paper_search/docs/
+!ENVIRONMENT/paper_search/docs/**

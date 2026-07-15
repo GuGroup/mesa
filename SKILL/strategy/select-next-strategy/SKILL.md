@@ -43,10 +43,10 @@ Missing status means `not_started`.
 Run the bundled script:
 
 ```bash
-python3 /home/mesa/mesa/SKILL/select-next-strategy/scripts/select_next_strategy.py \
-  --strategy-artifact /path/to/generated_or_updated_strategy.py \
-  --status-dir /path/to/project/strategy_execution/status \
-  --output /path/to/project/strategy_execution/strategy_selection/selected_strategy.json
+python3 SKILL/strategy/select-next-strategy/scripts/select_next_strategy.py \
+  --strategy-artifact project/<project_name>/strategy/generated_or_updated_strategy.py \
+  --status-dir project/<project_name>/strategy_execution/status \
+  --output project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json
 ```
 
 ## Workflow

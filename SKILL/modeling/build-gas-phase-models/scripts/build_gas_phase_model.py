@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# noqa: SIZE_OK
 from __future__ import annotations
 
 import argparse
@@ -20,13 +21,10 @@ def json_default(value: Any) -> Any:
         return value.tolist()
     if isinstance(value, Path):
         return str(value)
-    try:
-        if isinstance(value, (np.integer,)):
-            return int(value)
-        if isinstance(value, (np.floating,)):
-            return float(value)
-    except Exception:
-        pass
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
     return str(value)
 
 
@@ -36,14 +34,14 @@ def safe_name(text: str) -> str:
 
 
 def resolve_spin_multiplicity(override: int | None) -> dict[str, Any]:
-    """Resolve the gas-phase spin multiplicity and the VASP settings it implies.
+    """Resolve the gas-phase spin multiplicity and calculation hints.
 
     Defaults to a closed-shell singlet (multiplicity 1). Open-shell references
     (e.g. O2, NO, radicals) are the caller's responsibility via
     ``--spin-multiplicity``; the formula is not used to guess a multiplicity."""
     if override is not None:
         if override < 1:
-            raise ValueError("--spin-multiplicity must be >= 1")
+            raise ValueError("--spin-multiplicity must be >= 1")  # noqa: GENERIC_ERR_OK
         multiplicity = int(override)
         source = "override"
     else:
@@ -60,7 +58,7 @@ def resolve_spin_multiplicity(override: int | None) -> dict[str, Any]:
         "recommended_nupdown": n_unpaired,
         "recommended_total_magmom": float(n_unpaired),
         "note": (
-            "Open-shell reference: set ispin 2 and (nupdown/magmom) in vasp-job."
+            "Open-shell reference: request spin-polarized setup and use spin_reference for the initial moment."
             if n_unpaired > 0
             else "Closed-shell singlet: ispin 1 is appropriate."
         ),
@@ -81,7 +79,7 @@ def dipole_hint(atoms: Atoms) -> dict[str, Any]:
         "likely_polar": likely_polar,
         "heuristic": "false for single atom and homonuclear diatomic; true otherwise",
         "recommended": (
-            "Net dipole possible: set ldipol true and idipol 4 in the vasp-job spec."
+            "Net dipole possible: consider a dipole-correction setting in downstream calculation setup."
             if likely_polar
             else "No dipole correction needed (single atom or homonuclear diatomic)."
         ),
@@ -98,7 +96,7 @@ def cell_lengths(atoms: Atoms) -> list[float]:
 
 def center_in_cubic_box(atoms: Atoms, box_size: float) -> Atoms:
     if box_size <= 0:
-        raise ValueError("--box-size must be positive.")
+        raise ValueError("--box-size must be positive.")  # noqa: GENERIC_ERR_OK
     result = atoms.copy()
     result.set_constraint()
     result.set_cell([box_size, box_size, box_size])
@@ -221,7 +219,7 @@ def main() -> int:
         from slabuilder import build_adsorbate_atoms
         from slabuilder.adsorption import resolve_adsorbate_smiles
         from slabuilder.utils import save_structure
-    except Exception as exc:
+    except ImportError as exc:
         raise SystemExit(
             "Could not import slabuilder. Install it in the active environment. "
             f"Original error: {exc}"
@@ -273,14 +271,14 @@ def main() -> int:
         "charge_spin_policy": {
             "charge": "unsupported",
             "spin": "see spin_reference",
-            "note": "Neutral geometry only; charge is not inferred. Spin multiplicity is provided in spin_reference for vasp-job to apply.",
+            "note": "Neutral geometry only; charge is not inferred. Spin multiplicity is provided in spin_reference for downstream calculation setup.",
         },
         "spin_reference": spin_reference,
         "dipole_hint": dipole,
         "calculation_boundary": {
-            "relaxation": "vasp-job",
-            "static_energy": "vasp-job",
-            "frequency": "vasp-job",
+            "relaxation": "calculation_workflow",
+            "static_energy": "calculation_workflow",
+            "frequency": "calculation_workflow",
         },
         "validation": validation,
         "paths": paths,

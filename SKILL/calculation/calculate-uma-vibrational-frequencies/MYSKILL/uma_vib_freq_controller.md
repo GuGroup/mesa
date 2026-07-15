@@ -1,12 +1,12 @@
 ---
 name: uma-vib-freq-controller
-description: Decide UMA vibrational frequency settings for TASK_UMA_VIB_FREQ from only a POSCAR path, write results/resolved_uma_vib_config.json, run or submit the fixed UMA vibration runner, verify vib.freq and results/uma_vib_freq.json, and return the standard MESA skill output envelope.
+description: Decide UMA vibrational frequency settings for calculate-uma-vibrational-frequencies from only a POSCAR path, write results/resolved_uma_vib_config.json, run or submit the fixed UMA vibration runner, verify vib.freq and results/uma_vib_freq.json, and return the standard MESA skill output envelope.
 ---
 
 # uma-vib-freq-controller
 
 `uma-vib-freq-controller` is the MESA decision layer for
-`TASK_UMA_VIB_FREQ`. It receives only a POSCAR path as required input, decides
+`calculate-uma-vibrational-frequencies`. It receives only a POSCAR path as required input, decides
 all UMA and finite-displacement vibration settings, writes the resolved
 settings, invokes the fixed runner, and checks whether frequency artifacts were
 created.
@@ -66,7 +66,7 @@ controller-selected values, not placeholders.
 
 ```json
 {
-  "task_id": "TASK_UMA_VIB_FREQ",
+  "task_id": "calculate-uma-vibrational-frequencies",
   "input_poscar": "relaxed/POSCAR",
   "output_freq": "vib.freq",
   "result_json": "results/uma_vib_freq.json",

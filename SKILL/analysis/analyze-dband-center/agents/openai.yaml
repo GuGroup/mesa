@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyze D-band Center"
+  short_description: "Compute and inspect D-band centers"
+  default_prompt: "Use $analyze-dband-center to compute D-band centers from projected density-of-states data."

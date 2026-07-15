@@ -148,7 +148,7 @@ def _apply_supercell(
     return make_2d_supercell(atoms, ((int(na), 0), (0, int(nb))))
 
 
-def _legacy_repeat_guess(matrix_2d: tuple[tuple[int, int], tuple[int, int]]) -> tuple[int, int]:
+def _diagonal_repeat_guess(matrix_2d: tuple[tuple[int, int], tuple[int, int]]) -> tuple[int, int]:
     """Return old na/nb fields for compatibility with existing API/UI."""
     if matrix_2d[0][1] == 0 and matrix_2d[1][0] == 0:
         return max(1, abs(int(matrix_2d[0][0]))), max(1, abs(int(matrix_2d[1][1])))
@@ -161,7 +161,7 @@ def _diag_supercell_matrix(supercell: tuple[int, int]) -> tuple[tuple[int, int],
 
 
 def _auto_2d_transform_candidates() -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    """Return diagonal legacy candidates plus a bounded off-diagonal pool."""
+    """Return diagonal candidates plus a bounded off-diagonal pool."""
     candidates = {
         _diag_supercell_matrix((na, nb))
         for na in range(1, 9)
@@ -522,7 +522,7 @@ def _result_from_pmg(
         matrix_2d = tuple(tuple(int(value) for value in row) for row in supercell_matrix)
     else:
         matrix_2d = _diag_supercell_matrix(_get_supercell_matrix(a, b, target_lateral_size, lateral_tolerance))
-    na, nb = _legacy_repeat_guess(matrix_2d)
+    na, nb = _diagonal_repeat_guess(matrix_2d)
     if matrix_2d != ((1, 0), (0, 1)):
         slab.make_supercell([
             [matrix_2d[0][0], matrix_2d[0][1], 0],
@@ -900,7 +900,7 @@ def _choose_target_slab_parameters(
             score += 0.02 * (n_atoms / max(target_n_atoms, 1))
             score += 0.01 * ((lateral_a + lateral_b) / max(2.0 * target_lateral_size, 1.0))
             score += 1.0 * _copy_multiple_penalty(det, ideal_det)
-            na, nb = _legacy_repeat_guess(matrix_2d)
+            na, nb = _diagonal_repeat_guess(matrix_2d)
             choice = _TargetSlabChoice(
                 n_layers=n_layers,
                 n_fix=max(1, round(n_layers / 3)),
@@ -1076,7 +1076,7 @@ def _generate_via_catkit(
                 lateral_tolerance=lateral_tolerance,
                 target_slab_thickness=target_slab_thickness,
             )
-        na, nb = _legacy_repeat_guess(matrix_2d)
+        na, nb = _diagonal_repeat_guess(matrix_2d)
 
         # Use ASE make_supercell instead of CatKit set_size to avoid
         # layer-count artefacts from non-orthogonal cell tiling.

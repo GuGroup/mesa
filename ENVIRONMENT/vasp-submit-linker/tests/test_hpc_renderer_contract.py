@@ -16,6 +16,7 @@ from vasp_submit.hpc_server.renderer import (
     prepare_job,
     render_template_submit_script,
     resolve_submit_template,
+    submit_job,
     write_vasp_inputs_with_vasp_ase,
 )
 
@@ -254,6 +255,40 @@ class HpcRendererContractTests(unittest.TestCase):
 
             self.assertEqual((directory / "POSCAR").read_text(encoding="utf-8"), "Si from file\n1.0\n")
             self.assertIn("path: POSCAR", (directory / "input.yml").read_text(encoding="utf-8"))
+
+    def test_prepare_job_does_not_index_missing_structure(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template = root / "preset64std.sh"
+            template.write_text("#$ -N {{ job_name }}\n", encoding="utf-8")
+            spec = base_spec()
+            spec["project"] = None
+            spec["job_dir"] = "missing_structure"
+            spec["structure"] = {"format": "poscar", "path": "missing.POSCAR"}
+            spec["queue"] = {"preset": "preset64std", "submit": False}
+            config = {
+                "trusted_roots": [str(root)],
+                "default_project_root": str(root),
+                "submit_templates": {"preset64std": str(template)},
+            }
+
+            with self.assertRaises(FileNotFoundError):
+                prepare_job(spec, config, spec_base_dir=root)
+
+            self.assertFalse((root / "job_index/missing_structure.json").exists())
+            self.assertFalse((root / "missing_structure/.vasp_submit_metadata.json").exists())
+
+    def test_submit_job_requires_scheduler_id(self) -> None:
+        with TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / ".vasp_submit_metadata.json").write_text("{}", encoding="utf-8")
+            completed = types.SimpleNamespace(returncode=0, stdout="submitted\n", stderr="")
+
+            with patch("vasp_submit.hpc_server.renderer.subprocess.run", return_value=completed):
+                result = submit_job(directory)
+
+            self.assertIs(result["ok"], False)
+            self.assertIsNone(result["scheduler_id"])
 
     def test_generated_job_dir_defaults_to_hyphenless_uuid(self) -> None:
         job_dir = generated_job_dir("si_relax_001", {})

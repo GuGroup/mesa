@@ -70,11 +70,16 @@ def main(argv: list[str] | None = None) -> int:
                 # Record the fully merged spec so the preserved input is
                 # self-contained (the raw spec only had an `extends` pointer).
                 original = dump_yaml(spec)
+            if args.command == "submit" and (spec.get("queue") or {}).get("submit") is False:
+                raise ValueError("queue.submit is false; submission is disabled by the job spec")
             directory = prepare_job(spec, config, original, spec_base_dir=spec_base_dir)
             if args.command == "prepare":
                 json_print(prepared_result(directory))
             else:
-                json_print(submit_job(directory))
+                result = submit_job(directory)
+                json_print(result)
+                if not result.get("ok"):
+                    return 2
         elif args.command == "status":
             scheduler_id, remote_dir, job_uid = resolve_status_target(args.identifier, config)
             json_print(status_job(scheduler_id, args.remote_dir or remote_dir, job_uid))

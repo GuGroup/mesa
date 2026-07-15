@@ -1,4 +1,4 @@
-"""MESA TASK_UMA_RELAX_TRAJECTORY controller."""
+"""MESA relax-uma-trajectory controller."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-TASK_ID = "TASK_UMA_RELAX_TRAJECTORY"
+TASK_ID = "relax-uma-trajectory"
 SKILL_NAME = "uma_relax_traj_controller"
 
 FORBIDDEN_USER_SETTING_KEYS = {

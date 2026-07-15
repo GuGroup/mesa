@@ -1,60 +1,43 @@
 ---
 name: create-nature-figure
 description: >-
-  Submission-grade Nature/high-impact journal figure workflow for Python or R. Use whenever the user asks to create, revise, audit, or polish manuscript figures, multi-panel scientific plots, figures4papers-style matplotlib plots, or journal-ready SVG/PDF/TIFF outputs, especially for Nature-family or other high-impact journals. Before plotting, define the figure's conclusion, evidence logic, export needs, and review risks. If the user has not chosen Python or R, ask "Python or R?" and stop. Use only the selected backend for figure generation, previewing, exporting, and QA. Supports matplotlib/seaborn and ggplot2/patchwork/ComplexHeatmap. Not for dashboards or Illustrator/Figma-first infographics. Also trigger on general academic figure needs, such as making figures/plots for a paper, scientific plotting, academic plotting, data visualization for a manuscript, publication plots, or manuscript figure revision.
+  Create, revise, audit, or polish submission-grade scientific figures for
+  Nature-family and other high-impact journals using Python, matplotlib, and
+  seaborn. Use for multi-panel manuscript figures, figures4papers-style plots,
+  and journal-ready SVG/PDF/TIFF exports when the source data or panels already
+  exist. Define the figure conclusion, evidence logic, export needs, and review
+  risks before plotting. Not for dashboards or Illustrator/Figma-first
+  infographics.
 ---
 
 For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this skill.
 
-# Nature Figure Making - Router
+# Nature Figure Making
 
-This skill is split into two layers:
+This is a Python-only publication-figure workflow. Use the static contract and
+Python fragment instead of reconstructing the plotting rules from memory.
 
-- A **static layer** under `static/` that holds versioned, reusable content fragments (the figure contract and default stance, plus a per-backend quick-start for Python and R).
-- A **dynamic layer** (this file plus `manifest.yaml`) that detects the plotting backend and loads only the fragment needed for the current job. The large design, API, pattern, and QA material lives in on-demand references.
+## Required Loading
 
-Do not try to apply the figure logic from memory or from this router. Always load fragments from disk as described below.
+1. Read `manifest.yaml`.
+2. Read every file under `always_load`:
+   - `static/core/contract.md`
+   - `static/core/stance.md`
+   - `static/fragments/backend/python.md`
+3. Load additional references only when their `references.on_demand` condition
+   matches the task.
 
-## Routing Protocol
+## Workflow
 
-Follow these five steps every time the skill is invoked.
+1. State the one-sentence conclusion the figure must support.
+2. Map each panel to a distinct piece of accepted evidence and remove panels
+   that do not carry unique information.
+3. Select the figure archetype, final dimensions, source-data requirements,
+   statistics, and editable export formats.
+4. Check the Python runtime and required plotting packages before rendering.
+5. Build and export with the Python fragment and relevant references.
+6. Inspect the rendered output at final size and apply `references/qa-contract.md`
+   before delivery.
 
-### 1. Load the manifest and the core layer
-
-Read [manifest.yaml](manifest.yaml). It declares the `backend` axis, the allowed values, and the file paths each value maps to.
-
-Also read every file listed under `always_load` (`static/core/contract.md` and `static/core/stance.md`). These hold the figure contract, the backend gate, the missing-runtime rule, the privacy rule, and the default operating stance that apply to every figure job.
-
-### 2. Resolve the backend - a blocking gate
-
-Backend selection blocks everything else. Decide the `backend` value only from an explicit user choice or a clearly language-specific input file/workflow:
-
-- `python` - matplotlib / seaborn.
-- `r` - ggplot2 / patchwork / ComplexHeatmap.
-
-If the user has **not** explicitly chosen, ask exactly one concise question: **Python or R?** Stop until the user answers. Do not default, guess, generate mock data, or write scripts before the answer. Only recommend a backend when the user explicitly asks you to choose; then use `references/backend-selection.md`, state the reason, and proceed. Once selected, the backend is **exclusive** for all drawing, previewing, exporting, and visual QA (see `core/contract.md`).
-
-### 3. Load the matching backend fragment
-
-After the backend is resolved, read the mapped fragment (`static/fragments/backend/python.md` or `static/fragments/backend/r.md`). It carries the backend-only execution rule and the publication quick-start. Do not load the other backend's fragment.
-
-### 4. Build the figure using the loaded material
-
-Apply the loaded material in this order:
-
-1. Figure contract (`core/contract.md`) - write the core conclusion, map the evidence chain, classify the archetype, set the journal/export contract, before any code.
-2. Default stance (`core/stance.md`) - archetype-first composition, hero panel, restrained palette, statistics/integrity as part of the figure.
-3. Backend fragment - the exclusive Python or R quick-start and execution rule.
-
-The chart serves the scientific logic; aesthetic polish is subordinate to making the core conclusion clear, defensible, and reviewable.
-
-### 5. Reach for references only when needed
-
-The files under `references/` are deep references, not defaults. Open them on demand per the `references.on_demand` table in the manifest.
-
-## Why this split
-
-- The static layer is versioned and reviewable. The backend gate is explicit in the manifest rather than buried in prose.
-- The dynamic layer keeps each invocation cheap: only the selected backend's quick-start enters context, and reference depth loads only when a step needs it.
-- The router itself is short on purpose. Update fragments and references, not this file, when adding scope.
-- This structure mirrors `nature-writing` and `nature-polishing`.
+If Python or a required package is unavailable, stop before rendering and report
+the exact missing dependency. Do not claim that a figure was generated.
