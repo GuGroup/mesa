@@ -66,13 +66,21 @@ specific calculation or analysis recipe derived from that procedure.
 4. Use source context from `models`, `methods`, `dft_details`,
    `computational_tests_to_run`, and benchmark-comparison fields only to make the
    recipe explicit. Do not use those fields to override the source procedure.
-5. Do not add feasibility labels such as `blocked`, `unsupported`, `executable`,
+5. Assign every calculation a canonical semantic `recipe_role` describing the
+   calculation function. Never use `procedure_translation` as a role. Prefer
+   specific roles such as `structure_model_build`,
+   `adsorbate_relaxation_matrix`, `free_energy_diagram_assembly`, or
+   `descriptor_calculation`. When no deterministic specialized rule matches,
+   call the LLM to select only canonical roles and require an exact
+   `source_phrase` copied from the procedure. Do not use action-word fallback
+   roles.
+6. Do not add feasibility labels such as `blocked`, `unsupported`, `executable`,
    or `requires_repair`.
-6. Do not explain why a calculation cannot be done. A later preflight skill owns
+7. Do not explain why a calculation cannot be done. A later preflight skill owns
    feasibility checks.
-7. Do not substitute an easier proxy. If the procedure asks for projected DOS,
+8. Do not substitute an easier proxy. If the procedure asks for projected DOS,
    write a projected-DOS recipe; do not replace it with geometry descriptors.
-8. Do not execute calculations, build structures, submit jobs, run UMA/VASP, or
+9. Do not execute calculations, build structures, submit jobs, run UMA/VASP, or
    create scientific result claims.
 
 ## Recipe Semantics
@@ -95,5 +103,9 @@ After running the generator on a selected strategy artifact, check that:
 
 - every source procedure has exactly one `P###` folder;
 - every `P###/procedure.json` contains the original procedure text;
+- every generated calculation has a canonical semantic `recipe_role`, and no
+  role equals `procedure_translation`;
+- every LLM-classified recipe contains an exact `source_phrase` from its source
+  procedure;
 - generated recipes contain no feasibility decision fields;
 - no calculations are executed.

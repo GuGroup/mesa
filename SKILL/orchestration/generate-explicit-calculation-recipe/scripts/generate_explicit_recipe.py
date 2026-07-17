@@ -3,13 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCHEMA_VERSION = 1
+API_URL = "https://api.openai.com/v1/responses"
+DEFAULT_MODEL = "gpt-5.5"
 FORBIDDEN_DECISION_FIELDS = {
     "status",
     "blocked",
@@ -19,6 +24,21 @@ FORBIDDEN_DECISION_FIELDS = {
     "requires_repair",
     "reason",
     "why_cannot_be_done",
+}
+
+CANONICAL_RECIPE_ROLES = {
+    "adsorbate_relaxation_matrix",
+    "benchmark_constraint_comparison",
+    "charge_transfer_analysis",
+    "clean_structure_relaxation",
+    "density_of_states_analysis",
+    "descriptor_calculation",
+    "electrochemical_free_energy_bookkeeping",
+    "free_energy_diagram_assembly",
+    "free_energy_state_definition",
+    "potential_shift_analysis",
+    "projected_dos_analysis",
+    "structure_model_build",
 }
 
 
@@ -40,6 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--strategy", required=True, type=Path, help="Selected strategy JSON artifact.")
     parser.add_argument("--out", required=True, type=Path, help="Output recipe directory.")
     parser.add_argument("--force", action="store_true", help="Replace an existing output directory.")
+    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help="Model used only for unclassified procedures.")
     return parser.parse_args()
 
 
@@ -51,6 +72,17 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise SystemExit(f"strategy artifact must be a JSON object: {path}")
     return data
+
+
+def load_env() -> None:
+    for path in (Path.cwd() / ".env", Path.cwd() / "DEPENDENCY/.env"):
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip() or line.lstrip().startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
 def find_computational_section(data: dict[str, Any]) -> ComputationalSource:
@@ -128,7 +160,11 @@ def list_strings(value: Any) -> list[str]:
 
 
 def split_models_from_build_procedure(text: str) -> list[str]:
-    match = re.search(r"build clean (.+?) models?\.?$", text, flags=re.I)
+    match = re.search(
+        r"(?:build|construct|create|generate)\s+(?:the\s+)?(?:clean\s+)?(.+?)\s+model(?:\s+set|s)?\.?$",
+        text,
+        flags=re.I,
+    )
     if not match:
         return []
     body = match.group(1)
@@ -164,6 +200,147 @@ def split_descriptor_names(text: str) -> list[str]:
     return [part.strip(" .") for part in body.split(",") if part.strip(" .")]
 
 
+def contains_any(text: str, terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in terms)
+
+
+def is_model_build_procedure(lower: str) -> bool:
+    return contains_any(lower, ("build", "construct", "create", "generate")) and contains_any(
+        lower, ("model", "slab", "surface structure")
+    ) and not contains_any(lower, ("free-energy diagram", "free energy diagram", "energy profile"))
+
+
+def is_adsorbate_relaxation_procedure(lower: str) -> bool:
+    if not contains_any(lower, ("relax", "optimize", "optimise")):
+        return False
+    return contains_any(
+        lower,
+        (
+            "adsorbate",
+            "adsorbed",
+            "adsorption state",
+            "h2o*",
+            "oh*",
+            "h*",
+            "i0",
+            "i1",
+            "i2",
+            "i3",
+            "i4",
+        ),
+    )
+
+
+def is_clean_relaxation_procedure(lower: str) -> bool:
+    return contains_any(lower, ("relax", "optimize", "optimise")) and "clean" in lower and contains_any(
+        lower, ("structure", "model", "slab", "surface")
+    )
+
+
+def requests_dos(lower: str) -> bool:
+    return bool(re.search(r"\b(?:projected\s+)?dos\b", lower)) or "density of states" in lower
+
+
+def requests_charge_analysis(lower: str) -> bool:
+    return contains_any(
+        lower,
+        ("charge transfer", "charge-transfer", "charge density", "charge-density", "bader charge"),
+    )
+
+
+def is_free_energy_diagram_procedure(lower: str) -> bool:
+    has_free_energy = "free-energy" in lower or "free energy" in lower
+    has_figure_object = contains_any(lower, ("diagram", "profile", "reaction coordinate"))
+    return has_free_energy and has_figure_object
+
+
+def is_descriptor_comparison_procedure(lower: str) -> bool:
+    return contains_any(
+        lower,
+        (
+            "maximum uphill",
+            "largest uphill",
+            "thermodynamic step",
+            "limiting step",
+            "descriptor comparison",
+            "compare descriptors",
+            "thermodynamic ranking",
+        ),
+    )
+
+
+def response_text(response: dict[str, Any]) -> str:
+    if isinstance(response.get("output_text"), str):
+        return response["output_text"]
+    chunks: list[str] = []
+    for item in response.get("output", []):
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []):
+            if isinstance(content, dict) and isinstance(content.get("text"), str):
+                chunks.append(content["text"])
+    return "\n".join(chunks)
+
+
+def parse_role_decisions(text: str, source_text: str) -> list[dict[str, str]]:
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
+    payload = json.loads(text)
+    raw = payload.get("roles") if isinstance(payload, dict) else None
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("LLM role output must contain a non-empty roles list")
+    source_normalized = " ".join(source_text.split()).casefold()
+    decisions: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise ValueError("Each LLM role decision must be an object")
+        role = str(item.get("recipe_role", "")).strip()
+        phrase = " ".join(str(item.get("source_phrase", "")).split())
+        if role not in CANONICAL_RECIPE_ROLES:
+            raise ValueError(f"LLM returned unknown recipe_role: {role!r}")
+        if not phrase or phrase.casefold() not in source_normalized:
+            raise ValueError(f"LLM source_phrase is not present in the procedure: {phrase!r}")
+        decision = {"recipe_role": role, "source_phrase": phrase}
+        if decision not in decisions:
+            decisions.append(decision)
+    return decisions
+
+
+def classify_roles_with_llm(source_text: str, computational: dict[str, Any], model: str) -> list[dict[str, str]]:
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise SystemExit("OPENAI_API_KEY is required because a procedure could not be classified deterministically")
+    prompt = {
+        "task": "Select the calculation roles explicitly requested by the procedure.",
+        "allowed_recipe_roles": sorted(CANONICAL_RECIPE_ROLES),
+        "rules": [
+            "Return only roles explicitly supported by the procedure.",
+            "Use an exact source_phrase copied from the procedure for every role.",
+            "Do not judge feasibility and do not invent calculations.",
+            "Return JSON only as {\"roles\":[{\"recipe_role\":\"...\",\"source_phrase\":\"...\"}]}",
+        ],
+        "procedure": source_text,
+        "context": source_context(computational),
+    }
+    body = json.dumps({
+        "model": model,
+        "input": [{"role": "user", "content": [{"type": "input_text", "text": json.dumps(prompt)}]}],
+    }).encode()
+    request = urllib.request.Request(
+        API_URL,
+        data=body,
+        method="POST",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=600) as response:
+            result = json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(f"OpenAI API HTTP {exc.code}: {exc.read().decode(errors='replace')}") from exc
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"OpenAI API request failed: {exc.reason}") from exc
+    return parse_role_decisions(response_text(result), source_text)
+
+
 def recipe(
     *,
     strategy_id: str,
@@ -180,8 +357,12 @@ def recipe(
     output_artifacts: list[str],
     notes: list[str] | None = None,
     source_terms: dict[str, Any] | None = None,
+    source_phrase: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    if role not in CANONICAL_RECIPE_ROLES:
+        allowed = ", ".join(sorted(CANONICAL_RECIPE_ROLES))
+        raise ValueError(f"unknown recipe_role {role!r}; expected one of: {allowed}")
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "strategy_id": strategy_id,
         "procedure_id": procedure_id,
@@ -198,6 +379,9 @@ def recipe(
         "source_terms": source_terms or {},
         "notes": notes or [],
     }
+    if source_phrase:
+        payload["source_phrase"] = source_phrase
+    return payload
 
 
 def build_recipes_for_procedure(
@@ -206,12 +390,13 @@ def build_recipes_for_procedure(
     pointer: str,
     source_text: str,
     computational: dict[str, Any],
+    role_classifier: Callable[[str, dict[str, Any]], list[dict[str, str]]] | None = None,
 ) -> list[dict[str, Any]]:
     lower = source_text.lower()
     models = list_strings(computational.get("models"))
     adsorption_sites = list_strings(computational.get("dft_details", {}).get("adsorption_sites"))
 
-    if "build clean" in lower and "model" in lower:
+    if is_model_build_procedure(lower):
         requested_models = split_models_from_build_procedure(source_text) or models or ["clean model set"]
         return [
             recipe(
@@ -232,26 +417,12 @@ def build_recipes_for_procedure(
             for index, model in enumerate(requested_models, start=1)
         ]
 
-    if "relax" in lower and "adsorbate" in lower:
+    if is_adsorbate_relaxation_procedure(lower):
         return [
             recipe(
                 strategy_id=strategy_id,
                 procedure_id=procedure_id,
                 calculation_id="C001",
-                source_text=source_text,
-                pointer=pointer,
-                role="relaxation_matrix",
-                title="Relax clean-state model matrix",
-                required_prior_artifacts=["clean_structure_files", "shared_relaxation_settings"],
-                required_inputs=models or ["model_matrix"],
-                operations=["prepare_clean_relaxation_inputs", "relax_clean_structures", "record_relaxed_clean_outputs"],
-                method_intent=["geometry_optimization"],
-                output_artifacts=["relaxed_clean_structure_files", "clean_relaxation_registry.json"],
-            ),
-            recipe(
-                strategy_id=strategy_id,
-                procedure_id=procedure_id,
-                calculation_id="C002",
                 source_text=source_text,
                 pointer=pointer,
                 role="adsorbate_relaxation_matrix",
@@ -267,6 +438,52 @@ def build_recipes_for_procedure(
                 output_artifacts=["relaxed_adsorbate_structure_files", "adsorbate_relaxation_registry.json"],
             ),
         ]
+
+    clean_relaxation = is_clean_relaxation_procedure(lower)
+    dos_requested = requests_dos(lower)
+    charge_requested = requests_charge_analysis(lower)
+    if clean_relaxation or (dos_requested and not charge_requested):
+        recipes: list[dict[str, Any]] = []
+        if clean_relaxation:
+            recipes.append(
+                recipe(
+                    strategy_id=strategy_id,
+                    procedure_id=procedure_id,
+                    calculation_id=f"C{len(recipes) + 1:03d}",
+                    source_text=source_text,
+                    pointer=pointer,
+                    role="clean_structure_relaxation",
+                    title="Relax clean-state model matrix",
+                    required_prior_artifacts=["clean_structure_files", "shared_relaxation_settings"],
+                    required_inputs=models or ["model_matrix"],
+                    operations=[
+                        "prepare_clean_relaxation_inputs",
+                        "relax_clean_structures",
+                        "record_relaxed_clean_outputs",
+                    ],
+                    method_intent=["geometry_optimization"],
+                    output_artifacts=["relaxed_clean_structure_files", "clean_relaxation_registry.json"],
+                )
+            )
+        if dos_requested:
+            projected = "projected dos" in lower or "projected density of states" in lower or "pdos" in lower
+            recipes.append(
+                recipe(
+                    strategy_id=strategy_id,
+                    procedure_id=procedure_id,
+                    calculation_id=f"C{len(recipes) + 1:03d}",
+                    source_text=source_text,
+                    pointer=pointer,
+                    role="projected_dos_analysis" if projected else "density_of_states_analysis",
+                    title="Compute projected density of states" if projected else "Compute density of states",
+                    required_prior_artifacts=["relaxed_structures", "electronic_structure_data"],
+                    required_inputs=models or ["relaxed_model_matrix"],
+                    operations=["compute_density_of_states", "write_dos_tables"],
+                    method_intent=["projected_density_of_states_analysis" if projected else "density_of_states_analysis"],
+                    output_artifacts=["density_of_states.csv", "density_of_states_summary.json"],
+                )
+            )
+        return recipes
 
     states = split_explicit_states(source_text)
     if states:
@@ -305,6 +522,24 @@ def build_recipes_for_procedure(
             )
         )
         return recipes
+
+    if is_free_energy_diagram_procedure(lower):
+        return [
+            recipe(
+                strategy_id=strategy_id,
+                procedure_id=procedure_id,
+                calculation_id="C001",
+                source_text=source_text,
+                pointer=pointer,
+                role="free_energy_diagram_assembly",
+                title="Assemble explicit free-energy diagram",
+                required_prior_artifacts=["state_energy_records", "reference_energy_records", "zpe_entropy_records"],
+                required_inputs=["ordered_free_energy_states", source_text],
+                operations=["assemble_ordered_state_table", "write_diagram_input_table"],
+                method_intent=["free_energy_diagram_construction"],
+                output_artifacts=["free_energy_state_table.json", "free_energy_diagram_inputs.csv"],
+            )
+        ]
 
     if "relative free energies" in lower or "ph 14" in lower or "v_rhe" in lower:
         return [
@@ -359,13 +594,7 @@ def build_recipes_for_procedure(
             for index, descriptor in enumerate(descriptors, start=1)
         ]
 
-    if "charge transfer" in lower or "projected dos" in lower or "pdos" in lower:
-        target_match = re.search(r"for (.+?) to verify", source_text, flags=re.I)
-        targets = []
-        if target_match:
-            body = target_match.group(1).replace(", and ", ", ").replace(" and ", ", ")
-            targets = [item.strip(" .") for item in body.split(",") if item.strip(" .")]
-        targets = targets or ["specified atoms and adsorbates"]
+    if is_descriptor_comparison_procedure(lower):
         return [
             recipe(
                 strategy_id=strategy_id,
@@ -373,31 +602,62 @@ def build_recipes_for_procedure(
                 calculation_id="C001",
                 source_text=source_text,
                 pointer=pointer,
-                role="charge_transfer_analysis",
-                title="Compute charge-transfer descriptors",
-                required_prior_artifacts=["relaxed_structures", "charge_density_or_partitionable_electronic_density"],
-                required_inputs=targets,
-                operations=["partition_charge_by_target", "compare_clean_and_adsorbate_states", "write_charge_transfer_table"],
-                method_intent=["charge_partitioning_analysis"],
-                output_artifacts=["charge_transfer_by_target.csv", "charge_transfer_summary.json"],
-                source_terms={"targets": targets},
-            ),
-            recipe(
-                strategy_id=strategy_id,
-                procedure_id=procedure_id,
-                calculation_id="C002",
-                source_text=source_text,
-                pointer=pointer,
-                role="projected_dos_analysis",
-                title="Compute projected DOS descriptors",
-                required_prior_artifacts=["relaxed_structures", "wavefunction_or_projector_data", "electronic_dos_data"],
-                required_inputs=targets,
-                operations=["project_dos_by_target", "extract_band_centers_or_near_fermi_descriptors", "write_pdos_tables"],
-                method_intent=["projected_density_of_states_analysis"],
-                output_artifacts=["projected_dos_by_target.csv", "dos_descriptor_summary.json"],
-                source_terms={"targets": targets},
-            ),
+                role="descriptor_calculation",
+                title="Compare thermodynamic descriptors across models",
+                required_prior_artifacts=["free_energy_profile_table", "relaxed_state_energy_records"],
+                required_inputs=["model_index", "thermodynamic_step_definitions"],
+                operations=["compute_step_descriptors", "compare_descriptors_across_models", "write_descriptor_table"],
+                method_intent=["thermodynamic_descriptor_analysis"],
+                output_artifacts=["thermodynamic_descriptors_by_model.csv", "descriptor_comparison.json"],
+            )
         ]
+
+    projected_dos_requested = "projected dos" in lower or "projected density of states" in lower or "pdos" in lower
+    if charge_requested or projected_dos_requested:
+        target_match = re.search(r"for (.+?) to verify", source_text, flags=re.I)
+        targets = []
+        if target_match:
+            body = target_match.group(1).replace(", and ", ", ").replace(" and ", ", ")
+            targets = [item.strip(" .") for item in body.split(",") if item.strip(" .")]
+        targets = targets or ["specified atoms and adsorbates"]
+        recipes = []
+        if charge_requested:
+            recipes.append(
+                recipe(
+                    strategy_id=strategy_id,
+                    procedure_id=procedure_id,
+                    calculation_id=f"C{len(recipes) + 1:03d}",
+                    source_text=source_text,
+                    pointer=pointer,
+                    role="charge_transfer_analysis",
+                    title="Compute charge-transfer descriptors",
+                    required_prior_artifacts=["relaxed_structures", "charge_density_or_partitionable_electronic_density"],
+                    required_inputs=targets,
+                    operations=["partition_charge_by_target", "compare_clean_and_adsorbate_states", "write_charge_transfer_table"],
+                    method_intent=["charge_partitioning_analysis"],
+                    output_artifacts=["charge_transfer_by_target.csv", "charge_transfer_summary.json"],
+                    source_terms={"targets": targets},
+                )
+            )
+        if projected_dos_requested:
+            recipes.append(
+                recipe(
+                    strategy_id=strategy_id,
+                    procedure_id=procedure_id,
+                    calculation_id=f"C{len(recipes) + 1:03d}",
+                    source_text=source_text,
+                    pointer=pointer,
+                    role="projected_dos_analysis",
+                    title="Compute projected DOS descriptors",
+                    required_prior_artifacts=["relaxed_structures", "wavefunction_or_projector_data", "electronic_dos_data"],
+                    required_inputs=targets,
+                    operations=["project_dos_by_target", "extract_band_centers_or_near_fermi_descriptors", "write_pdos_tables"],
+                    method_intent=["projected_density_of_states_analysis"],
+                    output_artifacts=["projected_dos_by_target.csv", "dos_descriptor_summary.json"],
+                    source_terms={"targets": targets},
+                )
+            )
+        return recipes
 
     if "benchmark" in lower or "overpotential" in lower or "tafel" in lower:
         return [
@@ -417,21 +677,32 @@ def build_recipes_for_procedure(
             )
         ]
 
+    classifier = role_classifier or (
+        lambda text, context: classify_roles_with_llm(
+            text,
+            context,
+            os.environ.get("OPENAI_MODEL", DEFAULT_MODEL),
+        )
+    )
+    decisions = classifier(source_text, computational)
     return [
         recipe(
             strategy_id=strategy_id,
             procedure_id=procedure_id,
-            calculation_id="C001",
+            calculation_id=f"C{index:03d}",
             source_text=source_text,
             pointer=pointer,
-            role="procedure_translation",
-            title=source_text.rstrip("."),
+            role=decision["recipe_role"],
+            title=decision["source_phrase"].rstrip("."),
             required_prior_artifacts=["strategy_context"],
-            required_inputs=[source_text],
-            operations=["translate_procedure_to_execution_inputs", "write_required_outputs"],
-            method_intent=["procedure_specified_calculation"],
-            output_artifacts=["procedure_result_artifact"],
+            required_inputs=[decision["source_phrase"]],
+            operations=["execute_source_specified_calculation", "write_required_outputs"],
+            method_intent=[decision["recipe_role"]],
+            output_artifacts=[f"{decision['recipe_role']}_result"],
+            source_terms={"source_phrase": decision["source_phrase"]},
+            source_phrase=decision["source_phrase"],
         )
+        for index, decision in enumerate(decisions, start=1)
     ]
 
 
@@ -442,6 +713,10 @@ def render_recipe_md(recipe_data: dict[str, Any]) -> str:
         f"- Procedure: `{recipe_data['procedure_id']}`",
         f"- Role: `{recipe_data['recipe_role']}`",
         f"- Source: `{recipe_data['source_json_pointer']}`",
+    ]
+    if recipe_data.get("source_phrase"):
+        lines.append(f"- Source phrase: {recipe_data['source_phrase']}")
+    lines.extend([
         "",
         "## Source Procedure",
         "",
@@ -449,7 +724,7 @@ def render_recipe_md(recipe_data: dict[str, Any]) -> str:
         "",
         "## Required Prior Artifacts",
         "",
-    ]
+    ])
     lines.extend(f"- {item}" for item in recipe_data["required_prior_artifacts"])
     lines.extend(["", "## Required Inputs", ""])
     lines.extend(f"- {item}" for item in recipe_data["required_inputs"])
@@ -500,6 +775,7 @@ def render_index_md(index_data: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    load_env()
     args = parse_args()
     strategy_path = args.strategy.resolve()
     out = args.out.resolve()
@@ -530,6 +806,7 @@ def main() -> int:
             proc_pointer,
             proc_text,
             source.computational,
+            role_classifier=lambda text, context: classify_roles_with_llm(text, context, args.model),
         )
 
         calc_records: list[dict[str, str]] = []
@@ -537,14 +814,15 @@ def main() -> int:
             calc_folder = calculations_root / f"{calc['calculation_id']}_{slugify(calc['calculation_title'])}"
             write_json(calc_folder / "recipe.json", calc, check_decision_fields=True)
             write_text(calc_folder / "recipe.md", render_recipe_md(calc))
-            calc_records.append(
-                {
-                    "calculation_id": calc["calculation_id"],
-                    "folder": str(calc_folder.relative_to(out)),
-                    "calculation_title": calc["calculation_title"],
-                    "recipe_role": calc["recipe_role"],
-                }
-            )
+            calc_record = {
+                "calculation_id": calc["calculation_id"],
+                "folder": str(calc_folder.relative_to(out)),
+                "calculation_title": calc["calculation_title"],
+                "recipe_role": calc["recipe_role"],
+            }
+            if calc.get("source_phrase"):
+                calc_record["source_phrase"] = calc["source_phrase"]
+            calc_records.append(calc_record)
 
         procedure_data = {
             "schema_version": SCHEMA_VERSION,

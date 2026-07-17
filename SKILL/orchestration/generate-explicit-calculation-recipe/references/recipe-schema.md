@@ -65,6 +65,34 @@ Required fields:
 - `output_artifacts`
 - `notes`
 
+LLM-classified fallback recipes additionally contain `source_phrase`, an exact
+phrase copied from `source_procedure_text` that supports the selected role. The
+generator does not save the LLM prompt, response, or model metadata.
+
+`recipe_role` is a canonical semantic category consumed by later orchestration
+and manuscript routing. It describes the calculation function, not how the
+recipe was generated. `procedure_translation` is forbidden because it carries
+provenance rather than scientific meaning.
+
+Specific roles include:
+
+- `structure_model_build`
+- `clean_structure_relaxation`
+- `adsorbate_relaxation_matrix`
+- `free_energy_state_definition`
+- `free_energy_diagram_assembly`
+- `electrochemical_free_energy_bookkeeping`
+- `potential_shift_analysis`
+- `descriptor_calculation`
+- `density_of_states_analysis`
+- `projected_dos_analysis`
+- `charge_transfer_analysis`
+- `benchmark_constraint_comparison`
+
+When deterministic specialized recognition does not match, an LLM selects from
+the specific roles above and supplies an exact `source_phrase`. Unknown roles or
+phrases absent from the procedure are rejected.
+
 Forbidden fields:
 
 - `status`

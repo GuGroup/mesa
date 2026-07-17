@@ -1,119 +1,99 @@
 ---
 name: map-strategy-figures
-description: Ask an LLM to identify conventional computational chemistry figure types from a MESA selected strategy's models, methods, adsorption sites, and procedures, then attach explicit recipe execution evidence into a compact figure_info.json mapping. Use after recipe-backed calculations/evidence checks when Codex must decide which standard DFT catalysis figures should be must-have, useful, or supplementary and route them to plotting/realization skills.
+description: Propose conventional computational-chemistry figure intents from a selected strategy and attach matching recipe artifacts without analyzing scientific results. Use after recipe execution when Codex needs a compact figure_info.json for figure realization; block only when authoritative missing-evidence summaries or records are present.
 ---
 
-For MESA end-to-end use, read `SKILL/manuscript/workflow.md` before applying this skill.
+For MESA end-to-end use, read `SKILL/manuscript/workflow.md` first.
 
 # Strategy Figure Mapper
 
 ## Scope
 
-Use this skill to convert a selected computational strategy into figure intents.
-The LLM sees only four strategy fields:
+The mapper has two narrow responsibilities:
 
-- `models`
-- `methods`
-- `dft_details.adsorption_sites`
-- `procedures`
+1. Ask an LLM for generic figure names and importance levels from only
+   `models`, `methods`, `dft_details.adsorption_sites`, and `procedures`.
+2. Associate those intents with explicit recipe calculations and artifacts.
 
-The LLM returns only generic figure names and levels. The script then
-deterministically attaches explicit recipe procedures, calculation status,
-artifacts, caveats, and blockers. It does not draw figures, validate chemistry,
-write manuscript prose, or invent unsupported calculations.
+It does not validate chemistry, judge calculation success, remove figures for
+scientific reasons, analyze results, or decide whether a figure proves a claim.
+It retains every normalized LLM figure intent in `figure_info.json`.
 
-## Workflow
-
-Run the mapper on the selected strategy and explicit recipe root:
+## Run
 
 ```bash
-python SKILL/manuscript/figure/map-strategy-figures/scripts/map_strategy_figures.py \
+python3 SKILL/manuscript/figure/map-strategy-figures/scripts/map_strategy_figures.py \
   --strategy project/<project>/strategy_execution/strategy_selection/selected_strategy.json \
   --recipe-root project/<project>/strategy_execution/<strategy_id>_explicit_recipe
 ```
 
-By default this writes:
+Use `--intent-json` for a saved intent response, or `--dry-run` to inspect the
+four-field prompt without calling the API.
+
+Default output:
 
 ```text
-project/<project>/strategy_execution/<strategy_id>_figure/
-  mapping/
-    figure_info.json
-    figure_info.md
+project/<project>/strategy_execution/<strategy_id>_figure/mapping/
+  figure_info.json
+  figure_info.md
 ```
 
-Use `--figure-root` only when the strategy figure workspace should live
-somewhere else. Use `--outdir` only for a one-off custom mapping directory.
+## Blocking Rule
 
-Use `--dry-run` to inspect the exact prompt and four-field input without calling
-the API. Use `--intent-json` to attach recipe evidence to a saved LLM result
-without calling the API again.
+Block a figure only when a matched calculation raises missing evidence through
+one of these authoritative artifacts:
+
+- `missing_evidence_summary.json` with status `blocked`, `excluded`, or
+  `unresolved`, or with nonempty missing-evidence records;
+- `missing_evidence_records.json` with a nonempty `records` list.
+
+Do not use `acceptance_state`, `validation_status`, failed endpoints, excluded
+results, scientific caveats, or any ordered status policy to block a figure.
+Copy manifest caveats as information only.
+
+If no recipe entry matches an intent, retain the intent with
+`grounding.matched=false` and a nonblocking note. Recipe roles are association
+metadata, not scientific acceptance criteria.
 
 ## LLM Contract
 
-The LLM must return JSON only:
+The LLM returns JSON only:
 
 ```json
 {
   "figures": [
-    {
-      "figure_type": "Free-energy diagram",
-      "level": "must_have"
-    }
+    {"figure_type": "Free-energy diagram", "level": "must_have"}
   ]
 }
 ```
 
-Allowed levels are `must_have`, `useful`, and `supplementary`. Unsupported or
-over-interpreted figures must be omitted, not returned as negative examples.
-
-## Evidence Attachment
-
-Treat the strategy/procedure text as the scientific authority and the explicit
-recipe manifests as the availability check.
-
-The mapper routes generic figure names through chemistry-agnostic figure
-families:
-
-- model/structure figures -> `structure-grid`
-- free-energy/profile figures -> `energy-diagram`
-- adsorption/free-energy/descriptor comparisons -> `descriptor-comparison`
-- projected DOS, Bader, charge transfer, charge-density figures -> `electronic-descriptor`
-- local geometry or relaxation checks -> `calculation-diagnostic`
-
-If a returned figure type cannot be matched to explicit recipe evidence, keep it
-as a blocked candidate with a blocker note. Do not add hard-coded
-reaction-specific quantities such as HER-only descriptor names. Quantity hints
-may be extracted generically from procedure text, for example `Delta G_NO` to
-`delta_g_no_ev`.
+Allowed levels are `must_have`, `useful`, and `supplementary`.
 
 ## Output Contract
 
-`figure_info.json` remains compact and realization-oriented:
-
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 3,
   "mapper_mode": "llm_figure_intent",
   "strategy_id": "S1",
   "figures": [
     {
       "id": "F1",
-      "level": "must_have",
       "figure_type": "Free-energy diagram",
       "type": "energy-diagram",
-      "title": "Free-energy diagram",
-      "source": {"procedures": ["P003"], "calculations": ["P003/C006"]},
-      "artifacts": ["project/.../energy_diagram.svg"],
-      "status": "accepted-with-caveat",
-      "skill": "plot-energy-diagram",
-      "grounding": {"status": "grounded", "quantities": ["free_energy_profile"], "basis": ["P003: ..."]},
-      "caveats": [],
-      "blockers": []
+      "status": "mapped",
+      "source": {"procedures": ["P004"], "calculations": ["P004/C001"]},
+      "artifacts": ["project/.../free_energy_diagram.png"],
+      "grounding": {"matched": true, "quantities": ["free_energy_profile"], "basis": ["P004: ..."]},
+      "missing_evidence": [],
+      "blockers": [],
+      "notes": []
     }
   ],
+  "text_only_evidence": [],
   "blockers": []
 }
 ```
 
-After mapping, use `realize-strategy-figures` to create source, exported, QA,
-and realization artifacts.
+`status` is `blocked` only under the missing-evidence rule above; otherwise it
+is `mapped`. After mapping, use `realize-strategy-figures`.
