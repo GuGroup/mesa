@@ -44,7 +44,7 @@ The output root must contain:
 recipe_index.json
 recipe_index.md
 source_computational_section.json
-P001_<procedure_slug>/
+P001/
   procedure.json
   procedure_map.md
   calculations/
@@ -53,8 +53,10 @@ P001_<procedure_slug>/
       recipe.md
 ```
 
-Each `P###` folder preserves a single source procedure. Each `C###` folder is one
-specific calculation or analysis recipe derived from that procedure.
+Each `P###` folder preserves a single source procedure. The procedure text stays
+in `procedure.json`, `procedure_map.md`, and the recipe index rather than in the
+folder name. Each `C###` folder is one specific calculation or analysis recipe
+derived from that procedure.
 
 ## Translation Rules
 
@@ -66,21 +68,27 @@ specific calculation or analysis recipe derived from that procedure.
 4. Use source context from `models`, `methods`, `dft_details`,
    `computational_tests_to_run`, and benchmark-comparison fields only to make the
    recipe explicit. Do not use those fields to override the source procedure.
-5. Assign every calculation a canonical semantic `recipe_role` describing the
+5. Keep every scientific noun and value source-driven. Do not insert a default
+   catalyst, reaction, adsorbate, intermediate sequence, pH, potential,
+   temperature, pressure, or calculation method when it is absent from the
+   procedure and its computational context.
+6. Assign every calculation a canonical semantic `recipe_role` describing the
    calculation function. Never use `procedure_translation` as a role. Prefer
    specific roles such as `structure_model_build`,
-   `adsorbate_relaxation_matrix`, `free_energy_diagram_assembly`, or
-   `descriptor_calculation`. When no deterministic specialized rule matches,
-   call the LLM to select only canonical roles and require an exact
+   `vibrational_analysis`, `reaction_pathway_search`,
+   `free_energy_diagram_assembly`, or `descriptor_calculation`. Deterministic
+   rules must identify domain-neutral operations, not a particular catalyst or
+   reaction. When no deterministic rule matches, call the LLM to select only
+   canonical roles and require an exact
    `source_phrase` copied from the procedure. Do not use action-word fallback
    roles.
-6. Do not add feasibility labels such as `blocked`, `unsupported`, `executable`,
+7. Do not add feasibility labels such as `blocked`, `unsupported`, `executable`,
    or `requires_repair`.
-7. Do not explain why a calculation cannot be done. A later preflight skill owns
+8. Do not explain why a calculation cannot be done. A later preflight skill owns
    feasibility checks.
-8. Do not substitute an easier proxy. If the procedure asks for projected DOS,
+9. Do not substitute an easier proxy. If the procedure asks for projected DOS,
    write a projected-DOS recipe; do not replace it with geometry descriptors.
-9. Do not execute calculations, build structures, submit jobs, run UMA/VASP, or
+10. Do not execute calculations, build structures, submit jobs, run UMA/VASP, or
    create scientific result claims.
 
 ## Recipe Semantics
@@ -96,6 +104,8 @@ executed by a later workflow." This skill does not create those scientific
 outputs.
 
 See `references/recipe-schema.md` for the JSON field contract.
+Canonical role templates are data, not branching Python logic; they live in
+`scripts/recipe_role_templates.json`.
 
 ## Output Validation
 
@@ -107,5 +117,7 @@ After running the generator on a selected strategy artifact, check that:
   role equals `procedure_translation`;
 - every LLM-classified recipe contains an exact `source_phrase` from its source
   procedure;
+- source-defined conditions and entities are copied without inserting
+  domain-specific defaults absent from the source;
 - generated recipes contain no feasibility decision fields;
 - no calculations are executed.

@@ -64,6 +64,8 @@ Required fields:
 - `method_intent`
 - `output_artifacts`
 - `notes`
+- `source_terms`: source-derived items, conditions, or exact phrases used to
+  specialize the generic role template; empty when none were extracted.
 
 LLM-classified fallback recipes additionally contain `source_phrase`, an exact
 phrase copied from `source_procedure_text` that supports the selected role. The
@@ -74,11 +76,18 @@ and manuscript routing. It describes the calculation function, not how the
 recipe was generated. `procedure_translation` is forbidden because it carries
 provenance rather than scientific meaning.
 
-Specific roles include:
+Canonical roles are:
 
+- `artifact_import`
 - `structure_model_build`
+- `adsorbate_structure_build`
 - `clean_structure_relaxation`
 - `adsorbate_relaxation_matrix`
+- `single_point_energy_calculation`
+- `vibrational_analysis`
+- `reaction_pathway_search`
+- `molecular_dynamics`
+- `solvation_analysis`
 - `free_energy_state_definition`
 - `free_energy_diagram_assembly`
 - `electrochemical_free_energy_bookkeeping`
@@ -87,11 +96,17 @@ Specific roles include:
 - `density_of_states_analysis`
 - `projected_dos_analysis`
 - `charge_transfer_analysis`
+- `stability_analysis`
 - `benchmark_constraint_comparison`
 
 When deterministic specialized recognition does not match, an LLM selects from
 the specific roles above and supplies an exact `source_phrase`. Unknown roles or
 phrases absent from the procedure are rejected.
+
+Role templates are domain-neutral. Catalyst identities, reactions, adsorbates,
+intermediate sequences, methods, and numerical conditions are copied only from
+the source procedure or computational context. The generator does not supply
+default pH, potential, temperature, pressure, or chemistry.
 
 Forbidden fields:
 
@@ -109,10 +124,11 @@ add feasibility statuses later in a different artifact tree.
 
 ## Naming
 
-Folder identifiers use deterministic slugs:
+Folder identifiers are deterministic:
 
-- procedures: `P###_<procedure_slug>`
+- procedures: `P###`
 - calculations: `C###_<calculation_slug>`
 
-Slugs are lowercase ASCII, use underscores, and are derived from the source text
-or calculation title.
+Calculation slugs are lowercase ASCII, use underscores, and are derived from the
+calculation title. Procedure meaning is stored in `procedure.json`,
+`procedure_map.md`, and `recipe_index.*`, not in the procedure folder name.
