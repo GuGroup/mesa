@@ -1,4 +1,4 @@
 interface:
   display_name: "Generate Strategies"
-  short_description: "Create referenced DFT proof strategies"
-  default_prompt: "Use $generate-strategies to synthesize extraction artifacts into referenced computational chemistry strategy dictionaries."
+  short_description: "Create claim-preserving proof strategies"
+  default_prompt: "Use $generate-strategies to preserve the extracted author-reported claim while generating referenced computational chemistry strategies."

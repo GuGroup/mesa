@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import sys
@@ -16,6 +17,8 @@ from typing import Any
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
+CLAIM_HEADING = "- author_reported_claim"
+NOT_STATED = "not explicitly stated"
 
 STRATEGY_PROMPT = """You are generating computational chemistry strategies for a target materials or chemistry task.
 
@@ -24,7 +27,7 @@ You will receive saved extraction artifacts from earlier workflow steps:
 2. Paper decomposition from decompose-chemistry-paper-pdf.
 3. General paper insight from extract-general-insight-pdf.
 
-Your job is to generate multiple actionable computational proof strategies for the target task by synthesizing these artifacts.
+Your job is to generate multiple actionable computational proof strategies for the authoritative target task by synthesizing these artifacts.
 
 Scope:
 * Generate only computational chemistry strategies.
@@ -33,7 +36,7 @@ Scope:
 * But transition / NEB study is not supported in this session. Please evade it.
 * All intermediate states, initial, and final gas state should be explicitly implemented for free-energy diagram strategy.
 * Do not generate experimental strategies. Do not propose synthesis, catalyst preparation, microscopy, spectroscopy, electrochemical cell testing, isotope labeling, product quantification, Faradaic-efficiency measurement, H-cell/zero-gap experiments, or other wet-lab workflows.
-* Experimental extraction may be used only as benchmark constraints, observed material identity, observed performance targets, or measured facts that the computational strategy should explain. It must not become an experimental action plan.
+* The extracted author-reported claim defines the target when present. Use all other experimental-extraction content only as benchmark constraints, observed material identity, observed performance targets, or measured facts that the computational strategy should explain. It must not become an experimental action plan.
 
 Critical requirements:
 * Output exactly one Python assignment named generated_strategies.
@@ -50,16 +53,19 @@ Critical requirements:
 * Results in this output are proposed expected computational results, computational checks, or benchmark comparisons, not established current-paper findings. Mark that status explicitly.
 * Do not collapse all evidence into one generic bibliography. Attach references directly to the decision or claim they support.
 * The "experiment" object in every strategy must contain computational experiments only.
+* Copy Generation context target_task exactly into target_task.statement.
+* When Generation context contains author_reported_claim, copy its statement exactly into target_task.statement and copy the complete author_reported_claim object exactly into target_task.author_reported_claim.
+* When Generation context author_reported_claim is null, set target_task.author_reported_claim to None.
+* Treat author_reported_claim as the definition of what must be supported. Do not add a material feature, causal variable, mechanism, structure, or performance claim to target_task.statement.
+* Descriptive coexistence, correlation, characterization, or measured association must not be promoted into causation unless the author-reported claim explicitly makes that causal statement.
+* Strategies may test alternative explanations, but label them as hypotheses and do not rewrite the authoritative target claim around them.
 
-echanistic ambition requirements:
+Mechanistic discipline requirements:
 
-* Do not generate safe generic DFT workflows. Generate paper-worthy mechanistic proof strategies.
-* Every strategy must center on one explicit central mechanistic claim that could become the main claim of a computational chemistry paper.
-* A strategy is invalid if its strongest conclusion is only that one site, surface, intermediate, pathway, composition, or structure is more stable or energetically favorable.
-
-* Stability, adsorption energy, site preference, barrier height, selectivity, or descriptor trends are only observations. Each must be connected to a causal physical or chemical mechanism.
-
-* Supported extrapolation is allowed, but unsupported invention is not. When combining multiple artifacts to form a new mechanistic hypothesis, explicitly label the reference role as "synthesis_basis" and explain the inference chain.
+* Generate strategies at the strongest mechanistic depth supported by the authoritative claim and extraction artifacts; do not increase ambition by changing the claim.
+* Use matched controls that isolate each variable named in the claim.
+* Keep observations distinct from causal explanations. Connect an observation to a mechanism only when the evidence or a clearly labeled hypothesis supports that connection.
+* Supported extrapolation is allowed inside strategy hypotheses, but unsupported invention is not. When combining multiple artifacts, label the reference role as "synthesis_basis" and explain the inference chain.
 
 Reference schema:
 {
@@ -80,6 +86,14 @@ Use this exact top-level schema:
 generated_strategies = {
     "target_task": {
         "statement": "...",
+        "author_reported_claim": {
+            "statement": "...",
+            "source_locations": {
+                "abstract": "...",
+                "conclusion": "..."
+            },
+            "extraction_artifact": "..."
+        },
         "material_domain": "...",
         "success_criteria": [
             {
@@ -255,8 +269,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--target-task",
-        required=True,
-        help="Target task the strategies should solve.",
+        default="",
+        help=(
+            "Fallback target task when no experimental extraction contains an "
+            "author_reported_claim. When a claim exists, this value may only "
+            "select that exact claim."
+        ),
     )
     parser.add_argument(
         "--material-domain",
@@ -360,7 +378,74 @@ def artifact_block(kind: str, path: Path) -> str:
     )
 
 
-def build_prompt(args: argparse.Namespace) -> str:
+def parse_author_reported_claim(path: Path) -> dict[str, Any] | None:
+    lines = read_artifact(path).splitlines()
+    starts = [index for index, line in enumerate(lines) if line.strip() == CLAIM_HEADING]
+    if not starts:
+        return None
+    if len(starts) != 1:
+        raise SystemExit(f"Expected exactly one author_reported_claim section: {path}")
+
+    block: list[str] = []
+    for line in lines[starts[0] + 1:]:
+        if line.startswith("- "):
+            break
+        block.append(line)
+    if sum(line.strip() == "- source_locations:" for line in block) != 1:
+        raise SystemExit(f"author_reported_claim is missing source_locations: {path}")
+
+    def labeled_value(label: str) -> str:
+        prefix = f"- {label}:"
+        matches = [
+            line.strip()[len(prefix):].strip()
+            for line in block
+            if line.strip().startswith(prefix)
+        ]
+        if len(matches) != 1 or not matches[0]:
+            raise SystemExit(f"author_reported_claim is missing one {label} value: {path}")
+        return matches[0]
+
+    statement = labeled_value("statement")
+    abstract = labeled_value("abstract")
+    conclusion = labeled_value("conclusion")
+    if statement.strip("`").casefold() == NOT_STATED:
+        return None
+    return {
+        "statement": statement,
+        "source_locations": {"abstract": abstract, "conclusion": conclusion},
+        "extraction_artifact": str(path),
+    }
+
+
+def resolve_target(args: argparse.Namespace) -> tuple[str, dict[str, Any] | None]:
+    claims = [
+        claim
+        for path in args.experimental_extraction
+        if (claim := parse_author_reported_claim(path)) is not None
+    ]
+    requested = " ".join(args.target_task.split())
+    if claims:
+        matches = [
+            claim
+            for claim in claims
+            if " ".join(claim["statement"].split()) == requested
+        ]
+        if requested and not matches:
+            raise SystemExit("--target-task conflicts with the extracted author-reported claim")
+        if len(claims) > 1 and len(matches) != 1:
+            raise SystemExit("Multiple author-reported claims found; use --target-task to select one exact statement")
+        claim = matches[0] if matches else claims[0]
+        return claim["statement"], claim
+    if not requested:
+        raise SystemExit("--target-task is required when no author-reported claim is available")
+    return args.target_task, None
+
+
+def build_prompt(
+    args: argparse.Namespace,
+    target_statement: str,
+    author_claim: dict[str, Any] | None,
+) -> str:
     blocks: list[str] = []
     for path in args.experimental_extraction:
         blocks.append(artifact_block("experimental_extraction", path))
@@ -372,7 +457,8 @@ def build_prompt(args: argparse.Namespace) -> str:
         blocks.append(artifact_block("paper_extraction", path))
 
     context = {
-        "target_task": args.target_task,
+        "target_task": target_statement,
+        "author_reported_claim": author_claim,
         "material_domain": args.material_domain or None,
         "requested_num_strategies": args.num_strategies,
         "task_note": args.task_note or None,
@@ -385,13 +471,20 @@ def build_prompt(args: argparse.Namespace) -> str:
     )
 
 
-def build_payload(args: argparse.Namespace) -> dict[str, Any]:
+def build_payload(
+    args: argparse.Namespace,
+    target_statement: str,
+    author_claim: dict[str, Any] | None,
+) -> dict[str, Any]:
     return {
         "model": args.model,
         "input": [
             {
                 "role": "user",
-                "content": [{"type": "input_text", "text": build_prompt(args)}],
+                "content": [{
+                    "type": "input_text",
+                    "text": build_prompt(args, target_statement, author_claim),
+                }],
             }
         ],
     }
@@ -437,6 +530,35 @@ def output_text(response: dict[str, Any]) -> str:
     return "\n".join(chunks)
 
 
+def validate_generated_output(
+    text: str,
+    target_statement: str,
+    author_claim: dict[str, Any] | None,
+) -> None:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError as exc:
+        raise SystemExit(f"Generated strategy output is not valid Python: {exc}") from exc
+    if len(tree.body) != 1 or not isinstance(tree.body[0], ast.Assign):
+        raise SystemExit("Generated output must contain exactly one assignment")
+    assignment = tree.body[0]
+    if len(assignment.targets) != 1 or not isinstance(assignment.targets[0], ast.Name):
+        raise SystemExit("Generated output must assign one name")
+    if assignment.targets[0].id != "generated_strategies":
+        raise SystemExit("Generated output must assign generated_strategies")
+    try:
+        payload = ast.literal_eval(assignment.value)
+    except (ValueError, TypeError) as exc:
+        raise SystemExit("generated_strategies must be a literal Python object") from exc
+    target = payload.get("target_task") if isinstance(payload, dict) else None
+    if not isinstance(target, dict) or target.get("statement") != target_statement:
+        raise SystemExit("Generated target_task.statement changed the authoritative target claim")
+    if author_claim is not None and target.get("author_reported_claim") != author_claim:
+        raise SystemExit("Generated target_task.author_reported_claim does not exactly preserve the extraction")
+    if author_claim is None and target.get("author_reported_claim") is not None:
+        raise SystemExit("Generated target_task.author_reported_claim must be None without an extracted claim")
+
+
 def main() -> int:
     args = parse_args()
 
@@ -459,12 +581,14 @@ def main() -> int:
         + args.paper_extraction
     )
     sizes = {str(path): validate_artifact(path) for path in artifacts}
+    target_statement, author_claim = resolve_target(args)
 
     if args.dry_run:
         print(
             json.dumps(
                 {
-                    "target_task": args.target_task,
+                    "target_task": target_statement,
+                    "author_reported_claim": author_claim,
                     "material_domain": args.material_domain,
                     "num_strategies": args.num_strategies,
                     "model": args.model,
@@ -481,7 +605,7 @@ def main() -> int:
     if not api_key:
         raise SystemExit("OPENAI_API_KEY is not set.")
 
-    payload = build_payload(args)
+    payload = build_payload(args, target_statement, author_claim)
     response = call_openai(payload, api_key)
 
     if args.save_response:
@@ -490,6 +614,7 @@ def main() -> int:
     text = output_text(response)
     if not text:
         raise SystemExit("No text output found in API response.")
+    validate_generated_output(text, target_statement, author_claim)
 
     if args.output:
         args.output.write_text(text, encoding="utf-8")

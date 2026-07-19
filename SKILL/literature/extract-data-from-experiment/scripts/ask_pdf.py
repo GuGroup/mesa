@@ -17,6 +17,7 @@ from typing import Any
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 MAX_FILE_BYTES = 50 * 1024 * 1024
+CLAIM_HEADING = "- author_reported_claim"
 EXTRACTION_PROMPT = """You are an information extraction system for computational materials research.
 
 Your task is to extract ONLY experimentally reported information that can reduce uncertainty when setting up a DFT calculation.
@@ -39,14 +40,21 @@ If a piece of information is not explicitly present in the document, do not ment
 
 Extract the following categories when available:
 
-1. Material identity
+1. author_reported_claim
+   - identify exactly one primary scientific claim made by the authors
+   - prioritize the claim stated in the abstract and conclusion
+   - preserve the authors' causal direction, qualifiers, and scope
+   - do not combine separate observations into a stronger claim
+   - do not promote coexistence, correlation, or characterization into causation
+
+2. Material identity
    - chemical formula
    - composition
    - stoichiometry
    - dopants
    - impurities
 
-2. Crystal and structural information
+3. Crystal and structural information
    - crystal structure
    - space group
    - lattice parameters
@@ -56,7 +64,7 @@ Extract the following categories when available:
    - polymorphs
    - defects explicitly identified
 
-3. Experimental conditions
+4. Experimental conditions
    - synthesis method
    - temperature
    - pressure
@@ -64,7 +72,7 @@ Extract the following categories when available:
    - annealing conditions
    - growth conditions
 
-4. Measured properties
+5. Measured properties
    - electronic properties
    - magnetic properties
    - optical properties
@@ -72,7 +80,7 @@ Extract the following categories when available:
    - mechanical properties
    - thermodynamic properties
 
-5. Characterization results
+6. Characterization results
    - XRD
    - XPS
    - Raman
@@ -103,6 +111,7 @@ For each extracted item:
 Return a concise structured text report, not JSON.
 
 Use these section headings exactly:
+- author_reported_claim
 - Material identity
 - Crystal and structural information
 - Experimental conditions
@@ -112,6 +121,18 @@ Use these section headings exactly:
 - Missing information
 
 In each section, use bullet points. Include evidence for every bullet point. The "Missing information" section may only contain categories that were searched for but not explicitly reported in the document.
+
+The `author_reported_claim` section must contain exactly this labeled structure:
+  - statement: one primary claim on one line, or `Not explicitly stated`
+  - source_locations:
+    - abstract: the supporting abstract sentence on the same line, or `Not explicitly stated`
+    - conclusion: the supporting conclusion sentence on the same line, or `Not explicitly stated`
+
+The `statement` may preserve multiple clauses only when the authors explicitly
+present them together as the primary claim. The two source-location entries are
+mandatory even when one section does not explicitly state the claim. Do not use
+results, figures, background, or cited literature to strengthen the statement
+beyond the abstract and conclusion.
 
 Never include hypotheses, recommendations, assumptions, interpretations, or proposed DFT inputs.
 
@@ -229,6 +250,29 @@ def output_text(response: dict[str, Any]) -> str:
     return "\n".join(chunks)
 
 
+def validate_author_reported_claim(text: str) -> None:
+    lines = text.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.strip() == CLAIM_HEADING]
+    if len(starts) != 1:
+        raise SystemExit("Extraction must contain exactly one author_reported_claim section")
+    block: list[str] = []
+    for line in lines[starts[0] + 1:]:
+        if line.startswith("- "):
+            break
+        block.append(line)
+    if sum(line.strip() == "- source_locations:" for line in block) != 1:
+        raise SystemExit("author_reported_claim must contain one source_locations object")
+    for label in ("statement", "abstract", "conclusion"):
+        prefix = f"- {label}:"
+        values = [
+            line.strip()[len(prefix):].strip()
+            for line in block
+            if line.strip().startswith(prefix)
+        ]
+        if len(values) != 1 or not values[0]:
+            raise SystemExit(f"author_reported_claim must contain exactly one {label} value")
+
+
 def main() -> int:
     args = parse_args()
     size = validate_pdf(args.pdf)
@@ -240,6 +284,7 @@ def main() -> int:
             "model": args.model,
             "task_note": args.task_note,
             "fixed_prompt": True,
+            "author_reported_claim_contract": True,
             "api_url": API_URL,
             "will_call_api": False,
         }
@@ -258,6 +303,7 @@ def main() -> int:
     text = output_text(response)
     if not text:
         raise SystemExit("No text output found in OpenAI response.")
+    validate_author_reported_claim(text)
     print(text)
     return 0
 
