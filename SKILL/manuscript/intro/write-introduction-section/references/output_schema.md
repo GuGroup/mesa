@@ -12,7 +12,8 @@
 - `missing_details`
 - `validation`
 
-Schema version 1 writes one Introduction section:
+Schema version 1 writes one Introduction section with 2-3 paragraph content
+blocks:
 
 ```json
 {
@@ -39,4 +40,6 @@ The intended DOCX placeholder is:
 ```
 
 The writer output should not contain citation placeholders or visible reference
-numbers. Run `citation-selector` after writing to add citation annotations.
+numbers. Public paragraph text uses at most two decimal places for non-integer
+values while source evidence retains full precision. Run `citation-selector`
+after writing to add citation annotations.

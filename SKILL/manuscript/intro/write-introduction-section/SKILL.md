@@ -60,7 +60,10 @@ Use `--no-llm` only for deterministic smoke testing. Normal use requires
 - Do not add citations, citation placeholders, bracketed reference numbers, or
   author-year parentheticals. Citation selection is a later layer.
 - Do not use overclaiming language such as "prove" or "fully explain".
-- Output one section with 4-6 paragraph content blocks. Set `title` and
+- Round non-integer values in public prose to at most two decimal places (for
+  example, `1.184` becomes `1.18`); leave integers as integers. Preserve full
+  precision in the evidence digest.
+- Output one section with 2-3 cohesive paragraph content blocks. Set `title` and
   `small_title` to empty strings so a DOCX inserter can preserve the existing
   Introduction heading without adding a duplicate local title.
 

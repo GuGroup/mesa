@@ -6,10 +6,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import zipfile
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision, overprecise_decimal_literals
 
 
 SCHEMA_VERSION = 1
@@ -87,7 +91,7 @@ def extract_geometry_details(paragraphs: list[dict[str, Any]]) -> list[str]:
 
 
 def section_payload(strategy_id: str, manuscript_docx: Path, placeholder_key: str, section_id: str, paragraphs: list[str]) -> dict[str, Any]:
-    blocks = [{"type": "paragraph", "text": text} for text in paragraphs if compact_text(text)]
+    blocks = [{"type": "paragraph", "text": format_numeric_precision(text)} for text in paragraphs if compact_text(text)]
     return {
         "schema_version": SCHEMA_VERSION,
         "strategy_id": strategy_id,
@@ -117,11 +121,11 @@ def build_si(paragraphs: list[dict[str, Any]]) -> dict[str, Any]:
         large_text = "No supplementary figure content was detected in the manuscript DOCX."
         small_text = "No supplementary local-geometry figure content was detected in the manuscript DOCX."
     return {
-        "si_large_content_title": "1. Supplementary figures",
-        "si_large_content_text": large_text,
-        "si_small_content_title": "1.1. Optimized local geometries",
-        "si_small_content_text": small_text,
-        "dft_calculation_details": {"paragraphs": geometry_details},
+        "si_large_content_title": format_numeric_precision("1. Supplementary figures"),
+        "si_large_content_text": format_numeric_precision(large_text),
+        "si_small_content_title": format_numeric_precision("1.1. Optimized local geometries"),
+        "si_small_content_text": format_numeric_precision(small_text),
+        "dft_calculation_details": {"paragraphs": [format_numeric_precision(text) for text in geometry_details]},
         "detected_si_captions": captions,
     }
 
@@ -142,11 +146,13 @@ def validate_si(si: dict[str, Any]) -> dict[str, Any]:
         for pattern in [r"\bprocedure\b", r"\bworkflow\b", r"\bdigest\b", r"\bJSON\b", r"\bfuture work\b", r"\blimitation(?:s)?\b"]
         if re.search(pattern, text, flags=re.IGNORECASE)
     ]
+    overprecise = overprecise_decimal_literals(text)
     return {
-        "ok": bool(si["si_large_content_title"]) and bool(si["si_small_content_title"]) and not forbidden,
+        "ok": bool(si["si_large_content_title"]) and bool(si["si_small_content_title"]) and not forbidden and not overprecise,
         "si_caption_count": len(si["detected_si_captions"]),
         "dft_detail_paragraph_count": len(details),
         "forbidden_patterns": forbidden,
+        "overprecise_decimal_literals": overprecise,
     }
 
 

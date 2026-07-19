@@ -40,6 +40,9 @@ Equation blocks should be used for mathematical equations, chemical equations,
 electrochemical identities, and reaction-state sequences. Do not repeat the same
 expression inside paragraph text.
 
+Public paragraph, equation, label, and explanation fields use at most two
+decimal places for non-integer values. Source evidence retains full precision.
+
 Allowed section ids:
 
 - `model_construction`

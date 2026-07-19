@@ -13,6 +13,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
@@ -30,6 +33,7 @@ Strict rules:
 5. Keep captions descriptive, concise, academically conventional, and suitable for direct use in a paper.
 6. Mention computed/plotted quantities only when they appear in the public evidence.
 7. Do not mention overpotential, Tafel slope, synthesis, microscopy, spectroscopy, or experimental characterization unless the supplied figure type explicitly says benchmark/experimental.
+8. In public text, write non-integer numbers with at most two decimal places; keep integers as integers.
 
 Return JSON only.
 
@@ -334,7 +338,7 @@ def adsorbate_phrase(fig: dict[str, Any]) -> str:
 
 
 def clean_title(text: str) -> str:
-    return compact_text(text).rstrip(".:;")
+    return format_numeric_precision(compact_text(text)).rstrip(".:;")
 
 
 def deterministic_title(fig: dict[str, Any], routed_type: str) -> str:
@@ -431,8 +435,8 @@ def deterministic_caption(fig: dict[str, Any], rec: dict[str, Any], system_overr
         "routed_type": routed_type,
         "exported_files": exported,
         "figure_title": figure_title,
-        "caption": compact_text(caption),
-        "extended_caption": compact_text(extended),
+        "caption": format_numeric_precision(compact_text(caption)),
+        "extended_caption": format_numeric_precision(compact_text(extended)),
         "source_basis": prov["source_basis"],
         "caption_source": "deterministic",
         "caveats": prov["caveats"],
@@ -526,8 +530,8 @@ def apply_llm_captions(records: list[dict[str, Any]], llm_payload: dict[str, Any
             updated.append(record)
             continue
         figure_title = clean_title(item.get("figure_title", "")) or record.get("figure_title", "")
-        caption = compact_text(item.get("caption", ""))
-        extended = compact_text(item.get("extended_caption", ""))
+        caption = format_numeric_precision(compact_text(item.get("caption", "")))
+        extended = format_numeric_precision(compact_text(item.get("extended_caption", "")))
         if not caption or public_caption_is_invalid(figure_title + " " + caption + " " + extended, record["figure_type"]):
             updated.append(record)
             continue

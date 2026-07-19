@@ -71,6 +71,9 @@ Use `--no-llm` only for smoke testing. Normal use requires
   unless the manuscript context states they were performed.
 - Do not write standalone limitation, missing-evidence, or future-work
   paragraphs.
+- Round non-integer values in public text to at most two decimal places (for
+  example, `1.184` becomes `1.18`); leave integers as integers. Preserve full
+  precision in the DOCX-derived context.
 - Keep the title as one line, without a trailing period.
 - Keep the abstract as one paragraph.
 - Keep keywords as 5-8 short phrases.

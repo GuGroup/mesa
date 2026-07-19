@@ -34,3 +34,5 @@ Each section uses `render_title: false` because the manuscript skeleton already
 contains the major heading or placeholder context.
 
 The keywords section renders as one paragraph with semicolon-separated phrases.
+Public text fields use at most two decimal places for non-integer values; the
+DOCX-derived context retains its original precision.

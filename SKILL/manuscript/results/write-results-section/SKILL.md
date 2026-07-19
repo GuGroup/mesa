@@ -68,6 +68,9 @@ Use `--no-llm` only for deterministic smoke testing. Normal use requires
 - State thermodynamic descriptor conclusions directly. Do not add
   meta-commentary telling readers that the agreement, result, finding, or trend
   "should be interpreted" or "should be understood" at a particular level.
+- Round non-integer values in public prose to at most two decimal places (for
+  example, `1.184` becomes `1.18`); leave integers as integers. Preserve full
+  precision in the evidence digest.
 - Do not add citations. Citation selection is a later layer.
 - Divide Results into 2-4 focused local subsections with concise `small_title`
   values. Avoid one generic small title spanning the whole Results section.

@@ -28,4 +28,5 @@ Combined file:
 ```
 
 All section JSON files use `render_title: false` and target exactly one
-placeholder.
+placeholder. Inserted public text uses at most two decimal places for
+non-integer values; extracted source metadata retains its original precision.

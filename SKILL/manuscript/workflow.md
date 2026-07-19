@@ -7,6 +7,11 @@ project-local source libraries.
 Manuscript skills do not run VASP, UMA, DFT, qsub, new literature search, or
 new calculations.
 
+All manuscript prose writers and the figure captioner round non-integer values
+in public text to at most two decimal places; integers remain integers. This
+presentation rule must not reduce precision in source evidence, provenance, or
+other machine-readable calculation data.
+
 # Skills By Stage
 
 - `manuscript/figure/`: `map-strategy-figures`,
@@ -357,6 +362,7 @@ Use `write-introduction-section` after the evidence collector.
 
 The Introduction writer must:
 
+- write 2-3 cohesive paragraphs;
 - follow the digest `narrative_order` and writing profile;
 - not impose a reaction, material, dopant, electrolyte, or mechanism absent from
   the evidence;
