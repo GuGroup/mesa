@@ -57,6 +57,9 @@ Use `--no-llm` only for deterministic smoke testing. Normal use requires
 - Do not add descriptor analysis, electronic-structure analysis, or standalone
   limitations sections.
 - If a detail is missing, write generally rather than inventing a value.
+- Round non-integer values in public text and equations to at most two decimal
+  places (for example, `1.184` becomes `1.18`); leave integers as integers.
+  Preserve full precision in the evidence digest.
 - Put equations in ordered `content_blocks` where they belong in the narrative.
   Use equation blocks for mathematical equations, chemical equations,
   electrochemical identities, and reaction-state sequences. Do not duplicate the

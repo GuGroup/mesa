@@ -62,6 +62,9 @@ Figure titles and captions must be public, manuscript-facing text:
   empty and record blockers only in metadata.
 - Prefer academically conventional phrasing such as "computed", "modeled",
   "optimized", "free-energy diagram", and "adsorption free-energy comparison".
+- Round non-integer values in public caption text to at most two decimal places
+  (for example, `1.184` becomes `1.18`); leave integers as integers. Preserve
+  full precision in source and provenance data.
 
 Use `figure_title` for a concise heading without trailing punctuation. The
 future DOCX inserter can format it as `Fig. N | {figure_title}. {caption}`

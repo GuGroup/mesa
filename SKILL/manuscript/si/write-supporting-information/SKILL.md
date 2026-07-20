@@ -54,6 +54,9 @@ project/<project>/strategy_execution/<strategy_id>_si/text/
 - Move detected detailed calculation/geometry-optimization details into the DFT
   calculation details placeholder; do not create new parameters.
 - Preserve existing numeric citation markers if extracted from the manuscript.
+- Round non-integer values in inserted SI text to at most two decimal places
+  (for example, `1.184` becomes `1.18`); leave integers as integers. Preserve
+  full precision in extracted source metadata.
 - Do not add new claims, new calculations, limitations prose, or future work.
 
 Read [references/output_schema.md](references/output_schema.md) when consuming

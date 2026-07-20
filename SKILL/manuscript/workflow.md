@@ -7,15 +7,20 @@ project-local source libraries.
 Manuscript skills do not run VASP, UMA, DFT, qsub, new literature search, or
 new calculations.
 
+All manuscript prose writers and the figure captioner round non-integer values
+in public text to at most two decimal places; integers remain integers. This
+presentation rule must not reduce precision in source evidence, provenance, or
+other machine-readable calculation data.
+
 # Skills By Stage
 
 - `manuscript/figure/`: `map-strategy-figures`,
   `realize-strategy-figures`, `caption-strategy-figures`,
   `insert-strategy-figures-into-docx`.
 - `manuscript/methods/`: `collect-methods-evidence`,
-  `write-methods-sections`.
+  `classify-methods-evidence`, `write-methods-sections`.
 - `manuscript/results/`: `collect-results-evidence`,
-  `write-results-section`.
+  `write-results-section`, `add-results-literature-comparisons`.
 - `manuscript/intro/`: `collect-introduction-evidence`,
   `write-introduction-section`.
 - `manuscript/general/`: `extract-citation-sources`,
@@ -72,8 +77,14 @@ The mapper input is the selected strategy's computational block, especially:
 - `dft_details.adsorption_sites`;
 - `procedures`.
 
-The mapper asks for conventional computational-chemistry figure types directly
-supported by the planned workflow. It must not infer unsupported experiments,
+The mapper asks for conventional computational-chemistry figure intents directly
+supported by the planned workflow and retains every normalized intent. It
+associates intents with explicit recipe roles and artifacts but does not analyze
+scientific results or use execution acceptance states to refuse a figure. A
+figure is blocked only when a matched calculation raises authoritative
+`missing_evidence_summary.json` or nonempty
+`missing_evidence_records.json`. Unmatched intents remain recorded with a
+nonblocking note. The mapper must not infer unsupported experiments,
 unsupported descriptors, or project-specific figure concepts absent from the
 strategy procedures.
 
@@ -138,22 +149,17 @@ project/<project_name>/manuscript/<strategy_id>/
 
 # 5. Methods Evidence Collection
 
-Use `collect-methods-evidence` before writing Methods.
+Use `collect-methods-evidence` before Methods evidence classification.
 
 The collector should keep evidence minimal and general:
 
 - model construction evidence from selected strategy and model manifests;
 - gas model metadata such as formula, cell lengths, and PBC when available;
 - relaxation/calculation metadata summarized by category, not full raw logs;
-- energy/free-energy reference policy and equations when available;
-- evidence for the four core computational Methods sections only.
+- energy/free-energy reference policy and equations when available.
 
-The four core Methods sections are:
-
-1. `model_construction`;
-2. `geometry_optimization`;
-3. `vibrational_free_energy_corrections`;
-4. `electrochemical_free_energy_formalism`.
+The collector must remain section-neutral. It preserves compact evidence and
+does not choose section names, grouping, or order.
 
 Do not include optional analysis sections such as DOS, Bader charge, charge
 density difference, kinetics, or local geometry analysis unless separate
@@ -164,17 +170,42 @@ Save:
 ```text
 project/<project_name>/strategy_execution/<strategy_id>_methods/evidence/
   methods_minimal_evidence.json
-  methods_writer_digest.json
+  methods_planner_digest.json
+```
+
+# 5A. Hybrid Methods Evidence Classification
+
+Use `classify-methods-evidence` on `methods_planner_digest.json`.
+
+The classifier assigns supported facts deterministically to DFT settings, model
+construction, vibrational/free-energy corrections, and chemical-potential
+domains. Only leftover evidence is sent to an LLM, which may create additional
+method sections or leave evidence explicitly unassigned. Validate closed,
+exactly-once evidence-ID coverage.
+
+Save:
+
+```text
+project/<project_name>/strategy_execution/<strategy_id>_methods/classification/
+  methods_evidence_classification.json
+  methods_section_plan.json
+  methods_section_plan.md
 ```
 
 # 6. Methods Writing
 
 Use `write-methods-sections`.
 
-The writer reads `methods_writer_digest.json` and writes structured section
-JSON with paragraph and equation blocks. Public Methods prose must translate
-internal tools into academic language and must not mention skill names, recipe
-IDs, file paths, JSON artifacts, project folders, or planning language.
+The writer reads `methods_section_plan.json`, preserves its exact section set
+and order, and writes both deterministic core sections and LLM-planned sections.
+DFT settings and model construction follow evidence-driven rhetorical
+blueprints; all other sections are organized from their own assigned evidence.
+Every assigned evidence ID must be used or explicitly omitted, while unassigned
+evidence stays out of manuscript prose.
+
+Public Methods prose must translate explicit tool roles into academic language
+and must not mention skill names, recipe IDs, file paths, JSON artifacts,
+project folders, evidence IDs, section decisions, or planning language.
 
 Equations belong in equation blocks, not hidden inside paragraphs. The writer
 may include chemical equations, thermochemical equations, or reference
@@ -229,6 +260,8 @@ Rules:
 - return no citation when support is weak;
 - do not cite a sentence whose support is only the manuscript's own figure;
 - keep decisions reviewable with confidence and human-check flags.
+- honor validated comparison-layer citation requests for their exact sentences;
+  reject unknown sources or unmatched requested sentences.
 
 Save each section's citation layer under that section workspace, for example:
 
@@ -266,7 +299,9 @@ The collector builds a compact Results evidence digest from:
 - computed tables such as descriptor summaries, state profiles, rankings, and
   benchmark comparisons;
 - model, relaxation, and vibration summaries;
-- blocked or unavailable evidence.
+- blocked or unavailable evidence;
+- optional mapper `text_only_evidence` records supplied by compatible legacy or
+  project-specific mappings.
 
 It must keep facts separate from prose. It must not hide blocked evidence or
 turn unavailable analyses into claims.
@@ -287,10 +322,21 @@ The writer uses `results_writer_digest.json` and optional DOCX context to write
 figure-centered Results and Discussion subsections. It must:
 
 - mention every main-text figure supplied by the digest at least once;
+- write every text-only evidence record and report exact ID coverage in metadata;
 - use only figures and values present in the digest;
 - avoid internal workflow language;
 - avoid unsupported electronic, kinetic, solvation, or experimental claims;
 - avoid standalone limitation or future-work paragraphs.
+
+Text-only evidence may be discussed with its covering superset figure, but the
+writer must not imply that the deleted underset visualization exists.
+
+After the internal Results draft is stable, use
+`add-results-literature-comparisons` with the original Results digest and bounded
+`citation_sources.json`. The skill inserts only validated prior-study comparison
+sentences and emits exact citation requests. Then run `select-citations` on
+`results_section_with_literature.json`; requested comparison sources are
+validated and applied before normal citation retrieval for other sentences.
 
 Insert Results with `insert-section-into-docx`. Use `--distribute-figures` when
 the DOCX already contains figure blocks and Results paragraphs mention those
@@ -316,6 +362,7 @@ Use `write-introduction-section` after the evidence collector.
 
 The Introduction writer must:
 
+- write 2-3 cohesive paragraphs;
 - follow the digest `narrative_order` and writing profile;
 - not impose a reaction, material, dopant, electrolyte, or mechanism absent from
   the evidence;

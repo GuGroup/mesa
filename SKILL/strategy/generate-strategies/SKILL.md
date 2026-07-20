@@ -1,6 +1,6 @@
 ---
 name: generate-strategies
-description: Generate evidence-backed computational chemistry strategies for a target materials/chemistry task from prior extraction artifacts. Use when Codex needs to synthesize outputs from extract-data-from-experiment, extract-strategy-paper, and extract-general-insights-paper into multiple DFT/computational proof strategy dictionaries that preserve the problem/axioms/hypothesis/experiment/results/conclusion structure, exclude experimental strategy generation, and include explicit inherited references for every decision.
+description: Generate evidence-backed computational chemistry strategies that preserve a primary author-reported experimental claim from prior extraction artifacts. Use when Codex needs to synthesize outputs from extract-data-from-experiment, extract-strategy-paper, and extract-general-insights-paper into multiple DFT/computational proof strategies without broadening the authoritative claim, while retaining problem/axioms/hypothesis/experiment/results/conclusion structure and explicit references.
 ---
 
 For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
@@ -13,8 +13,15 @@ Use this skill after experimental data extraction and paper extraction have alre
 
 The generator must:
 
-- Use the target task as the organizing objective.
-- Use experimental extraction only as benchmark constraints, material identity, or measured targets to explain computationally.
+- Use the single `author_reported_claim` from experimental extraction as the
+  authoritative target when available.
+- Copy that claim exactly into `target_task.statement`; do not add causal
+  variables, structures, mechanisms, or performance claims to it.
+- Use `--target-task` only as a fallback when no extracted claim exists, or to
+  select one exact claim when several experimental extractions are supplied.
+- Apart from its authoritative claim, use experimental extraction only as
+  benchmark constraints, material identity, or measured targets to explain
+  computationally.
 - Use paper extraction as the source of mechanisms, design principles, computational methods, descriptors, and inherited references.
 - Generate only computational chemistry strategies, such as DFT slab/adsorbate modeling, adsorption/free-energy analysis, transition-state searches, HEA site sampling, AIMD/solvation/potential corrections, microkinetics, descriptor screening, stability/reconstruction calculations, and computational uncertainty checks.
 - Do not generate synthesis, characterization, electrochemical testing, isotope labeling, cell design, product quantification, or other wet-lab strategies.
@@ -45,16 +52,23 @@ Prefer saved `.txt`, `.md`, `.py`, or `.json` extraction artifacts over PDFs. Do
 
 ## Workflow
 
-1. Identify the target task and material domain from the user or workflow context.
+1. Identify the material domain and any user-supplied exact claim selection;
+   do not compose a broader target task when an extracted claim exists.
 2. Confirm at least one paper extraction artifact is available.
-3. Run `scripts/generate_strategies.py` with the target task and extraction artifacts.
-4. Review the output for unsupported decisions and experimental-strategy leakage:
+3. Confirm that an experimental extraction contains exactly one
+   `author_reported_claim` section with `abstract` and `conclusion` source
+   locations. When no experimental claim exists, supply `--target-task`.
+4. Run `scripts/generate_strategies.py` with the extraction artifacts.
+5. Review the output for claim drift, unsupported decisions, and experimental-strategy leakage:
+   - `target_task.statement` must exactly match the extracted claim.
+   - `target_task.author_reported_claim` must preserve both source locations.
+   - Descriptive observations must not be promoted to causal target variables.
    - Every strategy decision must include a `references` list.
    - References must point back to an extraction artifact and, when available, preserve the source metadata inherited from that extraction.
    - `experiment` must describe only computational experiments.
    - No strategy should propose lab synthesis, microscopy, spectroscopy, product quantification, isotope labeling, H-cell/zero-gap testing, or other experimental workflows.
    - If a decision has no support in the extraction artifacts, remove it or mark it as an explicit unsupported gap.
-5. Preserve the output artifact because it is downstream evidence for strategy selection.
+6. Preserve the output artifact because it is downstream evidence for strategy selection.
 
 ## Script
 
@@ -62,7 +76,6 @@ Run:
 
 ```bash
 python3 SKILL/strategy/generate-strategies/scripts/generate_strategies.py \
-  --target-task "..." \
   --material-domain "..." \
   --experimental-extraction /path/to/experimental_extraction.txt \
   --paper-decomposition /path/to/strategy_paper_decomposition.py \
@@ -71,6 +84,8 @@ python3 SKILL/strategy/generate-strategies/scripts/generate_strategies.py \
 
 Useful options:
 
+- `--target-task`: fallback only when no author-reported claim is present; with
+  multiple extracted claims, use the exact statement to select one.
 - `--num-strategies`: requested number of strategies. Defaults to `5`.
 - `--paper-extraction`: generic paper extraction artifact when the subtype is unknown.
 - `--task-note`: non-conflicting computational context, such as preferred DFT level, surface facet, adsorbate set, or known material family.
@@ -86,7 +101,18 @@ The script asks for exactly one Python assignment named `generated_strategies`:
 
 ```python
 generated_strategies = {
-    "target_task": {...},
+    "target_task": {
+        "statement": "exact author-reported claim",
+        "author_reported_claim": {
+            "statement": "exact author-reported claim",
+            "source_locations": {
+                "abstract": "...",
+                "conclusion": "...",
+            },
+            "extraction_artifact": "...",
+        },
+        ...
+    },
     "input_artifacts": {...},
     "strategies": [
         {
@@ -111,6 +137,10 @@ output, while making two distinctions explicit:
 
 - `experiment` means computational experiment only.
 - `results` are expected computational results, computational checks, or benchmark comparisons for a proposed strategy, not established current-paper findings.
+
+The script parses the author claim before the API call and validates the
+returned Python assignment afterward. It fails if the model changes either the
+authoritative statement or its source-location object.
 
 Reference objects must use this shape:
 

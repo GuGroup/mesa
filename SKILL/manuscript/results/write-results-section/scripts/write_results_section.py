@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision, overprecise_decimal_literals
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
@@ -52,6 +55,7 @@ Strict rules:
 13. Use unavailable or limited evidence only as a silent guardrail for claim strength. Do not write a standalone limitation, scope, missing-evidence, or future-work paragraph.
 14. Do not enumerate analyses that were not performed. Avoid phrases such as "not included", "not calculated", "unavailable", "were not performed", "would be needed", or "future work".
 15. State computed conclusions directly. Do not add meta-commentary telling readers how the agreement, result, finding, or trend "should be interpreted" or "should be understood".
+16. In public prose, write non-integer numbers with at most two decimal places; keep integers as integers.
 
 Return schema:
 {
@@ -351,8 +355,8 @@ def normalize_one_section(section: dict[str, Any], fallback_index: int) -> dict[
     if not isinstance(section, dict):
         raise ValueError("Each Results section must be a JSON object.")
     section_id = str(section.get("section_id") or f"{SECTION_ID}_{fallback_index}")
-    title = str(section.get("title") or SECTION_TITLE).strip()
-    small_title = str(section.get("small_title") or "").strip()
+    title = format_numeric_precision(str(section.get("title") or SECTION_TITLE).strip())
+    small_title = format_numeric_precision(str(section.get("small_title") or "").strip())
     if not small_title:
         raise ValueError("Each Results section must include a non-empty small_title.")
     blocks = []
@@ -364,12 +368,12 @@ def normalize_one_section(section: dict[str, Any], fallback_index: int) -> dict[
             block_type = str(block.get("type") or "").strip().lower()
             if block_type != "paragraph":
                 raise ValueError("Results writer v1 only supports paragraph content blocks.")
-            text = str(block.get("text") or "").strip()
+            text = format_numeric_precision(str(block.get("text") or "").strip())
             if text:
                 blocks.append({"type": "paragraph", "text": text})
     else:
         for paragraph in split_paragraphs(str(section.get("text") or "")):
-            blocks.append({"type": "paragraph", "text": paragraph})
+            blocks.append({"type": "paragraph", "text": format_numeric_precision(paragraph)})
     if not blocks:
         raise ValueError("Results section must contain at least one paragraph block.")
     text = "\n\n".join(block["text"] for block in blocks)
@@ -444,6 +448,7 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
     unsupported = unsupported_hits(full_text)
     explicit_limitations = explicit_limitation_hits(full_text)
     interpretation_disclaimers = interpretation_disclaimer_hits(full_text)
+    overprecise = overprecise_decimal_literals(full_text)
     provided_figures = {
         str(fig.get("figure_number"))
         for fig in digest.get("figure_backbone", [])
@@ -461,6 +466,7 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
         and not unsupported
         and not explicit_limitations
         and not interpretation_disclaimers
+        and not overprecise
         and not unknown_figures
         and not missing_main_figures
         and not duplicate_small_titles
@@ -477,6 +483,7 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
         "unsupported_claim_patterns": unsupported,
         "explicit_limitation_patterns": explicit_limitations,
         "interpretation_disclaimer_patterns": interpretation_disclaimers,
+        "overprecise_decimal_literals": overprecise,
         "provided_figures": sorted(provided_figures),
         "mentioned_figures": mentioned_figures,
         "unknown_figures": unknown_figures,
@@ -557,7 +564,7 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
         ]
     for section in sections:
         section["text"] = "\n\n".join(block["text"] for block in section["content_blocks"])
-    return sections
+    return normalize_sections({"sections": sections})
 
 
 def assemble_output(

@@ -33,6 +33,9 @@ All sections are inserted under the manuscript's existing "Results and
 Discussion" heading. `small_title` should be specific to the local paragraphs,
 not a generic title for the whole section.
 
+Public titles and paragraph text use at most two decimal places for non-integer
+values. Source evidence retains full precision.
+
 Unavailable or limited evidence should affect claim strength only. Version 2
 outputs should not contain standalone limitation, scope, missing-evidence, or
 future-work paragraphs, and should not enumerate analyses that were not

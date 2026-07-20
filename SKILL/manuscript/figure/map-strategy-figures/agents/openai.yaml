@@ -1,4 +1,4 @@
 interface:
   display_name: "Map Strategy Figures"
-  short_description: "Map DFT figure intents and attach evidence"
-  default_prompt: "Use $map-strategy-figures to identify conventional figure types from a selected MESA strategy and attach explicit recipe evidence into figure_info.json."
+  short_description: "Map figure intents without judging results"
+  default_prompt: "Use $map-strategy-figures to map conventional figure intents to recipe evidence and block only explicit missing-evidence cases."

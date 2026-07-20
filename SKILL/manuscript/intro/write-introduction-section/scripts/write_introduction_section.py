@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision, overprecise_decimal_literals
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
@@ -22,6 +25,8 @@ SCHEMA_VERSION = 1
 SECTION_ID = "introduction"
 SECTION_TITLE = ""
 TARGET_PLACEHOLDERS = {"text": "{{INTRODUCTION_TEXT}}"}
+MIN_PARAGRAPHS = 2
+MAX_PARAGRAPHS = 3
 NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 
 INTRODUCTION_PROMPT = """You are writing the Introduction section of a computational chemistry manuscript for heterogeneous catalysis.
@@ -36,7 +41,7 @@ Strict rules:
 1. Return JSON only.
 2. Return exactly one section object in a top-level "sections" list.
 3. The section must have section_id "introduction", title "", small_title "", render_title false, and content_blocks.
-4. Write 4-6 paragraph content_blocks total. Each block must be {"type": "paragraph", "text": "..."}.
+4. Write 2-3 cohesive paragraph content_blocks total. Each block must be {"type": "paragraph", "text": "..."}.
 5. Build a literature-led narrative following the narrative_order and writing_profile fields in the digest. Do not impose a reaction, material, dopant, electrolyte, or mechanism that is not present in the digest.
 6. Use selected-strategy or project-positioning content only in the final paragraph for the present-work framing. Do not write strategy/procedure language.
 7. Do not write internal workflow language, including: strategy, procedure, workflow, source, digest, JSON, artifact, manifest, skill, prompt, writer, P001-style ids, C001-style ids, file paths, project paths, or code filenames.
@@ -46,6 +51,7 @@ Strict rules:
 11. Do not overclaim. Avoid "prove", "fully explain", "complete mechanism", or equivalent language.
 12. Do not introduce unsupported electronic-analysis objectives such as projected density of states, Bader analysis, charge transfer, or electronic descriptors.
 13. Avoid the word "limitations"; use ordinary manuscript phrasing such as "challenges" or "constraints" if needed. Do not write a standalone limitations paragraph. The Introduction should end with the objective and rationale of the present computational study.
+14. In public prose, write non-integer numbers with at most two decimal places; keep integers as integers.
 
 Return schema:
 {
@@ -327,12 +333,12 @@ def normalize_one_section(section: dict[str, Any]) -> dict[str, Any]:
             block_type = str(block.get("type") or "").strip().lower()
             if block_type != "paragraph":
                 raise ValueError("Introduction writer only supports paragraph content blocks.")
-            text = str(block.get("text") or "").strip()
+            text = format_numeric_precision(str(block.get("text") or "").strip())
             if text:
                 blocks.append({"type": "paragraph", "text": text})
     else:
         for paragraph in split_paragraphs(str(section.get("text") or "")):
-            blocks.append({"type": "paragraph", "text": paragraph})
+            blocks.append({"type": "paragraph", "text": format_numeric_precision(paragraph)})
     if not blocks:
         raise ValueError("Introduction section must contain at least one paragraph block.")
     text = "\n\n".join(block["text"] for block in blocks)
@@ -369,6 +375,7 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
     prohibited = pattern_hits(full_text, PROHIBITED_CONTENT_PATTERNS)
     citations = pattern_hits(full_text, CITATION_PATTERNS)
     limitations = pattern_hits(full_text, LIMITATION_PATTERNS)
+    overprecise = overprecise_decimal_literals(full_text)
     paragraph_count = sum(len(section.get("content_blocks", [])) for section in sections)
     role_mentions = {}
     for role in digest.get("narrative_order", []):
@@ -385,7 +392,8 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
         and not prohibited
         and not citations
         and not limitations
-        and 4 <= paragraph_count <= 6
+        and not overprecise
+        and MIN_PARAGRAPHS <= paragraph_count <= MAX_PARAGRAPHS
     )
     return {
         "ok": ok,
@@ -395,6 +403,7 @@ def validate_sections(sections: list[dict[str, Any]], digest: dict[str, Any]) ->
         "prohibited_content_patterns": prohibited,
         "citation_patterns": citations,
         "limitation_patterns": limitations,
+        "overprecise_decimal_literals": overprecise,
         "role_mentions_heuristic": role_mentions,
     }
 
@@ -424,7 +433,7 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
     for point in digest.get("evidence_points", []):
         by_role.setdefault(point.get("role", ""), []).append(point.get("claim", ""))
     positioning = digest.get("project_positioning", {})
-    paragraphs: list[str] = []
+    literature_paragraphs: list[str] = []
     for role in digest.get("narrative_order", []):
         if role == "present_work_framing":
             continue
@@ -432,20 +441,22 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
         if not claims:
             continue
         text = claims[0] if len(claims) == 1 else f"{claims[0]} {claims[1]}"
-        paragraphs.append(clean_deterministic_text(text))
-        if len(paragraphs) >= 5:
+        literature_paragraphs.append(clean_deterministic_text(text))
+        if len(literature_paragraphs) >= MAX_PARAGRAPHS - 1:
             break
+    if not literature_paragraphs:
+        literature_paragraphs.append(
+            "The collected literature establishes the broader catalytic motivation and the need to connect material design with reaction-relevant thermodynamic descriptors."
+        )
     framing = positioning.get("present_work_question") or positioning.get("present_work_gap") or positioning.get("selected_strategy_title")
     if framing:
-        paragraphs.append(f"The present computational study addresses {clean_deterministic_text(framing)}.")
-    if len(paragraphs) < 4:
-        paragraphs.extend(
-            [
-                "The collected literature establishes the broader catalytic motivation and the need to connect material design with reaction-relevant thermodynamic descriptors.",
-                "The present computational analysis therefore focuses on the modeled catalyst structures, adsorbate states, and free-energy quantities available in the project evidence.",
-            ]
+        final_paragraph = f"The present computational study addresses {clean_deterministic_text(framing)}."
+    else:
+        final_paragraph = (
+            "The present computational analysis therefore focuses on the modeled catalyst structures, "
+            "adsorbate states, and free-energy quantities available in the project evidence."
         )
-    paragraphs = paragraphs[:6]
+    paragraphs = [*literature_paragraphs, final_paragraph][:MAX_PARAGRAPHS]
     return [normalize_one_section({"content_blocks": [{"type": "paragraph", "text": text} for text in paragraphs]})]
 
 

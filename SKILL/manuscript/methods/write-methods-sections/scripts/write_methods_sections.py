@@ -13,6 +13,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision, overprecise_decimal_literals
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
@@ -53,6 +56,7 @@ Strict rules:
 12. Write manuscript-ready equations as LaTeX strings without Markdown math delimiters. Keep explanation fields academic and concise.
 13. Treat chemical equations, electrochemical identities, and reaction-state sequences supplied in the digest as equation blocks, not as inline prose.
 14. Do not repeat the same equation in both a paragraph and an equation block. Paragraphs should introduce or interpret equations, while equation blocks hold the mathematical or chemical expression.
+15. In public text and equations, write non-integer numbers with at most two decimal places; keep integers as integers.
 
 Return JSON only.
 
@@ -244,11 +248,11 @@ def forbidden_hits(text: str) -> list[str]:
 
 
 def normalize_equation_block(item: dict[str, Any]) -> dict[str, str]:
-    latex = str(item.get("latex") or "").strip()
+    latex = format_numeric_precision(str(item.get("latex") or "").strip())
     if not latex:
         raise ValueError("Each equation block must contain a non-empty latex field.")
-    label = str(item.get("label") or "Equation").strip()
-    explanation = str(item.get("explanation") or "").strip()
+    label = format_numeric_precision(str(item.get("label") or "Equation").strip())
+    explanation = format_numeric_precision(str(item.get("explanation") or "").strip())
     return {"type": "equation", "label": label, "latex": latex, "explanation": explanation}
 
 
@@ -283,7 +287,7 @@ def normalize_content_blocks(item: dict[str, Any], section_id: str) -> list[dict
                 raise ValueError(f"Section {section_id} contains a non-object content block.")
             block_type = str(block.get("type") or "").strip().lower()
             if block_type == "paragraph":
-                text = str(block.get("text") or "").strip()
+                text = format_numeric_precision(str(block.get("text") or "").strip())
                 if not text:
                     raise ValueError(f"Section {section_id} contains an empty paragraph block.")
                 blocks.append({"type": "paragraph", "text": text})
@@ -293,7 +297,7 @@ def normalize_content_blocks(item: dict[str, Any], section_id: str) -> list[dict
                 raise ValueError(f"Section {section_id} contains unsupported block type: {block_type}")
     else:
         for paragraph in split_paragraphs(str(item.get("text") or "")):
-            blocks.append({"type": "paragraph", "text": paragraph})
+            blocks.append({"type": "paragraph", "text": format_numeric_precision(paragraph)})
         for equation in normalize_equations(item.get("equations")):
             blocks.append({"type": "equation", **equation})
     if not any(block.get("type") == "paragraph" for block in blocks):
@@ -317,7 +321,7 @@ def normalize_sections(data: dict[str, Any]) -> list[dict[str, Any]]:
         section_id = str(item.get("section_id", ""))
         if section_id not in REQUIRED_SECTIONS:
             raise ValueError(f"Unexpected section_id: {section_id}")
-        title = str(item.get("title") or SECTION_TITLES[section_id]).strip()
+        title = format_numeric_precision(str(item.get("title") or SECTION_TITLES[section_id]).strip())
         content_blocks = normalize_content_blocks(item, section_id)
         text = section_text_from_blocks(content_blocks)
         if not text:
@@ -367,6 +371,7 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
         elif section_id == "vibrational_free_energy_corrections":
             vib = project_details.get("vibration_summary", {})
             policy = project_details.get("surface_thermal_policy", {})
+            policy_text = policy.get("model", "a local harmonic treatment was used") if isinstance(policy, dict) else str(policy)
             text = (
                 "Free-energy corrections followed the thermochemical correction policy for zero-point and entropic terms where available. "
                 f"Vibrational calculations produced {vib.get('frequency_result_count')} frequency results."
@@ -381,9 +386,7 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
                 },
                 {
                     "type": "paragraph",
-                    "text": (
-                        f"For surface structures, {policy.get('model', 'a local harmonic treatment was used')}."
-                    ),
+                    "text": f"For surface structures, {policy_text}.",
                 },
             ]
         else:
@@ -449,14 +452,17 @@ def validate_output(sections: list[dict[str, Any]]) -> dict[str, Any]:
                     inline_hits.append({"block_index": index, "patterns": paragraph_hits})
             elif block.get("type") == "equation":
                 parts.extend([block.get("label", ""), block.get("latex", ""), block.get("explanation", "")])
-        hits = forbidden_hits("\n".join(parts))
-        if hits or inline_hits:
+        public_text = "\n".join(parts)
+        hits = forbidden_hits(public_text)
+        overprecise = overprecise_decimal_literals(public_text)
+        if hits or inline_hits or overprecise:
             ok = False
         section_reports.append(
             {
                 "section_id": section["section_id"],
                 "forbidden_patterns": hits,
                 "inline_equation_patterns": inline_hits,
+                "overprecise_decimal_literals": overprecise,
             }
         )
     return {"ok": ok, "section_reports": section_reports}

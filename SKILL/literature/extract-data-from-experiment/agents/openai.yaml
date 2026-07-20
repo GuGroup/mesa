@@ -1,4 +1,4 @@
 interface:
   display_name: "Extract Data From Experiment"
-  short_description: "Extract PDF text and figure data"
-  default_prompt: "Use $extract-data-from-experiment to extract DFT-relevant experimental information from a PDF, including figure data."
+  short_description: "Extract a primary claim and experiment data"
+  default_prompt: "Use $extract-data-from-experiment to extract one evidence-bound author-reported claim and DFT-relevant experimental information from a PDF."

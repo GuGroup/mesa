@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.numeric_precision import format_numeric_precision, overprecise_decimal_literals
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
@@ -51,6 +54,7 @@ Strict rules:
 14. The abstract should cover background, computational approach, main thermodynamic finding, and implication.
 15. The conclusion should synthesize the main mechanistic outcome and manuscript-level implication without repeating Methods details.
 16. Do not use markdown, bullets, headings, or numbered lists in text fields.
+17. In public text, write non-integer numbers with at most two decimal places; keep integers as integers.
 
 Return schema:
 {
@@ -389,19 +393,19 @@ def split_paragraphs(text: str) -> list[str]:
 def normalize_output(parsed: dict[str, Any]) -> dict[str, Any]:
     title_raw = parsed.get("title", {})
     if isinstance(title_raw, dict):
-        title_text = compact_text(title_raw.get("text", ""))
+        title_text = format_numeric_precision(compact_text(title_raw.get("text", "")))
     else:
-        title_text = compact_text(title_raw)
+        title_text = format_numeric_precision(compact_text(title_raw))
     abstract_raw = parsed.get("abstract", {})
     if isinstance(abstract_raw, dict):
-        abstract_text = compact_text(abstract_raw.get("text", ""))
+        abstract_text = format_numeric_precision(compact_text(abstract_raw.get("text", "")))
     else:
-        abstract_text = compact_text(abstract_raw)
+        abstract_text = format_numeric_precision(compact_text(abstract_raw))
     keywords_raw = parsed.get("keywords", [])
     if isinstance(keywords_raw, str):
-        keywords = [compact_text(item) for item in re.split(r";|,", keywords_raw) if compact_text(item)]
+        keywords = [format_numeric_precision(compact_text(item)) for item in re.split(r";|,", keywords_raw) if compact_text(item)]
     elif isinstance(keywords_raw, list):
-        keywords = [compact_text(item) for item in keywords_raw if compact_text(item)]
+        keywords = [format_numeric_precision(compact_text(item)) for item in keywords_raw if compact_text(item)]
     else:
         keywords = []
     conclusion_raw = parsed.get("conclusion", {})
@@ -410,9 +414,9 @@ def normalize_output(parsed: dict[str, Any]) -> dict[str, Any]:
     else:
         paragraphs_raw = conclusion_raw
     if isinstance(paragraphs_raw, str):
-        conclusion_paragraphs = split_paragraphs(paragraphs_raw)
+        conclusion_paragraphs = [format_numeric_precision(item) for item in split_paragraphs(paragraphs_raw)]
     elif isinstance(paragraphs_raw, list):
-        conclusion_paragraphs = [compact_text(item) for item in paragraphs_raw if compact_text(item)]
+        conclusion_paragraphs = [format_numeric_precision(compact_text(item)) for item in paragraphs_raw if compact_text(item)]
     else:
         conclusion_paragraphs = []
     missing = parsed.get("missing_details", [])
@@ -455,6 +459,7 @@ def validate_akc(akc: dict[str, Any]) -> dict[str, Any]:
         "overclaim_patterns": pattern_hits(full_text, OVERCLAIM_PATTERNS),
         "title_has_trailing_period": title_text.endswith("."),
         "title_has_study_of": bool(re.search(r"\bstudy of\b", title_text, re.IGNORECASE)),
+        "overprecise_decimal_literals": overprecise_decimal_literals(full_text),
     }
     validation["ok"] = (
         6 <= title_words <= 22
@@ -470,6 +475,7 @@ def validate_akc(akc: dict[str, Any]) -> dict[str, Any]:
         and not validation["unsupported_patterns"]
         and not validation["limitation_patterns"]
         and not validation["overclaim_patterns"]
+        and not validation["overprecise_decimal_literals"]
     )
     return validation
 
@@ -645,7 +651,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     write_text(outdir / "llm_prompt.txt", prompt)
 
     if args.no_llm:
-        akc = deterministic_akc(context)
+        akc = normalize_output(deterministic_akc(context))
         source = "deterministic"
     else:
         load_default_env()
