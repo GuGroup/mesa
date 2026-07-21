@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SECTION_TITLES = {
     "model_construction": "Model construction",
@@ -244,7 +244,14 @@ def build_minimal_evidence(
             },
             "project_details": {
                 "relaxation_summary": relax_compact,
-                "vasp_execution_boundary": "VASP-compatible input files may be prepared, but VASP jobs are not submitted in this UMA-only test run.",
+                "calculation_execution_boundary": (
+                    "Interpret collected method parameters under the active "
+                    "project_profile.md calculation_policy. VASP input details "
+                    "are required only when that policy uses or permits VASP; "
+                    "UMA/MLIP-only policies do not require VASP calculation "
+                    "parameters unless they explicitly allow interoperability "
+                    "artifacts."
+                ),
             },
             "procedure_inputs": procedures_by_index(procedures, [1]),
         },

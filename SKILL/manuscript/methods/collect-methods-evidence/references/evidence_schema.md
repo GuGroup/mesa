@@ -40,7 +40,8 @@ Geometry optimization:
 
 - Include strategy `methods`, `dft_details.code`, core DFT setting fields, and
   relaxation summary counts.
-- Include the VASP execution boundary as a data field.
+- Include the calculation execution boundary as a data field; the active
+  `project_profile.md` decides how calculator-specific fields are used.
 
 Vibrational/free-energy corrections:
 
