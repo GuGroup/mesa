@@ -3,6 +3,10 @@
 # Codex loads this file only after the repository is trusted. Keep secrets out of
 # this file; use DEPENDENCY/.env.example as the template for local .env values.
 
+model = "gpt-5.5"
+model_context_window = 372000
+model_reasoning_effort = "high"
+plan_mode_reasoning_effort = "xhigh"
 [mcp_servers.paper_search]
 enabled = true
 required = false
@@ -18,3 +22,6 @@ default_tools_approval_mode = "auto"
 # repo/DEPENDENCY/.env.
 [mcp_servers.paper_search.env]
 PAPER_SEARCH_MCP_ENV_FILE = "../../DEPENDENCY/.env"
+
+[features.multi_agent_v2]
+max_concurrent_threads_per_session = 1000
