@@ -12,8 +12,9 @@ For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this sk
 
 1. Normalize the user's own energies into the JSON shape described in `references/input-schema.md`. Do not hard-code catalyst/material names from examples unless the user supplied them.
 2. Prefer `scripts/plot_energy_diagram.py` for deterministic output. Patch the script only when the requested visual behavior is not exposed by command-line flags or JSON fields.
-3. Run the script and verify that the output file is created. For manuscript figures, inspect SVG/PDF text and spacing if the user asks for final-quality layout.
-4. Report the output path and any dependency issues clearly.
+3. Run the script and verify that the output file is created.
+4. Export or also render a PNG preview, inspect the generated plot image directly, and fix/regenerate if the legend overlaps plateaus, connectors, energy annotations, state labels, or the boxed frame.
+5. Report the output path and any dependency issues clearly.
 
 ## Quick Start
 
@@ -36,6 +37,7 @@ The script requires `matplotlib` and `chemdiagrams`. If `chemdiagrams` is missin
 - Use colorblind-friendly, high-contrast line colors.
 - Keep reaction labels short; use newline or leading spacing only when needed to avoid collisions.
 - Use concise, readable state labels and legend labels. Do not force unexplained abbreviations, but shorten phrases until each label scans cleanly on the axis.
+- Place the legend where it does not cover plateaus, connectors, energy labels, or state labels; override `legend_loc` and regenerate after visual inspection when needed.
 - Label common zero-energy endpoints once when multiple paths share the same reference.
 - Do not draw a plot title. Keep figure titles and panel labels outside the exported diagram so multi-panel composition stays consistent.
 - Do not draw a horizontal zero-reference line unless the user explicitly requests one. Zero-valued plateaus and shared endpoint labels provide the reference without adding a gray line across the data.

@@ -47,6 +47,7 @@ Optional top-level fields:
 - `optimum_label`: label next to the volcano peak. Default: `Optimum`.
 - `legend_loc`: in-box matplotlib legend location. Default: `auto`, which tests several in-box locations and picks the one with the least overlap against points and the volcano envelope.
 - `figsize`: two-number array. Default: `[5.0, 3.6]`.
+- `base_fontsize`, `point_label_fontsize`, `axis_label_fontsize`, `legend_fontsize`: typography overrides. Defaults are intentionally larger than compact manuscript minimums for readability.
 - `xlim`, `ylim`: axis limits.
 - `higher_is_better`: boolean used only for documentation/QA. Default: `true`.
 
@@ -55,5 +56,6 @@ Style notes:
 - Keep catalyst labels short and chemically meaningful.
 - For dense datasets, set `label_point: false` except for the optimum, benchmark, and proposed catalysts.
 - Keep `legend_loc: "auto"` unless the user explicitly wants a fixed legend position; the script should avoid covering plotted points or the volcano envelope.
+- After plotting, inspect a PNG preview or rendered image directly. If legend/text overlaps the data, move `legend_loc`, reduce point labels, adjust `xlim`/`ylim`, or regenerate until the figure is visually clear.
 - Use SVG or PDF when the figure will be edited in Illustrator/Inkscape.
 - If the envelope is theoretical or hand-drawn, say so in the response or caption. Do not present it as a fitted model.

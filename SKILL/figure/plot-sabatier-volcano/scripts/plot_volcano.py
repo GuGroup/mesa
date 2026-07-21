@@ -35,7 +35,7 @@ EXAMPLE_SPEC: dict[str, Any] = {
     "xlabel": r"$\Delta G_{\mathrm{ads}}$ (eV)",
     "ylabel": "Relative activity",
     "optimum_label": "Sabatier optimum",
-    "legend_loc": "upper right",
+    "legend_loc": "auto",
 }
 
 
@@ -45,6 +45,10 @@ STYLE_DEFAULTS: dict[str, Any] = {
     "ylabel": "Activity",
     "legend_loc": "auto",
     "higher_is_better": True,
+    "base_fontsize": 10.5,
+    "point_label_fontsize": 9.5,
+    "axis_label_fontsize": 12.5,
+    "legend_fontsize": 9.5,
 }
 
 
@@ -95,6 +99,11 @@ def choose_legend_loc(ax: Any, handles: list[Any], point_xy: list[tuple[float, f
     candidates = ["upper right", "upper left", "lower right", "lower left", "center right", "center left"]
     renderer = ax.figure.canvas.get_renderer()
     point_pixels = np.asarray([ax.transData.transform(xy) for xy in point_xy]) if point_xy else np.empty((0, 2))
+    text_bboxes = [
+        text.get_window_extent(renderer=renderer).expanded(1.04, 1.12)
+        for text in ax.texts
+        if text.get_visible()
+    ]
     curve_pixels = np.empty((0, 2))
     if curve_xy_data is not None:
         x_curve, y_curve = curve_xy_data
@@ -104,12 +113,13 @@ def choose_legend_loc(ax: Any, handles: list[Any], point_xy: list[tuple[float, f
     best_loc = candidates[0]
     best_score = float("inf")
     for loc in candidates:
-        legend = ax.legend(handles=handles, loc=loc, prop={"weight": "bold", "size": 8})
+        legend = ax.legend(handles=handles, loc=loc, prop={"weight": "bold", "size": 9.5})
         ax.figure.canvas.draw()
         bbox = legend.get_window_extent(renderer=renderer).expanded(1.06, 1.10)
         point_hits = sum(bbox.contains(x, y) for x, y in point_pixels)
         curve_hits = sum(bbox.contains(x, y) for x, y in curve_pixels)
-        score = point_hits * 100 + curve_hits
+        text_hits = sum(bbox.overlaps(text_bbox) for text_bbox in text_bboxes)
+        score = point_hits * 100 + text_hits * 50 + curve_hits
         legend.remove()
         if score < best_score:
             best_score = score
@@ -129,7 +139,7 @@ def plot(spec: dict[str, Any], output: str) -> Path:
             "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans", "sans-serif"],
             "svg.fonttype": "none",
             "pdf.fonttype": 42,
-            "font.size": 9,
+            "font.size": spec.get("base_fontsize", 10.5),
             "axes.linewidth": 1.0,
             "ytick.major.width": 1.0,
             "xtick.major.width": 1.0,
@@ -157,7 +167,7 @@ def plot(spec: dict[str, Any], output: str) -> Path:
                 xy=(peak_x, peak_y),
                 xytext=(6, 8),
                 textcoords="offset points",
-                fontsize=8,
+                fontsize=spec.get("point_label_fontsize", 9.5),
                 fontweight="bold",
                 color="#272727",
             )
@@ -192,15 +202,15 @@ def plot(spec: dict[str, Any], output: str) -> Path:
                 xy=(float(point["descriptor"]), float(point["activity"])),
                 xytext=(dx, dy),
                 textcoords="offset points",
-                fontsize=8,
+                fontsize=spec.get("point_label_fontsize", 9.5),
                 fontweight="bold" if highlighted else "normal",
                 color="#272727",
             )
 
-    ax.set_xlabel(spec.get("xlabel", r"$\Delta G_{\mathrm{ads}}$ (eV)"), fontsize=11, fontweight="bold")
-    ax.set_ylabel(spec.get("ylabel", "Activity"), fontsize=11, fontweight="bold")
+    ax.set_xlabel(spec.get("xlabel", r"$\Delta G_{\mathrm{ads}}$ (eV)"), fontsize=spec.get("axis_label_fontsize", 12.5), fontweight="bold")
+    ax.set_ylabel(spec.get("ylabel", "Activity"), fontsize=spec.get("axis_label_fontsize", 12.5), fontweight="bold")
     if spec.get("title"):
-        ax.set_title(spec["title"], fontsize=10, fontweight="bold")
+        ax.set_title(spec["title"], fontsize=11, fontweight="bold")
 
     if spec.get("xlim"):
         ax.set_xlim(*spec["xlim"])
@@ -214,7 +224,7 @@ def plot(spec: dict[str, Any], output: str) -> Path:
         pad = max((y_max - y_min) * 0.12, 0.08)
         ax.set_ylim(y_min - pad, y_max + pad)
 
-    ax.tick_params(axis="both", labelsize=9, length=4, width=1.0, direction="out")
+    ax.tick_params(axis="both", labelsize=10.5, length=4, width=1.0, direction="out")
     for tick in ax.get_xticklabels() + ax.get_yticklabels():
         tick.set_fontweight("bold")
     for spine in ax.spines.values():
@@ -234,7 +244,7 @@ def plot(spec: dict[str, Any], output: str) -> Path:
                 color="none",
                 markerfacecolor=style.get("color", "#767676"),
                 markeredgecolor="#272727",
-                markersize=6,
+                markersize=7,
                 label=family,
             )
         )
@@ -242,7 +252,7 @@ def plot(spec: dict[str, Any], output: str) -> Path:
     if legend_loc == "auto":
         fig.canvas.draw()
         legend_loc = choose_legend_loc(ax, legend_handles, point_xy, curve_pixels_source)
-    ax.legend(handles=legend_handles, loc=legend_loc, prop={"weight": "bold", "size": 8})
+    ax.legend(handles=legend_handles, loc=legend_loc, prop={"weight": "bold", "size": spec.get("legend_fontsize", 9.5)})
 
     fig.tight_layout()
     output_path = Path(output)
