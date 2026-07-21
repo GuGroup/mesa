@@ -206,7 +206,7 @@ def default_initialization_dir() -> Path:
     if not profiles:
         raise SystemExit(
             "No active MESA project profile found. Provide "
-            "--output-dir project/<project_name>/initialization or run initialize-mesa "
+            "--output-dir project/<project_name>/initialization or run initialize-project "
             "to create project/<project_name>/project_profile.md."
         )
     choices = "\n".join(f"  - {display_path(path.parent / INITIALIZATION_DIR_NAME)}" for path in profiles)

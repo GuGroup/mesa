@@ -1,4 +1,4 @@
 interface:
   display_name: "Start Research"
   short_description: "Gate MESA research startup"
-  default_prompt: "Use $start-research to verify project profile, goal mode, full-access session state, and runtime readiness before starting the MESA research loop."
+  default_prompt: "Use $start-research after initialize-mesa and initialize-project to verify project profile, goal mode, full-access session state, and runtime readiness before starting the MESA research loop."

@@ -36,8 +36,10 @@ ln -sfn "$PWD/SKILL/init/initialize-mesa" \
 ```
 
 Then run `initialize-mesa` from Codex. It will run the repository bootstrap
-checks and link the remaining MESA skills into `$CODEX_HOME/skills` or
-`~/.codex/skills`. To check the environment directly:
+checks and link the remaining MESA skills, including `initialize-project`, into
+`$CODEX_HOME/skills` or `~/.codex/skills`. After repository setup, run
+`initialize-project` to create `project/<project_name>/project_profile.md`, then
+run `start-research`. To check the environment directly:
 
 ```bash
 bash DEPENDENCY/bootstrap.sh

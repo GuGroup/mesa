@@ -1,6 +1,6 @@
 ---
 name: initialize-mesa
-description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, analyze non-deterministic CUDA/GPU/checkpoint/scheduler runtime facts, prepare a non-deterministic dependency handoff, generate or execute saved runtime install plans, notify users of initialization progress, interview for project-level research settings, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, repo-local .codex/config.toml, paper_search MCP setup, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, Codex analyzer/profile/status/plan files for CUDA/checkpoint/scheduler-dependent runtimes, vasp-job uv-tool readiness, and skill-specific environment readiness.
+description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, analyze non-deterministic CUDA/GPU/checkpoint/scheduler runtime facts, prepare a non-deterministic dependency handoff, generate or execute saved runtime install plans, notify users of initialization progress, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, repo-local .codex/config.toml, paper_search MCP setup, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, Codex analyzer/profile/status/plan files for CUDA/checkpoint/scheduler-dependent runtimes, vasp-job uv-tool readiness, and skill-specific environment readiness.
 ---
 
 For MESA repository setup use, read `workflow.md` before applying this skill.
@@ -14,18 +14,17 @@ dependency, API-key, Codex config, or MCP setup. Bootstrap is `uv`-first:
 check the OS, check/install `uv`, then use `uv` to provide Python and run the
 deterministic checker. Keep all non-uv runtime installs opt-in.
 
-Default initialization has two phases: a lightweight environment readiness
-check, then project-profile creation. Do not run install, update,
-smoke-test-all, `doctor --all`, or runtime-plan execution steps unless the user
-explicitly asks for setup changes or the active project requires that specific
-runtime now. Already-installed environments should be treated as reusable; do
-not re-prove every runtime on every initialization.
+Default initialization is a lightweight repository and environment readiness
+check. Do not run install, update, smoke-test-all, `doctor --all`, or
+runtime-plan execution steps unless the user explicitly asks for setup changes
+or the active project requires that specific runtime now. Already-installed
+environments should be treated as reusable; do not re-prove every runtime on
+every initialization.
 
-This skill prepares the repository and project settings. It must not end after
-environment checks when no active project profile exists, unless the user
-explicitly asked for environment/bootstrap checking only. It does not by itself
-execute a research workflow, select a strategy, run calculations, or write a
-manuscript. After initialization, run `start-research` for the active project.
+This skill prepares the repository setup only. It does not create project
+profiles, execute a research workflow, select a strategy, run calculations, or
+write a manuscript. After repository initialization, run `initialize-project`
+to create/select the active project profile, then run `start-research`.
 
 Recommended entry points:
 
@@ -128,61 +127,6 @@ figures, and manuscript artifacts. Do not clean or migrate older root-level
 initialization files automatically; treat them as historical outputs unless the
 user explicitly asks for cleanup.
 
-## Project Interview
-
-When the user invokes `initialize-mesa`, asks to initialize MESA, or wants to
-start a new MESA research project, check for an active
-`project/<project_name>/project_profile.md`. If no active project profile
-exists, interview for only the decisions that cannot be inferred from the
-repository. Do this even if environment readiness has blockers; record blockers
-in the profile or final report instead of silently ending after the bootstrap
-check.
-
-- project name / output folder under `project/<project_name>/`;
-- source material supplied by the user: plain prompt, reference papers,
-  experimental-only papers, numeric tables, collaborator proposal, existing
-  manuscript, reviewer comments, or instructions to repair gaps or weaknesses
-  in prior work;
-- scientific claim or research objective, material family, catalyst domain,
-  and target reaction, inferred from the source material when possible;
-- evidence level: quick screening, UMA/MLIP test, DFT refinement, or
-  manuscript-proof package;
-- active backend policy: UMA/MLIP mode or VASP mode;
-- whether VASP execution/submission is allowed, dry-run only, or forbidden;
-- calculation artifact policy: whether VASP-compatible input artifacts may be
-  prepared in non-VASP modes, whether backend cross-checks are exploratory or
-  evidence-producing, and which backend is authoritative for claims;
-- scheduler policy: local-only, qsub allowed, qsub forbidden, or
-  user-approval-required;
-- required runtimes: paper search, modeling, UMA, AdsorbDiff, VASP tooling,
-  manuscript/figure export;
-- API-key expectations and whether missing keys should block the run.
-- language policy: user interaction and QA may be multilingual, but all saved
-  project research artifacts must be English-only.
-
-Use `request_user_input` when that tool is available in the active surface.
-Otherwise ask concise plain-text questions. Do not fabricate missing project
-decisions. After the interview, write the agreed decisions to
-`project/<project_name>/project_profile.md` and use that profile as the active
-project policy source for the run. The project profile must record source
-artifact paths or identifiers, the user's research objective, required
-runtimes, the English-only artifact policy, and a concrete `calculation_policy`
-section containing backend, artifact-generation, scheduler, submission,
-acceptance, and cross-check rules.
-
-Skip the project interview only when one of these is true:
-
-- the user explicitly asked for environment-only bootstrap, dependency audit,
-  or config/MCP checking;
-- exactly one active project profile already exists and the user did not ask to
-  create or switch projects;
-- the user asked to repair setup before deciding the research project.
-
-If the user has not provided a research prompt, paper, proposal, manuscript,
-experimental data, or objective yet, ask for it. Do not report initialization as
-complete until either `project/<project_name>/project_profile.md` exists or the
-user has declined/deferred project setup.
-
 ## Workflow
 
 1. Run from the repository root.
@@ -199,15 +143,15 @@ user has declined/deferred project setup.
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap
 ```
 
-This is the normal environment-readiness path. After this command, continue to
-Project Interview when no active project profile exists, unless the user asked
-for environment/bootstrap checking only.
+This is the normal environment-readiness path. After this command, report
+repository readiness and direct project-profile creation to
+`initialize-project` when no active project profile exists.
 
 4a. Synchronize the remaining repository skills into Codex discovery. Fresh
 clones require the user to link only `initialize-mesa`; this step lets the
-agent link `start-research` and the task-specific MESA skills during
-initialization. First dry-run, then apply. Existing non-symlink paths are
-reported as `SKIP` by the script and must not be overwritten:
+agent link `initialize-project`, `start-research`, and the task-specific MESA
+skills during initialization. First dry-run, then apply. Existing non-symlink
+paths are reported as `SKIP` by the script and must not be overwritten:
 
 ```bash
 bash DEPENDENCY/sync_codex_skills.sh
@@ -319,9 +263,8 @@ Treat these as the standard init checks:
 - `DEPENDENCY/sync_codex_skills.sh` exists and can symlink remaining repository
   skill folders containing `SKILL.md` into `$CODEX_HOME/skills` or
   `~/.codex/skills` after the user has linked `initialize-mesa`.
-- An active project profile exists for research execution, or the user has been
-  interviewed for the decisions needed to write
-  `project/<project_name>/project_profile.md`.
+- Project profile creation is intentionally out of scope. If no active profile
+  exists, tell the user to run `initialize-project`.
 - The OS is Linux, macOS, or Windows.
 - `uv` is installed or can be installed with the OS-specific standalone
   installer. Treat `uv` as the first required dependency.
@@ -450,8 +393,8 @@ Report in this order:
 4. Active project profile status:
    - if exactly one profile exists, report its path and active calculation
      policy;
-   - if none exists and this is not environment-only initialization, ask the
-     Project Interview questions before ending;
+   - if none exists, report that project setup is pending and run
+     `initialize-project` next;
    - if multiple profiles exist, ask which project is active.
 5. Codex skill symlink dry-run/apply status for the remaining MESA skills.
 6. `vasp-job` uv-tool readiness when VASP workflows are in scope.

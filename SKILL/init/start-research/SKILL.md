@@ -1,16 +1,16 @@
 ---
 name: start-research
-description: Start a MESA scientific research run after initialize-mesa. Use when the user says start research, begin the project, run the MESA workflow, proceed autonomously, or provides research inputs such as prompts, reference papers, experimental-only papers, numeric data, collaborator proposals, existing manuscripts, reviewer comments, or gap/weakness-repair instructions and asks Codex to verify project profile, Codex goal mode, full-access filesystem/session state, runtime readiness, and the correct workflow entry point before executing the catalyst research loop.
+description: Start a MESA scientific research run after initialize-mesa and initialize-project. Use when the user says start research, begin the project, run the MESA workflow, proceed autonomously, or provides research inputs such as prompts, reference papers, experimental-only papers, numeric data, collaborator proposals, existing manuscripts, reviewer comments, or gap/weakness-repair instructions and asks Codex to verify project profile, Codex goal mode, full-access filesystem/session state, runtime readiness, and the correct workflow entry point before executing the catalyst research loop.
 ---
 
 # Start Research
 
 ## Overview
 
-Use this skill as the second gate after `initialize-mesa`. Initialization
-prepares the repository and project profile; this skill verifies that the
-current Codex session is allowed to run the research workflow and then enters
-the root `workflow.md` loop.
+Use this skill after `initialize-mesa` has prepared the repository and
+`initialize-project` has created or selected the project profile. This skill
+verifies that the current Codex session is allowed to run the research workflow
+and then enters the root `workflow.md` loop.
 
 ## Required Inputs
 
@@ -21,8 +21,8 @@ the root `workflow.md` loop.
   papers, experimental data, collaborator proposal, existing manuscript,
   reviewer comments, numeric tables, or gap/weakness-repair instructions.
 
-If the project profile is missing or incomplete, stop and run `initialize-mesa`
-or interview for the missing project decisions before starting research.
+If the project profile is missing or incomplete, stop and run
+`initialize-project` before starting research.
 
 ## Session Gate
 
@@ -44,7 +44,7 @@ Before executing research steps:
    Treat the profile as the active project policy source and root `workflow.md`
    as the reusable execution contract.
 4. Verify the project profile's calculation policy before calculation work. If
-   the policy is missing or ambiguous, return to `initialize-mesa` instead of
+   the policy is missing or ambiguous, return to `initialize-project` instead of
    assuming a backend.
 5. Run the relevant readiness checks for the profile's required runtimes:
 
@@ -54,6 +54,7 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py check mesa-general
 ```
 
 Use `initialize-mesa` for deeper setup, runtime plans, or dependency repair.
+Use `initialize-project` for missing or ambiguous project-profile decisions.
 Do not use this skill to install dependencies except when the user explicitly
 asks for setup changes.
 
@@ -72,7 +73,7 @@ project profile.
 ```
 
 If any template field is missing, do not create the goal. Ask for only the
-missing project-profile decision or return to `initialize-mesa`.
+missing project-profile decision or return to `initialize-project`.
 
 Keep `<calculation_policy_sentence>` short but explicit. Examples:
 

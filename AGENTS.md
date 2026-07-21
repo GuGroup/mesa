@@ -44,10 +44,11 @@ project-specific policy. Do not infer backend policy from AGENTS.md.
 
 # Research startup
 
-Use `initialize-mesa` for repository setup, dependency checks, skill symlink
-sync, and project-profile creation. Use `start-research` after initialization
-to verify the active project profile, goal mode, full-access session state, and
-workflow entry point before running the scientific research loop.
+Use `initialize-mesa` for repository setup, dependency checks, and skill
+symlink sync. Use `initialize-project` for project-profile creation. Use
+`start-research` after initialization to verify the active project profile,
+goal mode, full-access session state, and workflow entry point before running
+the scientific research loop.
 
 # Skill-first operating rules
 

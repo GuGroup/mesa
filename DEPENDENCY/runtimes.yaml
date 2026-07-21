@@ -241,4 +241,5 @@ skills:
   number-manuscript-equations: mesa-manuscript
   nature-reviewer: no-runtime
   initialize-mesa: no-runtime
+  initialize-project: no-runtime
   start-research: no-runtime

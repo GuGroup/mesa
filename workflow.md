@@ -34,7 +34,8 @@ that skill unless it would violate this root workflow.
 # Central Loop
 
 Start a research run through `start-research` after `initialize-mesa` has
-prepared the repository and active project profile. The start gate must confirm
+prepared the repository and `initialize-project` has created or selected the
+active project profile. The start gate must confirm
 the project profile, Codex goal mode, full-access session state, project
 calculation policy, and required runtime readiness before entering the loop
 below.
@@ -119,7 +120,7 @@ project-specific calculation policy.
 Before any calculation-domain step, read the active project profile and apply
 its backend, artifact-generation, scheduler, submission, acceptance, and
 cross-check rules. If the profile is missing or ambiguous, stop and return to
-`initialize-mesa` or `start-research` instead of assuming UMA, VASP, or a test
+`initialize-project` or `start-research` instead of assuming UMA, VASP, or a test
 policy.
 
 # Per-Strategy Execution Loop
