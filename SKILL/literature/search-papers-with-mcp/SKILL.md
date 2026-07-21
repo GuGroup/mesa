@@ -1,6 +1,6 @@
 ---
 name: search-papers-with-mcp
-description: "Search, screen, and recommend catalyst-domain academic papers using paper_search MCP metadata only, organized into three outputs: Domain Foundation Papers for material-domain knowledge, Computational Proof-Strategy Papers for recent DFT-backed evidence related to the target task, and optional Legacy Anchor Papers for older implicitly related foundations. Use when Codex needs to find and rank candidate catalyst papers for a user-specified target task and material domain, create a manual-download queue, report DOI/URL/PDF-link metadata, or hand off recommended domain/strategy/legacy papers before any PDF download or extraction. This skill must not download PDFs or decompose papers."
+description: "Search, screen, and recommend catalyst-domain academic papers using paper_search MCP metadata only, organized into three outputs: Background Papers for material-domain knowledge, Computational Proof-Strategy Papers for recent DFT-backed evidence related to the target task, and optional Legacy Anchor Papers for older implicitly related foundations. Use when Codex needs to find and rank candidate catalyst papers for a user-specified target task and material domain, create a manual-download queue, report DOI/URL/PDF-link metadata, or hand off recommended background/strategy/legacy papers before any PDF download or extraction. This skill must not download PDFs or decompose papers."
 ---
 
 For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
@@ -22,7 +22,7 @@ continue into `extract-strategy-paper` / `extract-general-insights-paper`.
 The largest permitted domain is **Catalyst**. Every search lane must stay
 connected to catalyst materials, catalytic reactions, active sites, catalytic
 performance, or catalyst design. Computational chemistry is mandatory for the
-proof-strategy lane, but not for the domain-foundation lane.
+proof-strategy lane, but not for the background lane.
 
 ## Required User Input
 
@@ -51,7 +51,7 @@ Prefer a defensible proof route over forced equivalence. The goal is to identify
 Produce a search handoff in these three sections. Run separate searches for
 each lane because each lane has a different purpose and evidence gate.
 
-### 1. Domain Foundation Papers
+### 1. Background Papers
 
 Purpose: build domain knowledge for the input `material domain`.
 
@@ -91,7 +91,7 @@ Example query shape: `<reaction> catalyst mechanism seminal`, `<reaction> DFT de
    - catalysis terms, such as catalyst, electrocatalyst, photocatalyst, thermocatalyst, active site, reaction pathway;
    - computational terms, such as DFT, density functional theory, first-principles, adsorption energy, free energy, Gibbs, barrier, electronic structure;
    - task terms, such as NO3RR, nitrate reduction, HER, ORR, CO2RR, NRR, OER, selectivity, activity, stability.
-3. Run a separate MCP search for Domain Foundation Papers using material-domain and catalyst terms. Bias toward reviews and broad overview papers. Do not require DFT here.
+3. Run a separate MCP search for Background Papers using material-domain and catalyst terms. Bias toward reviews and broad overview papers. Do not require DFT here.
 4. Run a separate MCP search for Computational Proof-Strategy Papers using target-task, material-system, catalyst, and computational terms. Require DFT or equivalent computational chemistry evidence before final inclusion.
 5. Run a separate legacy-anchor search when the target task suggests known mechanisms, descriptors, benchmark systems, or historical foundations. If no strong result appears, keep the section and state that no strong legacy anchor was found.
 6. Select targeted MCP sources before searching:
@@ -152,7 +152,7 @@ which PDFs to download manually and where to place them, for example:
 
 ```text
 project/<project_name>/literature/strategy_papers/
-project/<project_name>/literature/domain_papers/
+project/<project_name>/literature/background_papers/
 project/<project_name>/literature/legacy_papers/
 ```
 
@@ -178,7 +178,7 @@ evidence basis, and caveats.
 The manual-download queue must group recommended papers by destination folder:
 
 - `strategy_papers`: papers to decompose with `extract-strategy-paper`;
-- `domain_papers`: review/background papers for `extract-general-insights-paper`;
+- `background_papers`: review/background papers for `extract-general-insights-paper`;
 - `legacy_papers`: optional anchors for mechanism/descriptor context.
 
 ## Reporting Standard
@@ -192,7 +192,7 @@ Start the final answer with the resolved inputs:
 
 Then report the three output lanes in order:
 
-1. `Domain Foundation Papers`
+1. `Background Papers`
 2. `Computational Proof-Strategy Papers`
 3. `Legacy Anchor Papers`
 
@@ -205,7 +205,7 @@ For each recommended paper, include:
 - target reaction or catalytic task;
 - lane-specific reason for inclusion;
 - DFT/computational chemistry signal found in metadata/abstract, or
-  `not required for this lane` for Domain Foundation Papers;
+  `not required for this lane` for Background Papers;
 - recommendation rank and whether the paper is recommended for manual download;
 - source/database;
 - DOI, arXiv ID, PMID/PMCID, URL, and metadata `pdf_url` when present.

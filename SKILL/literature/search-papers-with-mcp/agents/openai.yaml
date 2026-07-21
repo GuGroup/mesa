@@ -1,7 +1,7 @@
 interface:
   display_name: "Search Papers With MCP"
   short_description: "Recommend catalyst papers without downloads"
-  default_prompt: "Use $search-papers-with-mcp with target task and material domain to search metadata only, recommend Domain Foundation, Computational Proof-Strategy, and Legacy Anchor papers, and create a manual-download queue."
+  default_prompt: "Use $search-papers-with-mcp with target task and material domain to search metadata only, recommend Background, Computational Proof-Strategy, and Legacy Anchor papers, and create a manual-download queue."
 
 dependencies:
   tools:
