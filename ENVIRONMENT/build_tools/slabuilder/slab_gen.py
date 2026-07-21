@@ -237,7 +237,7 @@ def _detect_layers(z_coords: np.ndarray, gap: float = 0.8) -> list[list[int]]:
     return layers
 
 
-DEFAULT_FIX_RATIO = 0.4
+DEFAULT_FIX_RATIO = 0.48
 
 
 def _fix_bottom_by_ratio(
@@ -1280,9 +1280,9 @@ def generate_slab(
 
     The unified API is target-based. It searches candidate layer counts and
     lateral supercells, then picks the combination closest to:
-        - atom count       ≈ ``target_n_atoms`` (default 60, tolerance 40)
+        - atom count       ≈ ``target_n_atoms`` (default 70, tolerance 40)
         - lateral a and b  ≈ ``target_lateral_size`` Å (default 7.5 Å; 2 Å soft scale)
-        - slab thickness   ≈ ``target_slab_thickness`` Å (default 6 Å, vacuum excluded)
+        - slab thickness   ≈ ``target_slab_thickness`` Å (default 8 Å, vacuum excluded)
 
     When ``backend`` is omitted, the backend is chosen from composition:
     oxide/nitride-like structures use surfaxe, everything else uses catkit.
@@ -1294,8 +1294,8 @@ def generate_slab(
         vacuum:                Total vacuum thickness in Å (default 15 Å).
         target_lateral_size:   Target lateral cell size in Å (default 7.5 Å).
         lateral_tolerance:     Lateral penalty scale in Å, not a hard bound (default 2 Å).
-        target_slab_thickness: Target slab thickness excluding vacuum (default 6 Å).
-        target_n_atoms:        Target total atom count for auto mode (default 60).
+        target_slab_thickness: Target slab thickness excluding vacuum (default 8 Å).
+        target_n_atoms:        Target total atom count for auto mode (default 70).
         atom_tolerance:        Atom-count deviation scale (default ±40 atoms).
         fix_layers:            Fix an explicit number of bottom atomic layers.
                                When given it takes precedence over fix_ratio and
@@ -1304,7 +1304,7 @@ def generate_slab(
                                fix from the bottom, measured in c-axis fractional
                                coordinates (tilt-safe, vacuum-independent). This is
                                the default fixing mode; None uses DEFAULT_FIX_RATIO
-                               (0.4). Ignored when fix_layers is given.
+                               (0.48). Ignored when fix_layers is given.
         backend:               Override backend: 'catkit' | 'pymatgen' | 'surfaxe'.
                                None auto-selects surfaxe for oxide/nitride-like
                                compositions and catkit otherwise.

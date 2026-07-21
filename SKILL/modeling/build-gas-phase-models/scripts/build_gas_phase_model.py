@@ -16,6 +16,9 @@ import numpy as np
 from ase import Atoms
 
 
+DEFAULT_CELL_SIZE: tuple[float, float, float] = (20.0, 20.0, 21.0)
+
+
 def json_default(value: Any) -> Any:
     if hasattr(value, "tolist"):
         return value.tolist()
@@ -94,18 +97,24 @@ def cell_lengths(atoms: Atoms) -> list[float]:
     return [float(x) for x in atoms.cell.lengths()]
 
 
-def center_in_cubic_box(atoms: Atoms, box_size: float) -> Atoms:
-    if box_size <= 0:
-        raise ValueError("--box-size must be positive.")  # noqa: GENERIC_ERR_OK
+def center_in_cell(atoms: Atoms, cell_size: tuple[float, float, float]) -> Atoms:
+    if any(length <= 0 for length in cell_size):
+        raise ValueError("--cell-size lengths must be positive.")  # noqa: GENERIC_ERR_OK
     result = atoms.copy()
     result.set_constraint()
-    result.set_cell([box_size, box_size, box_size])
+    result.set_cell(list(cell_size))
     result.set_pbc([True, True, True])
     result.center()
     return result
 
 
-def validate_gas_molecule(atoms: Atoms, *, min_distance: float, max_atoms: int, box_size: float) -> dict[str, Any]:
+def validate_gas_molecule(
+    atoms: Atoms,
+    *,
+    min_distance: float,
+    max_atoms: int,
+    cell_size: tuple[float, float, float],
+) -> dict[str, Any]:
     from slabuilder.structure_checks import check_min_distance
 
     checks: list[dict[str, Any]] = []
@@ -132,7 +141,8 @@ def validate_gas_molecule(atoms: Atoms, *, min_distance: float, max_atoms: int, 
     if len(atoms):
         mins = atoms.positions.min(axis=0)
         maxs = atoms.positions.max(axis=0)
-        margin = float(min(np.min(mins), box_size - np.max(maxs)))
+        cell_lengths_array = np.asarray(cell_size, dtype=float)
+        margin = float(np.min(np.minimum(mins, cell_lengths_array - maxs)))
         centered = bool(margin > 1.0)
     checks.append({
         "name": "box_margin",
@@ -202,18 +212,23 @@ def redirect_stdout_to_stderr() -> Any:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build neutral gas-phase molecule POSCAR files in a cubic box.",
+        description="Build neutral gas-phase molecule POSCAR files in an isolated orthorhombic cell.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--species", required=True, help="Label, alias, raw SMILES, smiles:<SMILES>, or supported name.")
     parser.add_argument("--label", help="Output label. Defaults to a safe name derived from --species.")
-    parser.add_argument("--box-size", type=float, default=15.0, help="Cubic box length in Angstrom.")
+    parser.add_argument("--cell-size", nargs=3, type=float, default=DEFAULT_CELL_SIZE, metavar=("A", "B", "C"), help="Orthorhombic cell lengths in Angstrom.")
+    parser.add_argument("--box-size", type=float, help="Backward-compatible cubic cell length in Angstrom; overrides --cell-size when set.")
     parser.add_argument("--spin-multiplicity", type=int, default=None, help="Gas-phase spin multiplicity (2S+1). Default: closed-shell singlet (1).")
     parser.add_argument("--min-distance", type=float, default=0.5, help="Minimum intramolecular distance threshold in Angstrom.")
     parser.add_argument("--max-atoms", type=int, default=80, help="Maximum atom count accepted by validation.")
     parser.add_argument("--write-extxyz", action="store_true", help="Also write an extxyz copy.")
     parser.add_argument("--outdir", default="gas_phase_outputs", help="Output directory for POSCAR and metadata.")
     args = parser.parse_args()
+    if args.box_size is not None and args.box_size <= 0:
+        parser.error("--box-size must be positive.")
+    if args.box_size is None and any(length <= 0 for length in args.cell_size):
+        parser.error("--cell-size lengths must be positive.")
 
     try:
         from slabuilder import build_adsorbate_atoms
@@ -228,15 +243,19 @@ def main() -> int:
     with redirect_stdout_to_stderr():
         source_atoms = build_adsorbate_atoms(args.species)
 
-    box_size = float(args.box_size)
-    atoms = center_in_cubic_box(source_atoms, box_size)
+    cell_size = (
+        (float(args.box_size), float(args.box_size), float(args.box_size))
+        if args.box_size is not None
+        else (float(args.cell_size[0]), float(args.cell_size[1]), float(args.cell_size[2]))
+    )
+    atoms = center_in_cell(source_atoms, cell_size)
     spin_reference = resolve_spin_multiplicity(args.spin_multiplicity)
     dipole = dipole_hint(atoms)
     validation = validate_gas_molecule(
         atoms,
         min_distance=args.min_distance,
         max_atoms=args.max_atoms,
-        box_size=box_size,
+        cell_size=cell_size,
     )
 
     label = safe_name(args.label or args.species.replace("smiles:", "smiles_"))
@@ -258,7 +277,8 @@ def main() -> int:
         "formula": atoms.get_chemical_formula(),
         "composition": composition_counts(atoms),
         "n_atoms": len(atoms),
-        "box_size": float(box_size),
+        "cell_size": [float(x) for x in cell_size],
+        "box_size": float(cell_size[0]) if len(set(cell_size)) == 1 else None,
         "cell_lengths": cell_lengths(atoms),
         "pbc": [bool(x) for x in atoms.get_pbc()],
         "centered_in_box": True,

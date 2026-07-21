@@ -69,7 +69,7 @@ profile:
 #     both actual calculation and screening use kspacing 0.30 (screening does not
 #     coarsen k-points). Use an explicit vasp.kpts only when a fixed mesh is
 #     needed (then omit kspacing/kgamma for that job).
-#     gas-phase molecules in 15 Å boxes -> vasp.kpts [1,1,1] and
+#     gas-phase molecules in 20 20 21 Å cells -> vasp.kpts [1,1,1] and
 #       vasp.gamma true; omit kspacing/kgamma.
 #
 # Gas-phase molecule relax/static/freq policy:
