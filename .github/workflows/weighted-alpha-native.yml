@@ -63,7 +63,7 @@ jobs:
       - name: Resolve pinned private runtime
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.MESA_WEIGHTED_ALPHA_RELEASE_TOKEN || github.token }}
           MESA_WEIGHTED_ALPHA_CACHE: ${{ runner.temp }}\mesa-weighted-alpha-cache
         run: |
           $modulePath = (Resolve-Path "ENVIRONMENT/build_tools/slabuilder/weighted_alpha_runtime.py").Path
