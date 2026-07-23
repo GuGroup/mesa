@@ -1,0 +1,19 @@
+name: Weighted Alpha Native Runtime
+
+# GitHub accepts workflow_dispatch only when this path exists on the default
+# branch. Dispatching a reviewed feature ref then executes that ref's full
+# workflow definition. This bootstrap never downloads or runs the private
+# runtime by itself.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain bootstrap contract
+        run: |
+          echo "Dispatch a reviewed ref that contains the full trusted private-runtime workflow."
