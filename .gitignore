@@ -60,8 +60,17 @@ htmlcov/
 *.sqlite3
 *.db
 data/
+!ENVIRONMENT/build_tools/slabuilder/data/
+ENVIRONMENT/build_tools/slabuilder/data/*
+!ENVIRONMENT/build_tools/slabuilder/data/weighted_alpha_releases.json
+ENVIRONMENT/build_tools/slabuilder/**/*.exe
+ENVIRONMENT/build_tools/slabuilder/**/*.dll
+ENVIRONMENT/build_tools/slabuilder/**/*.pdb
+ENVIRONMENT/build_tools/slabuilder/**/*.obj
+ENVIRONMENT/build_tools/slabuilder/**/*.lib
 tmp/
 temp/
+
 project/
 
 # Jupyter

@@ -2,13 +2,12 @@
 adsorption.py — Tool 4: Adsorption site identification and adsorbate placement.
 
 Strategy:
-    1. Identify adsorption sites with CatKit AdsorptionSites
-       (topology-aware Voronoi + Delaunay), pymatgen AdsorbateSiteFinder,
-       and ACAT when the slab chemistry is compatible with ACAT's adsorbate
-       element conventions.
+    1. Identify adsorption sites with the requested backend: legacy
+       CatKit/pymatgen/ACAT/AutoAdsorbate or strict weighted-alpha geometry.
     2. Merge nearby candidates and retain per-site source metadata.
     3. Build an oriented adsorbate geometry.
-    4. Place the adsorbate via direct ASE placement.
+    4. Place through legacy ASE height placement or weighted-alpha's validated
+       contact-anchor normal/radius contract.
     5. Apply site priority rules from config.SITE_PRIORITY.
 
 Supported adsorbates:
@@ -20,6 +19,8 @@ from __future__ import annotations
 
 import json
 import contextlib
+import math
+from pathlib import Path
 import io
 import warnings
 from dataclasses import dataclass, field, replace
@@ -29,6 +30,7 @@ import numpy as np
 from ase import Atoms
 from ase.build import molecule as ase_molecule
 from ase.constraints import FixAtoms
+from ase.geometry import find_mic
 
 from slabuilder.compat import apply_numpy_compat
 
@@ -57,7 +59,7 @@ SiteType = Literal["top", "bridge", "fcc_hollow", "hcp_hollow", "hollow"]
 FIXED_SLAB_TAG = 0
 RELAXABLE_SLAB_TAG = 1
 ADSORBATE_TAG = 2
-SITE_SOURCE_ORDER = ("catkit", "pymatgen", "acat", "autoadsorbate")
+SITE_SOURCE_ORDER = ("catkit", "pymatgen", "acat", "weighted_alpha", "autoadsorbate")
 ACAT_DEFAULT_ADSORBATE_ELEMENTS = frozenset({"H", "C", "N", "O", "F", "S", "Cl", "X"})
 
 
@@ -74,7 +76,8 @@ class AdsorptionSite:
         position:          Cartesian coordinates (x, y, z) in Å.
         surface_atom_idx:  Index/indices of underlying surface atoms.
         priority:          Lower = higher priority (from SITE_PRIORITY rules).
-        placement_method:  Final placement method. Currently always 'ase_manual'.
+        placement_method:  Final placement method (`ase_manual` or
+                           `weighted_alpha_contact_anchor`).
         catkit_index:      CatKit internal site index (for Builder.add_adsorbate).
         sources:           Site detectors that found this site.
         validation_score:  Cross-backend confidence score in [0, 1].
@@ -89,6 +92,7 @@ class AdsorptionSite:
     sources: list[str] = field(default_factory=list)
     validation_score: float = 0.0
     validation_notes: list[str] = field(default_factory=list)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -182,10 +186,60 @@ def _classify_threefold_hollow(
 
     return "hcp_hollow" if min_dist <= xy_tolerance else "fcc_hollow"
 
+
+def _identify_sites_weighted_alpha(
+    slab_atoms: Atoms,
+    adsorbate: str,
+    *,
+    config: object | None = None,
+) -> list[AdsorptionSite]:
+    """Adapt strict C++ geometry candidates to MESA adsorption-site records."""
+    from slabuilder.weighted_alpha_backend import run_weighted_alpha
+
+    run = run_weighted_alpha(slab_atoms, config)
+    sites: list[AdsorptionSite] = []
+    for candidate in run.candidates:
+        if candidate.site_kind == "hollow" and candidate.coordination == 3:
+            site_type = (
+                "hcp_hollow" if candidate.hollow_subtype == "hcp" else "fcc_hollow"
+            )
+        elif candidate.site_kind == "hollow":
+            site_type = "hollow"
+        else:
+            site_type = candidate.site_kind
+        weighted_metadata = dict(candidate.metadata)
+        weighted_metadata.update(
+            {
+                "engine_node_id": candidate.engine_node_id,
+                "coordination": int(candidate.coordination),
+                "hollow_subtype": candidate.hollow_subtype,
+                "normal": [float(value) for value in candidate.normal],
+                "run": dict(run.provenance),
+            }
+        )
+        sites.append(
+            AdsorptionSite(
+                site_type=site_type,
+                position=np.asarray(candidate.position, dtype=float),
+                surface_atom_idx=[int(index) for index in candidate.source_atom_indices],
+                priority=_get_priority_for_site(adsorbate, site_type),
+                placement_method="weighted_alpha_contact_anchor",
+                catkit_index=-1,
+                sources=["weighted_alpha"],
+                validation_score=0.0,
+                validation_notes=["weighted_alpha_only_not_cross_backend_scored"],
+                metadata={"weighted_alpha": weighted_metadata},
+            )
+        )
+    return sites
+
+
 def identify_adsorption_sites(
     slab_atoms: Atoms,
     adsorbate: str,
     backend: str = "auto",
+    *,
+    weighted_alpha_config: object | None = None,
 ) -> list[AdsorptionSite]:
     """Identify adsorption sites on a slab surface.
 
@@ -197,12 +251,24 @@ def identify_adsorption_sites(
     Args:
         slab_atoms:  ASE Atoms object of the slab (with FixAtoms constraint).
         adsorbate:   Adsorbate formula string (e.g., "CO", "O", "H2O").
-        backend:     "auto", "acat", "catkit", or "pymatgen".
+        backend:     "auto", "acat", "catkit", "pymatgen", or explicit
+                     fail-closed "weighted_alpha".
 
     Returns:
         List of AdsorptionSite objects, sorted by priority (ascending).
     """
     backend_name = str(backend or "auto").strip().lower()
+    if backend_name == "weighted_alpha":
+        sites = _identify_sites_weighted_alpha(
+            slab_atoms, adsorbate, config=weighted_alpha_config
+        )
+        if not sites:
+            from slabuilder.weighted_alpha_backend import WeightedAlphaError
+
+            raise WeightedAlphaError("weighted-alpha produced no accepted adsorption sites")
+        sites.sort(key=lambda site: _site_sort_key(slab_atoms, site))
+        return sites
+
     specific = {
         "acat": ("ACAT", _identify_sites_acat),
         "catkit": ("CatKit", _identify_sites_catkit),
@@ -798,11 +864,13 @@ def _source_site_metadata(site: AdsorptionSite, placed_site: AdsorptionSite | No
         "validation_notes": list(site.validation_notes),
         "priority": int(site.priority),
     }
+    if site.metadata:
+        metadata["metadata"] = _safe_jsonable(site.metadata)
     if placed_site is not None:
         metadata["placed_position"] = [
             float(v) for v in np.array(placed_site.position, dtype=float).tolist()
         ]
-    return metadata
+    return _safe_jsonable(metadata)
 
 
 def _annotate_adsorption_metadata(
@@ -817,7 +885,7 @@ def _annotate_adsorption_metadata(
     adsorbate_indices = list(range(n_slab, len(atoms)))
     anchor_index = adsorbate_indices[0] if adsorbate_indices else None
     source_site = _source_site_metadata(site, placed_site=placed_site)
-    atoms.info["source_site_json"] = json.dumps(source_site, sort_keys=True)
+    atoms.info["source_site_json"] = json.dumps(source_site, sort_keys=True, allow_nan=False)
     atoms.info["source_site_type"] = site.site_type
     atoms.info["source_site_position_json"] = json.dumps(source_site["position"])
     atoms.info["source_site_surface_atom_indices_json"] = json.dumps(source_site["surface_atom_indices"])
@@ -1099,12 +1167,22 @@ def _safe_jsonable(value):
     if isinstance(value, np.ndarray):
         return [_safe_jsonable(v) for v in value.tolist()]
     if isinstance(value, np.generic):
-        return value.item()
+        return _safe_jsonable(value.item())
     if isinstance(value, dict):
         return {str(k): _safe_jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_safe_jsonable(v) for v in value]
-    return value
+    if isinstance(value, (set, frozenset)):
+        return sorted((_safe_jsonable(v) for v in value), key=lambda item: repr(item))
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("metadata contains a nonfinite number")
+        return value
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    return str(value)
 
 
 def _prepare_autoadsorbate_surface_candidate(
@@ -1949,12 +2027,127 @@ def add_adsorbate_to_slab(
     Returns:
         New ASE Atoms object with adsorbate placed (constraints preserved).
     """
+    if site.placement_method == "weighted_alpha_contact_anchor" or "weighted_alpha" in site.sources:
+        return _place_with_weighted_alpha_contact_anchor(slab_atoms, adsorbate, site)
+
     h = height if height is not None else DEFAULT_BOND_HEIGHT.get(adsorbate, 2.0)
-    # Always use ASE placement: site position is explicitly wrapped to [0,1)
-    # before placement, so adsorbate lands inside the cell regardless of which
-    # backend generated the slab. CatKit Builder tilts multi-atom adsorbates
-    # which can place non-binding atoms outside the cell for boundary sites.
+    # Legacy backends retain the existing ASE placement path.
     return _place_with_ase(slab_atoms, adsorbate, site, h)
+
+
+def _weighted_alpha_contact_geometry(
+    slab_atoms: Atoms,
+    site: AdsorptionSite,
+) -> tuple[np.ndarray, np.ndarray, float, np.ndarray]:
+    """Return anchor, unit normal, contact radius, and wrapped binding target."""
+    weighted = site.metadata.get("weighted_alpha")
+    if not isinstance(weighted, dict):
+        raise ValueError("weighted-alpha site is missing weighted_alpha metadata")
+    placement = weighted.get("placement")
+    if not isinstance(placement, dict):
+        raise ValueError("weighted-alpha site is missing contact-anchor placement metadata")
+    try:
+        anchor = np.asarray(placement["anchor_position"], dtype=float)
+        normal = np.asarray(placement["direction"], dtype=float)
+        radius_value = placement["precursor_radius"]
+        if isinstance(radius_value, bool):
+            raise TypeError("boolean radius")
+        radius = float(radius_value)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("invalid weighted-alpha contact-anchor placement metadata") from exc
+    if anchor.shape != (3,) or normal.shape != (3,):
+        raise ValueError("weighted-alpha contact anchor and normal must be 3-vectors")
+    if not np.all(np.isfinite(anchor)) or not np.all(np.isfinite(normal)):
+        raise ValueError("weighted-alpha contact anchor and normal must be finite")
+    normal_norm = float(np.linalg.norm(normal))
+    if normal_norm <= 1.0e-12 or not np.isfinite(radius) or radius <= 0.0:
+        raise ValueError("weighted-alpha normal must be nonzero and contact radius must be positive")
+    normal = normal / normal_norm
+    contact_target = anchor + normal * radius
+    cell = np.asarray(slab_atoms.cell.array, dtype=float)
+    try:
+        target_frac = np.linalg.solve(cell.T, contact_target)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("slab cell is singular for weighted-alpha placement") from exc
+    target_frac[:2] %= 1.0
+    return anchor, normal, radius, target_frac @ cell
+
+
+def _orient_adsorbate_to_contact(
+    ads_atoms: Atoms,
+    normal: np.ndarray,
+    binding_target: np.ndarray,
+) -> Atoms:
+    """Rigidly map the builder +z axis to normal and place binding atom zero."""
+    oriented = ads_atoms.copy()
+    relative = np.asarray(oriented.positions, dtype=float) - np.asarray(
+        oriented.positions[0], dtype=float
+    )
+    z_axis = np.asarray([0.0, 0.0, 1.0])
+    cosine = float(np.clip(np.dot(z_axis, normal), -1.0, 1.0))
+    if cosine >= 1.0 - 1.0e-12:
+        rotation = np.eye(3)
+    elif cosine <= -1.0 + 1.0e-12:
+        rotation = np.diag([1.0, -1.0, -1.0])
+    else:
+        cross = np.cross(z_axis, normal)
+        skew = np.asarray(
+            [
+                [0.0, -cross[2], cross[1]],
+                [cross[2], 0.0, -cross[0]],
+                [-cross[1], cross[0], 0.0],
+            ]
+        )
+        sine_squared = float(np.dot(cross, cross))
+        rotation = np.eye(3) + skew + (skew @ skew) * (
+            (1.0 - cosine) / sine_squared
+        )
+    oriented.positions = relative @ rotation.T + binding_target
+    return oriented
+
+
+def _place_with_weighted_alpha_contact_anchor(
+    slab_atoms: Atoms,
+    adsorbate: str,
+    site: AdsorptionSite,
+) -> Atoms:
+    """Place the binding atom at contact_point + normal * contact radius."""
+    anchor, normal, radius, wrapped_target = _weighted_alpha_contact_geometry(
+        slab_atoms, site
+    )
+    slab_copy = slab_atoms.copy()
+    slab_copy.set_pbc([True, True, False])
+    slab_copy.wrap()
+    old_constraints = slab_atoms.constraints
+    ads_atoms = _build_adsorbate_atoms(adsorbate)
+    oriented = _orient_adsorbate_to_contact(ads_atoms, normal, wrapped_target)
+    slab_copy += oriented
+
+    slab_copy.set_constraint(old_constraints)
+    _preserve_slab_magmoms_zero_adsorbate(slab_copy, slab_atoms, len(slab_atoms))
+    _copy_adsorbate_build_info(slab_copy, ads_atoms)
+    tag_slab_and_adsorbate(slab_copy, len(slab_atoms), site.surface_atom_idx)
+    _annotate_adsorption_metadata(
+        slab_copy,
+        n_slab=len(slab_atoms),
+        adsorbate=adsorbate,
+        site=site,
+    )
+    slab_copy = _wrap_adsorbate_into_cell(slab_copy, len(slab_atoms))
+    slab_copy.info["weighted_alpha_contact_anchor_json"] = json.dumps(
+        {
+            "anchor_position": [float(value) for value in anchor],
+            "normal": [float(value) for value in normal],
+            "contact_anchor_radius": radius,
+            "binding_position": [
+                float(value) for value in slab_copy.positions[len(slab_atoms)]
+            ],
+        },
+        sort_keys=True,
+    )
+    slab_copy = _annotate_binding_contact(slab_copy, len(slab_atoms), adsorbate)
+    slab_copy = _annotate_acat_coverage(slab_copy, len(slab_atoms))
+    return _check_post_placement_distance(slab_copy)
 
 
 def _place_with_catkit(
@@ -2109,6 +2302,8 @@ def generate_all_adsorption_structures(
     max_sites: int | None = None,
     height: float | None = None,
     backend: str = "auto",
+    *,
+    weighted_alpha_config: object | None = None,
 ) -> list[tuple[AdsorptionSite, Atoms]]:
     """Generate structures with adsorbate placed at all unique sites.
 
@@ -2150,7 +2345,12 @@ def generate_all_adsorption_structures(
     if remaining == 0:
         return results
 
-    sites = identify_adsorption_sites(slab_atoms, adsorbate, backend=backend_name)
+    sites = identify_adsorption_sites(
+        slab_atoms,
+        adsorbate,
+        backend=backend_name,
+        weighted_alpha_config=weighted_alpha_config,
+    )
 
     if results:
         auto_sites = [site for site, _ in results]
@@ -2170,6 +2370,8 @@ def generate_all_adsorption_structures(
             struct = add_adsorbate_to_slab(slab_atoms, adsorbate, site, height=height)
             results.append((site, struct))
         except Exception as exc:
+            if backend_name == "weighted_alpha":
+                raise
             warnings.warn(
                 f"Failed to place {adsorbate} at {site.site_type} site: {exc}",
                 stacklevel=2,
@@ -2196,6 +2398,19 @@ def _position_xy_distance(atoms: Atoms, left: np.ndarray, right: np.ndarray) -> 
     return float(np.linalg.norm(vec[:2]))
 
 
+def _weighted_position_xy_distance(
+    atoms: Atoms, left: np.ndarray, right: np.ndarray
+) -> float:
+    """True closest-lattice-vector lateral MIC for explicit weighted-alpha."""
+    delta = np.asarray(left, dtype=float) - np.asarray(right, dtype=float)
+    mic, _ = find_mic(
+        delta,
+        cell=np.asarray(atoms.cell.array, dtype=float),
+        pbc=np.asarray(atoms.pbc, dtype=bool),
+    )
+    return float(np.linalg.norm(np.asarray(mic, dtype=float)[:2]))
+
+
 def _site_type_matches(requested: str | None, actual: str) -> bool:
     if requested is None or requested == "":
         return True
@@ -2217,10 +2432,16 @@ def _select_multi_adsorption_site(
     spec: AdsorbatePlacementSpec,
     *,
     backend: str,
+    weighted_alpha_config: object | None,
     selected_positions: list[np.ndarray],
     min_site_separation: float,
 ) -> tuple[int, AdsorptionSite]:
-    sites = identify_adsorption_sites(slab_atoms, spec.adsorbate, backend=backend)
+    sites = identify_adsorption_sites(
+        slab_atoms,
+        spec.adsorbate,
+        backend=backend,
+        weighted_alpha_config=weighted_alpha_config,
+    )
     matching = [
         (index, site)
         for index, site in enumerate(sites)
@@ -2230,11 +2451,16 @@ def _select_multi_adsorption_site(
         requested = spec.site_type or "any"
         raise ValueError(f"No {requested!r} site found for adsorbate {spec.adsorbate!r}.")
 
+    distance_fn = (
+        _weighted_position_xy_distance
+        if str(backend).strip().lower() == "weighted_alpha"
+        else _position_xy_distance
+    )
     far_enough: list[tuple[int, AdsorptionSite]] = []
     for index, site in matching:
         position = _site_position_wrapped_cart(slab_atoms, site)
         if all(
-            _position_xy_distance(slab_atoms, position, occupied) >= min_site_separation
+            distance_fn(slab_atoms, position, occupied) >= min_site_separation
             for occupied in selected_positions
         ):
             far_enough.append((index, site))
@@ -2296,6 +2522,7 @@ def add_multiple_adsorbates_to_slab(
     placements: list[AdsorbatePlacementSpec],
     *,
     backend: str = "auto",
+    weighted_alpha_config: object | None = None,
     min_site_separation: float = 1.8,
 ) -> Atoms:
     """Place several adsorbates on distinct sites of the same clean slab.
@@ -2322,6 +2549,7 @@ def add_multiple_adsorbates_to_slab(
             slab_atoms,
             spec,
             backend=backend,
+            weighted_alpha_config=weighted_alpha_config,
             selected_positions=selected_positions,
             min_site_separation=min_site_separation,
         )
@@ -2331,48 +2559,89 @@ def add_multiple_adsorbates_to_slab(
 
         ads_atoms = _build_adsorbate_atoms(spec.adsorbate)
         _copy_adsorbate_build_info(combined, ads_atoms)
-        height = spec.height if spec.height is not None else DEFAULT_BOND_HEIGHT.get(spec.adsorbate, 2.0)
         start = len(combined)
-        ads_copy = ads_atoms.copy()
-        ads_copy.positions = ads_copy.positions + np.array(
-            [float(site_cart[0]), float(site_cart[1]), float(site_cart[2]) + float(height)]
+        weighted_contact = (
+            site.placement_method == "weighted_alpha_contact_anchor"
+            or "weighted_alpha" in site.sources
         )
+        contact_record: dict[str, object] | None = None
+        if weighted_contact:
+            anchor, normal, radius, binding_target = _weighted_alpha_contact_geometry(
+                slab_atoms, site
+            )
+            ads_copy = _orient_adsorbate_to_contact(
+                ads_atoms, normal, binding_target
+            )
+            contact_record = {
+                "anchor_position": [float(value) for value in anchor],
+                "normal": [float(value) for value in normal],
+                "contact_anchor_radius": radius,
+                "binding_position": [float(value) for value in binding_target],
+            }
+        else:
+            height = (
+                spec.height
+                if spec.height is not None
+                else DEFAULT_BOND_HEIGHT.get(spec.adsorbate, 2.0)
+            )
+            ads_copy = ads_atoms.copy()
+            ads_copy.positions = ads_copy.positions + np.array(
+                [
+                    float(site_cart[0]),
+                    float(site_cart[1]),
+                    float(site_cart[2]) + float(height),
+                ]
+            )
         combined += ads_copy
         atom_indices = list(range(start, len(combined)))
         anchor_index = atom_indices[0]
-        records.append(
-            {
-                "placement_index": int(placement_index),
-                "adsorbate": spec.adsorbate,
-                "requested_site_type": spec.site_type,
-                "requested_site_ordinal": int(spec.site_ordinal),
-                "detected_site_index": int(detected_site_index),
-                "site": _source_site_metadata(site),
-                "height": float(height),
-                "atom_indices": atom_indices,
-                "anchor_index": int(anchor_index),
-                "formula": combined[atom_indices].get_chemical_formula(),
-                "builder": ads_atoms.info.get("adsorbate_builder"),
-                "smiles": ads_atoms.info.get("adsorbate_smiles"),
-                "smiles_source": ads_atoms.info.get("adsorbate_smiles_source"),
-            }
-        )
+        record: dict[str, object] = {
+            "placement_index": int(placement_index),
+            "adsorbate": spec.adsorbate,
+            "requested_site_type": spec.site_type,
+            "requested_site_ordinal": int(spec.site_ordinal),
+            "detected_site_index": int(detected_site_index),
+            "site": _source_site_metadata(site),
+            "atom_indices": atom_indices,
+            "anchor_index": int(anchor_index),
+            "formula": combined[atom_indices].get_chemical_formula(),
+            "builder": ads_atoms.info.get("adsorbate_builder"),
+            "smiles": ads_atoms.info.get("adsorbate_smiles"),
+            "smiles_source": ads_atoms.info.get("adsorbate_smiles_source"),
+        }
+        if contact_record is not None:
+            record["placement_method"] = "weighted_alpha_contact_anchor"
+            record["contact_anchor"] = contact_record
+        else:
+            record["height"] = float(height)
+        records.append(record)
 
     combined.set_constraint(old_constraints)
     _normalize_ase_adsorbate_info(combined)
     _preserve_slab_magmoms_zero_adsorbate(combined, slab_atoms, n_slab)
     tag_slab_and_adsorbate(combined, n_slab, site_indices)
+    combined = _wrap_adsorbate_into_cell(combined, n_slab)
     combined.info["multi_adsorbate_count"] = len(records)
     for record in records:
+        anchor_index = int(record["anchor_index"])
+        contact_anchor = record.get("contact_anchor")
+        if isinstance(contact_anchor, dict):
+            contact_anchor["binding_position"] = [
+                float(value) for value in combined.positions[anchor_index]
+            ]
         record["binding_contact"] = _multi_binding_contact_record(
             combined,
             n_slab=n_slab,
-            adsorbate=record["adsorbate"],
-            atom_indices=record["atom_indices"],
-            anchor_index=record["anchor_index"],
+            adsorbate=str(record["adsorbate"]),
+            atom_indices=[int(value) for value in record["atom_indices"]],
+            anchor_index=anchor_index,
         )
-    combined.info["multi_adsorbate_metadata_json"] = json.dumps(records, sort_keys=True, default=str)
-    combined.info["adsorbate_atom_indices_json"] = json.dumps(list(range(n_slab, len(combined))))
+    combined.info["multi_adsorbate_metadata_json"] = json.dumps(
+        records, sort_keys=True, default=str
+    )
+    combined.info["adsorbate_atom_indices_json"] = json.dumps(
+        list(range(n_slab, len(combined)))
+    )
     combined.info["adsorbate_metadata_json"] = json.dumps(
         {
             "atom_indices": list(range(n_slab, len(combined))),
@@ -2383,6 +2652,5 @@ def add_multiple_adsorbates_to_slab(
         sort_keys=True,
         default=str,
     )
-    combined = _wrap_adsorbate_into_cell(combined, n_slab)
     combined = _annotate_acat_coverage(combined, n_slab)
     return _check_post_placement_distance(combined)

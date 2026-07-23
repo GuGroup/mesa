@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "default_release": "weighted-alpha-binary-v0.1.0-alpha.1",
+  "releases": {
+    "weighted-alpha-binary-v0.1.0-alpha.1": {
+      "mesa_base_commit": "dca2f5c54f73229af71711b4d580a065f1021530",
+      "private_source_manifest_sha256": "bde0eeaddc93b42d0cdd4a2a77824b8715418c20637db56e46820e7a160302d2",
+      "platforms": {
+        "windows-x86_64": {
+          "asset_api_url": "https://api.github.com/repos/GuGroup/mesa/releases/assets/487574946",
+          "asset_name": "weighted-alpha-native-windows-x86_64-v0.1.0-alpha.1.zip",
+          "asset_size": 1987284,
+          "archive_sha256": "76fde0666e297fed95f41dee3fe73449b8b960eeb299572927b813929978b7a1",
+          "archive_root": "weighted-alpha-native-windows-x86_64-v0.1.0-alpha.1",
+          "runtime_manifest": "runtime_manifest.json",
+          "runtime_manifest_sha256": "b541005ee32e17dade9aef0107a59d2511d1513fae1d32e3127699e883a8fd42",
+          "executable": "weighted_alpha_complex.exe",
+          "executable_sha256": "d9350c4c1132fa25b34c8ae3d72870f1c6eb51df84704936290cec82508be252",
+          "radius_table": "atomic_radii_UFF.rad",
+          "radius_table_sha256": "a021031719abd9be5dde78103d46c1c9e090be3c139a68dc069134294ec95eff"
+        }
+      }
+    }
+  }
+}
