@@ -7,6 +7,7 @@ that an LLM can reason over without receiving a raw coordinate dump.
 from __future__ import annotations
 
 from collections import Counter
+import copy
 import json
 from typing import Any
 
@@ -312,21 +313,28 @@ def _slab_atom_count_for_sites(atoms: Atoms, record: dict[str, Any]) -> tuple[in
     return len(atoms), warnings
 
 
-def _slab_atoms_for_sites(atoms: Atoms, record: dict[str, Any]) -> tuple[Atoms, list[str]]:
+def _slab_atoms_for_sites(
+    atoms: Atoms,
+    record: dict[str, Any],
+    *,
+    preserve_pbc: bool = False,
+) -> tuple[Atoms, list[str], list[int]]:
     warnings: list[str] = []
     raw_indices = record.get("slab_atom_indices")
     if isinstance(raw_indices, (list, tuple)):
         indices = _valid_indices(atoms, raw_indices)
         if indices:
             slab = atoms[indices].copy()
-            slab.set_pbc([True, True, False])
-            return slab, warnings
+            if not preserve_pbc:
+                slab.set_pbc([True, True, False])
+            return slab, warnings, indices
         warnings.append("invalid slab_atom_indices metadata ignored")
     n_slab, count_warnings = _slab_atom_count_for_sites(atoms, record)
     warnings.extend(count_warnings)
     slab = atoms[:n_slab].copy()
-    slab.set_pbc([True, True, False])
-    return slab, warnings
+    if not preserve_pbc:
+        slab.set_pbc([True, True, False])
+    return slab, warnings, list(range(n_slab))
 
 
 def _normalize_site(site: dict[str, Any], index: int) -> dict[str, Any]:
@@ -339,6 +347,61 @@ def _normalize_site(site: dict[str, Any], index: int) -> dict[str, Any]:
     if "validation_score" not in normalized:
         normalized["validation_score"] = 0.0
     return normalized
+
+
+def _remap_weighted_site_map_indices(
+    site_map: dict[str, Any],
+    subset_to_original: list[int],
+) -> dict[str, Any]:
+    remapped = copy.deepcopy(site_map)
+
+    def original_index(local_index: Any) -> int:
+        if isinstance(local_index, bool) or not isinstance(local_index, int):
+            raise ValueError(f"weighted-alpha site index is not an int: {local_index!r}")
+        if not 0 <= local_index < len(subset_to_original):
+            raise ValueError(f"weighted-alpha site index is out of subset range: {local_index}")
+        return int(subset_to_original[local_index])
+
+    for site in remapped.get("sites") or []:
+        if not isinstance(site, dict):
+            continue
+        site["surface_atom_indices"] = [
+            original_index(index) for index in site.get("surface_atom_indices") or []
+        ]
+        metadata = site.get("metadata")
+        weighted = metadata.get("weighted_alpha") if isinstance(metadata, dict) else None
+        if not isinstance(weighted, dict):
+            continue
+        image_containers = [weighted]
+        candidate = weighted.get("candidate")
+        if isinstance(candidate, dict):
+            image_containers.append(candidate)
+        for container in image_containers:
+            for image in container.get("source_atom_images") or []:
+                if isinstance(image, dict) and "ase_atom_index" in image:
+                    image["ase_atom_index"] = original_index(image["ase_atom_index"])
+        run = weighted.get("run")
+        if isinstance(run, dict):
+            local_engine_map = run.get("engine_to_ase_index")
+            if isinstance(local_engine_map, list):
+                run["engine_to_original_ase_index"] = [
+                    original_index(index) for index in local_engine_map
+                ]
+            run["subset_to_original_ase_index"] = list(subset_to_original)
+    top_metadata = remapped.get("metadata")
+    top_run = (
+        top_metadata.get("weighted_alpha_run")
+        if isinstance(top_metadata, dict)
+        else None
+    )
+    if isinstance(top_run, dict):
+        local_engine_map = top_run.get("engine_to_ase_index")
+        if isinstance(local_engine_map, list):
+            top_run["engine_to_original_ase_index"] = [
+                original_index(index) for index in local_engine_map
+            ]
+        top_run["subset_to_original_ase_index"] = list(subset_to_original)
+    return remapped
 
 
 def _filter_site_neighbors(
@@ -375,6 +438,7 @@ def _nearest_site(
     if position is None or not sites:
         return None
     best: tuple[float, dict[str, Any]] | None = None
+
     for site in sites:
         site_pos = _site_position(site)
         if site_pos is None:
@@ -522,6 +586,7 @@ def analyze_surface_sites_packet(
     neighbor_shell: int = 2,
     max_sites: int = 120,
     max_edges: int = 240,
+    weighted_alpha_config: object | None = None,
 ) -> dict[str, Any]:
     """Return a read-only surface-site graph packet for a saved structure."""
     record = record or {}
@@ -530,11 +595,27 @@ def analyze_surface_sites_packet(
 
     source = "rebuilt"
     raw_site_map = record.get("site_map") or _json_info(atoms, "site_map_json", default=None)
-    if isinstance(raw_site_map, dict) and isinstance(raw_site_map.get("sites"), list) and raw_site_map.get("sites"):
+    subset_to_original = list(range(len(atoms)))
+    raw_subset = record.get("slab_atom_indices")
+    if isinstance(raw_subset, (list, tuple)):
+        valid_subset = _valid_indices(atoms, raw_subset)
+        if valid_subset:
+            subset_to_original = valid_subset
+    cached_map_allowed = backend_name != "weighted_alpha"
+    if (
+        cached_map_allowed
+        and isinstance(raw_site_map, dict)
+        and isinstance(raw_site_map.get("sites"), list)
+        and raw_site_map.get("sites")
+    ):
         source = "metadata"
         site_map = raw_site_map
     else:
-        slab, slab_warnings = _slab_atoms_for_sites(atoms, record)
+        slab, slab_warnings, subset_to_original = _slab_atoms_for_sites(
+            atoms,
+            record,
+            preserve_pbc=backend_name == "weighted_alpha",
+        )
         warnings.extend(slab_warnings)
         try:
             site_map = site_map_to_jsonable(
@@ -543,12 +624,18 @@ def analyze_surface_sites_packet(
                     target_adsorbate=target_adsorbate or "H",
                     max_site_distance=max_site_distance,
                     backend=backend_name,
+                    weighted_alpha_config=weighted_alpha_config,
                 )
             )
+            if backend_name == "weighted_alpha":
+                site_map = _remap_weighted_site_map_indices(
+                    site_map, subset_to_original
+                )
         except Exception as exc:
+            if backend_name == "weighted_alpha":
+                raise
             site_map = {"sites": [], "neighbors": []}
             warnings.append(f"site detection failed: {exc}")
-
     sites = [
         _normalize_site(site, i)
         for i, site in enumerate(site_map.get("sites") or [])
@@ -565,7 +652,7 @@ def analyze_surface_sites_packet(
         current_site = _nearest_site(atoms, sites, _anchor_position_for_sites(atoms, record))
 
     site_type_counts = Counter(str(site.get("site_type") or "unknown") for site in sites)
-    return {
+    result = {
         "structure_id": structure_id or record.get("id") or record.get("structure_id"),
         "source": source,
         "backend": "metadata" if source == "metadata" else backend_name,
@@ -584,6 +671,10 @@ def analyze_surface_sites_packet(
         "neighbor_shell": int(neighbor_shell),
         "warnings": warnings,
     }
+    if backend_name == "weighted_alpha":
+        result["slab_atom_indices"] = list(subset_to_original)
+        result["site_map_metadata"] = copy.deepcopy(site_map.get("metadata") or {})
+    return result
 
 
 def _formula_counts_from_text(value: str | None) -> dict[str, int] | None:
@@ -874,6 +965,8 @@ def propose_local_transform_packet(
     neighbor_shell: int = 2,
     max_candidates: int = 20,
     max_indices: int = 120,
+    backend: str = "acat",
+    weighted_alpha_config: object | None = None,
 ) -> dict[str, Any]:
     """Return read-only local diffusion/dissociation transform candidates."""
     record = record or {}
@@ -896,11 +989,13 @@ def propose_local_transform_packet(
         atoms,
         record=record,
         structure_id=structure_id,
+        backend=backend,
         target_adsorbate=target_label,
         max_site_distance=max_site_distance,
         neighbor_shell=neighbor_shell,
         max_sites=max(500, max_candidates * 10),
         max_edges=max(1000, max_candidates * 20),
+        weighted_alpha_config=weighted_alpha_config,
     )
     warnings.extend(site_packet.get("warnings") or [])
     source_site = site_packet.get("current_site") or site_packet.get("source_site")

@@ -20,10 +20,9 @@ mamba run -n modeling python scripts/inspect_surface_sites.py \
   --structure structures/Pt_111_CO/site0.extxyz
 ```
 
-Full option example:
-
-This example shows every available option for a read-only dissociation-oriented
-inspection run. Selection-specific options that do not match the chosen
+Representative read-only dissociation-oriented inspection example. Weighted-alpha
+runtime override options are listed separately in the keyword reference.
+Selection-specific options that do not match the chosen
 `--selection-intent` are harmless but ignored by the packet builder.
 
 ```bash
@@ -63,7 +62,15 @@ mamba run -n modeling python scripts/inspect_surface_sites.py \
 | `--min-distance` | no | Validation threshold for too-close atoms in Angstrom. |
 | `--max-atoms` | no | Validation limit for DFT-ready atom count. |
 | `--target-adsorbate` | no | Adsorbate label used for site matching and local transform proposals. |
-| `--site-backend` | no | Backend used to rebuild adsorption sites: `acat`, `auto`, `catkit`, or `pymatgen`. |
+| `--site-backend` | no | Backend used to rebuild adsorption sites: legacy `acat`, `auto`, `catkit`, `pymatgen`, or strict `weighted_alpha`. |
+| `--weighted-alpha-executable` | no | Optional audited executable override; pair with `--weighted-alpha-radius-file`. Omit both to use the trusted private Release. |
+| `--weighted-alpha-radius-file` | no | Optional audited radius-table override paired with the executable. |
+| `--weighted-alpha-expected-sha256` | no | Executable SHA-256 pin required for an audited explicit override. |
+| `--weighted-alpha-expected-radius-sha256` | no | Radius-table SHA-256 pin required for an audited explicit override. |
+| `--weighted-alpha-runtime-sha256-manifest` | no | Exact artifact→SHA-256 runtime manifest for an explicit override. |
+| `--weighted-alpha-expected-runtime-manifest-sha256` | no | SHA-256 pin for the explicit runtime manifest. |
+| `--weighted-alpha-allow-unpinned-runtime` | no | Unsafe local-development override; never use for audited runs. |
+| `--weighted-alpha-*` physical flags | no | Alpha factor plus contact-anchor radius/gap/step/search-limit/timeout overrides. Numeric overrides work with the trusted first-party runtime. |
 | `--max-site-distance` | no | Maximum distance in Angstrom for neighboring adsorption sites. |
 | `--neighbor-shell` | no | Number of site-neighbor shells to include. |
 | `--max-sites` | no | Maximum site rows included in the output packet. |
@@ -82,6 +89,15 @@ mamba run -n modeling python scripts/inspect_surface_sites.py \
 | `--out` | no | Optional JSON output path; output is always also printed to stdout. |
 
 ## Workflow
+
+When `--site-backend weighted_alpha` is selected, both the main site packet and
+local-transform proposals use the same strict backend and configuration. With no
+explicit binary paths, MESA resolves the hash-pinned source-free Windows runtime
+from the private GitHub Release and verified versioned cache. Failures propagate
+rather than becoming an empty site map. Phase 1 requires pbc110, Cartesian +z
+alignment, selected top-layer height spread <= 0.25 A, and complete upper-terrace
+population. `auto` remains the legacy path and never invokes weighted-alpha. See
+`../../../WEIGHTED_ALPHA_BACKEND.md`.
 
 1. Identify the structure file and optional metadata JSON.
 2. Analyze structure packet and validation checks.
