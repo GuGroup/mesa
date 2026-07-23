@@ -41,8 +41,9 @@ project-specific policy. Do not infer backend policy from AGENTS.md.
 Use `initialize-mesa` for repository setup, dependency checks, and skill
 symlink sync. Use `initialize-project` for project-profile creation. Use
 `start-research` after initialization to verify the active project profile,
-goal mode, full-access session state, and workflow entry point before running
-the scientific research loop.
+create or verify the DOCX-manuscript research goal, check full-access session
+state, and choose the workflow entry point before running the scientific
+research loop.
 
 # Skill-first operating rules
 

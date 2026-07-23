@@ -1,6 +1,6 @@
 ---
 name: start-research
-description: Start a MESA scientific research run after initialize-mesa and initialize-project. Use when the user says start research, begin the project, run the MESA workflow, proceed autonomously, or provides research inputs such as prompts, reference papers, experimental-only papers, numeric data, collaborator proposals, existing manuscripts, reviewer comments, or gap/weakness-repair instructions and asks Codex to verify project profile, Codex goal mode, full-access filesystem/session state, runtime readiness, and the correct workflow entry point before executing the catalyst research loop.
+description: Start a MESA scientific research run after initialize-mesa and initialize-project. Use when the user says start research, begin the project, run the MESA workflow, proceed autonomously, or provides research inputs such as prompts, reference papers, experimental-only papers, numeric data, collaborator proposals, existing manuscripts, reviewer comments, or gap/weakness-repair instructions and asks Codex to verify project profile, create or verify a Codex goal for writing a DOCX manuscript, check full-access filesystem/session state, runtime readiness, and choose the correct workflow entry point before executing the catalyst research loop.
 ---
 
 # Start Research
@@ -33,13 +33,16 @@ Before executing research steps:
    equivalent full-access profile. If access is workspace-only, read-only, or
    otherwise restricted, stop and tell the user to restart the session with
    full access.
-2. Confirm Codex goal mode. If the `get_goal`/`create_goal` tools are
+2. Create or confirm the Codex goal. If the `get_goal`/`create_goal` tools are
    available:
    - call `get_goal`;
-   - if no goal is active, create one from the project profile and the user's
-     research request using the template below;
+   - if no goal is active, call `create_goal` with an objective built from the
+     project profile and the user's research request using the template below;
    - if a different goal is active, stop and report the conflict;
-   - if the active goal matches the project research objective, continue.
+   - if the active goal already matches the manuscript objective for this
+     project, continue.
+   If the goal tools are unavailable, stop and tell the user this surface cannot
+   create the required research goal automatically.
 3. Read `project/<project_name>/project_profile.md` and root `workflow.md`.
    Treat the profile as the active project policy source and root `workflow.md`
    as the reusable execution contract.
@@ -60,16 +63,19 @@ asks for setup changes.
 
 ## Goal Objective Template
 
-When creating a Codex goal automatically, do not invent a broad prompt. Use a
-single concrete objective derived from `project_profile.md`:
+When calling `create_goal`, do not invent a broad prompt. Use one concrete
+objective derived from `project_profile.md`. The goal must be to satisfy the
+user's research objective by producing a manuscript DOCX:
 
 ```text
-Run the MESA research workflow for project/<project_name>: use the recorded
-source package (<source_package_summary>) to satisfy "<research_objective>" for
-<material_family>/<catalyst_domain> and <target_reaction>. Apply the project
-calculation policy: <calculation_policy_sentence>. Save English-only research
-artifacts under project/<project_name> and follow workflow.md plus the active
-project profile.
+Complete the MESA research workflow for project/<project_name> and write a
+DOCX manuscript that satisfies the user's research objective:
+"<research_objective>". Use the recorded source package
+(<source_package_summary>) for <material_family>/<catalyst_domain> and
+<target_reaction>. Apply the project calculation policy:
+<calculation_policy_sentence>. Save all English-only research artifacts under
+project/<project_name>, assemble the accepted evidence into a manuscript, and
+produce the final DOCX under project/<project_name>/manuscript/.
 ```
 
 If any template field is missing, do not create the goal. Ask for only the

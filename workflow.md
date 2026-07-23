@@ -36,9 +36,9 @@ that skill unless it would violate this root workflow.
 Start a research run through `start-research` after `initialize-mesa` has
 prepared the repository and `initialize-project` has created or selected the
 active project profile. The start gate must confirm
-the project profile, Codex goal mode, full-access session state, project
-calculation policy, and required runtime readiness before entering the loop
-below.
+the project profile, create or verify the Codex goal for producing a DOCX
+manuscript, confirm full-access session state, project calculation policy, and
+required runtime readiness before entering the loop below.
 
 This workflow is a loop. It is not a linear checklist and it is not valid to
 move directly from one strategy calculation into the next strategy calculation.
