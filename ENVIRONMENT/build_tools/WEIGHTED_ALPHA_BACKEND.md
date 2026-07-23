@@ -126,7 +126,7 @@ Before merge or runtime promotion:
 1. build and test the private C++ exporter;
 2. run backend, resolver, dispatch, placement, site-map, packet, and CLI tests;
 3. run the complete Tool 4 suite and compare legacy `auto` output;
-4. manually dispatch the private-runtime workflow on the reviewed PR head before merge, then download the private release into a clean cache and run the real YTK slab;
+4. set the repository secret `MESA_WEIGHTED_ALPHA_RELEASE_TOKEN` to a dedicated read-only credential (or install it ephemerally with unconditional cleanup), then manually dispatch the private-runtime workflow on the reviewed PR head before merge; the default workflow token cannot read the Draft Release, and the workflow is intentionally not triggered by `pull_request` or `push`;
 5. verify graph counts/hashes, finite geometry, source indices, contact-anchor placement, collision checks, cleanup, and repeated determinism;
 6. build/install the wheel and prove the trusted release index is packaged;
 7. complete independent security, scientific-geometry, and compatibility reviews.

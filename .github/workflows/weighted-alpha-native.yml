@@ -1,18 +1,6 @@
 name: Weighted-alpha native integration
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/weighted-alpha-native.yml"
-      - "ENVIRONMENT/build_tools/slabuilder/**"
-      - "ENVIRONMENT/build_tools/tests/test_weighted_alpha_*.py"
-      - "ENVIRONMENT/build_tools/tests/fixtures/weighted_alpha_ytk.POSCAR"
-      - "ENVIRONMENT/build_tools/.codex/skills/inspect-surface-sites/**"
-      - "ENVIRONMENT/build_tools/.codex/skills/place-surface-adsorbates/**"
-      - "ENVIRONMENT/build_tools/WEIGHTED_ALPHA_BACKEND.md"
-      - "ENVIRONMENT/build_tools/pyproject.toml"
   workflow_dispatch:
 
 permissions:
