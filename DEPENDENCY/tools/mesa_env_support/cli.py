@@ -52,17 +52,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         print("  not requested")
         print_core_install_help()
 
-    if args.analyze_nondeterministic:
-        status = max(status, write_nondeterministic_analysis(args.nd_dir, args.nd_contracts))
-    elif args.write_handoff:
-        status = max(status, write_dependency_handoff(args.handoff_dir, args.handoff_contracts))
-    else:
-        print("\nNon-deterministic analyzer")
-        print("  not requested")
-        print(
-            "  uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py "
-            "analyze-nondeterministic --output-dir project/<project_name>/initialization"
-        )
+    print("\nProject-scoped initialization artifacts")
+    print("  not handled by bootstrap")
+    print("  run initialize-project before analyzer, handoff, status, or runtime-plan artifacts")
 
     print("\nRuntime next checks")
     print("  uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --skills")
@@ -211,46 +203,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--continue-on-error",
         action="store_true",
         help="When executing --install-core, continue to later runtimes after a failure.",
-    )
-    p_bootstrap.add_argument(
-        "--write-handoff",
-        action="store_true",
-        help="Write legacy machine-profile and Codex handoff files for non-deterministic runtimes.",
-    )
-    p_bootstrap.add_argument(
-        "--analyze-nondeterministic",
-        action="store_true",
-        help="Write structured non-deterministic analyzer profile files.",
-    )
-    p_bootstrap.add_argument(
-        "--nd-dir",
-        type=Path,
-        default=None,
-        help=(
-            "Output directory for --analyze-nondeterministic. Defaults to the unique active "
-            "project profile's initialization directory."
-        ),
-    )
-    p_bootstrap.add_argument(
-        "--nd-contracts",
-        type=Path,
-        default=DEFAULT_HANDOFF_CONTRACT,
-        help="Contract YAML for --analyze-nondeterministic.",
-    )
-    p_bootstrap.add_argument(
-        "--handoff-dir",
-        type=Path,
-        default=None,
-        help=(
-            "Output directory for --write-handoff. Defaults to the unique active project "
-            "profile's initialization directory."
-        ),
-    )
-    p_bootstrap.add_argument(
-        "--handoff-contracts",
-        type=Path,
-        default=DEFAULT_HANDOFF_CONTRACT,
-        help="Contract YAML for --write-handoff.",
     )
     p_bootstrap.add_argument("--yes", action="store_true", help="Actually execute --install-core commands.")
     p_bootstrap.set_defaults(func=cmd_bootstrap)

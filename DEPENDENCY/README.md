@@ -23,21 +23,21 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --recipes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py check mesa-modeling
 ```
 
-Opt-in setup and project artifact commands:
+Opt-in setup and project artifact commands. Project artifact commands require
+exactly one active `project_profile.md`; otherwise pass an explicit real
+initialization directory:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-core
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba --install-core --yes
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --analyze-nondeterministic --nd-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --write-handoff --handoff-dir project/<project_name>/initialization
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install mesa-general --yes
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --output-dir project/<project_name>/initialization --message "Initialization status refreshed."
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma --project-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization --yes
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff --output-dir project/<project_name>/initialization
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --message "Initialization status refreshed."
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan <path-to-runtime-plan.json>
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan <path-to-runtime-plan.json> --yes
+uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff
 ```
 
 The helper is stdlib-only. The recommended path uses `uv` to provide Python, so
@@ -83,28 +83,24 @@ Non-deterministic analyzer:
 - `DEPENDENCY/non_deterministic_runtimes.yaml` records deterministic
   requirements, analyzer output names, and Codex decision points for UMA and
   AdsorbDiff.
-- `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir project/<project_name>/initialization`
-  writes `project/<project_name>/initialization/nondeterministic_profile.json` and
-  `project/<project_name>/initialization/nondeterministic_profile.md`.
-- `bootstrap --analyze-nondeterministic --nd-dir project/<project_name>/initialization`
-  writes the same files during bootstrap.
+- `uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic`
+  writes `nondeterministic_profile.json` and
+  `nondeterministic_profile.md` under the selected initialization directory.
 - The analyzer is read-only with respect to dependencies: it records OS, tool,
   env, GPU/CUDA probe, scheduler probe, checkpoint, Python/env, and runtime
   decision facts, but does not install CUDA wheels, download checkpoints, or
   submit jobs.
 - Secret values are never written; token-like variables are recorded only as
   `SET` or `MISSING`.
-- Legacy `handoff --output-dir project/<project_name>/initialization` and
-  `bootstrap --write-handoff --handoff-dir project/<project_name>/initialization`
-  still write `machine_profile.json` and `dependency_handoff.md`.
+- Legacy `handoff` still writes `machine_profile.json` and
+  `dependency_handoff.md`.
 
 Notification, planning, and execution policy:
 
-- `notify`/`status --output-dir project/<project_name>/initialization` writes
-  `project/<project_name>/initialization/initialize_status.md` and appends to
-  `project/<project_name>/initialization/initialize_events.jsonl`.
+- `notify`/`status` writes `initialize_status.md` and appends to
+  `initialize_events.jsonl` under the selected initialization directory.
 - `generate-runtime-plan <runtime>` writes a saved plan under
-  `project/<project_name>/initialization/runtime_plans/`. It does not execute commands.
+  the selected initialization directory's `runtime_plans/`. It does not execute commands.
 - `execute-runtime-plan <plan.json>` dry-runs by default. It executes only with
   `--yes`.
 - Blocked plans are refused even with `--yes`.

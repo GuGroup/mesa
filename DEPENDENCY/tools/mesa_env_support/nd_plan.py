@@ -17,7 +17,7 @@ def ensure_nondeterministic_profile(
             raise SystemExit(
                 f"Missing non-deterministic profile: {resolved_profile}\n"
                 "Run: uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py "
-                "analyze-nondeterministic --output-dir project/<project_name>/initialization"
+                "analyze-nondeterministic"
             )
         status = write_nondeterministic_analysis(output_dir, contracts_path)
         if status != 0:

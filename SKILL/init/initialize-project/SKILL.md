@@ -19,6 +19,10 @@ This skill must not install dependencies, generate runtime plans, run
 calculations, select strategies, write manuscripts, or enter the research loop.
 After the project profile exists, run `start-research`.
 
+This skill owns the real project name and project output directory decision.
+Never use `mos`, `<project_name>`, or any placeholder as a default project. If
+the project name is unknown, ask before writing project files.
+
 ## Required Outcome
 
 Create or update exactly one active project profile:
@@ -98,6 +102,11 @@ The project profile must record:
   artifact-generation, scheduler, submission, acceptance, and cross-check
   rules.
 
+The selected project directory also owns any future `initialization/` artifacts
+for non-deterministic analyzer output, dependency handoff files, runtime plans,
+or status ledgers. Create that directory only after a real project name has
+been selected.
+
 Keep the calculation policy short but explicit. Examples:
 
 - `MLIP-only evidence workflow; use UMA/MLIP for calculations and do not create
@@ -112,8 +121,7 @@ Keep the calculation policy short but explicit. Examples:
 - Do not choose a backend silently. If the source material does not imply a
   backend policy, ask.
 - Do not treat repository setup as project setup. Use `initialize-mesa` for
-  dependency checks, MCP config, skill symlink sync, runtime plans, and
-  environment repair.
+  dependency checks, MCP config, skill symlink sync, and environment repair.
 - Do not start the research loop. Use `start-research` after the profile is
   complete.
 - Do not append a MESA scientific skill-call log entry for this setup-only

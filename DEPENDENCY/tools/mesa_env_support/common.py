@@ -199,15 +199,14 @@ def discover_project_profiles() -> list[Path]:
         return []
     return sorted(path for path in PROJECT_ROOT.glob(f"*/{PROJECT_PROFILE_FILENAME}") if path.is_file())
 
-def default_initialization_dir() -> Path:
+def active_project_initialization_dir() -> Path:
     profiles = discover_project_profiles()
     if len(profiles) == 1:
         return profiles[0].parent / INITIALIZATION_DIR_NAME
     if not profiles:
         raise SystemExit(
-            "No active MESA project profile found. Provide "
-            "--output-dir project/<project_name>/initialization or run initialize-project "
-            "to create project/<project_name>/project_profile.md."
+            "No active MESA project profile found. Run initialize-project to "
+            "create one, or provide an explicit initialization directory."
         )
     choices = "\n".join(f"  - {display_path(path.parent / INITIALIZATION_DIR_NAME)}" for path in profiles)
     raise SystemExit("Multiple MESA project profiles found. Provide an explicit initialization directory:\n" + choices)
@@ -216,7 +215,7 @@ def initialization_dir(path_value: Path | str | None) -> Path:
     resolved = repo_path(path_value)
     if resolved is not None:
         return resolved
-    return default_initialization_dir()
+    return active_project_initialization_dir()
 def command_tool(command: str) -> str | None:
     try:
         parts = shlex.split(command)

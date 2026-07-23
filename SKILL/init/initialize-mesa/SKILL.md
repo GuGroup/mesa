@@ -1,6 +1,6 @@
 ---
 name: initialize-mesa
-description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, analyze non-deterministic CUDA/GPU/checkpoint/scheduler runtime facts, prepare a non-deterministic dependency handoff, generate or execute saved runtime install plans, notify users of initialization progress, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, repo-local .codex/config.toml, paper_search MCP setup, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, Codex analyzer/profile/status/plan files for CUDA/checkpoint/scheduler-dependent runtimes, vasp-job uv-tool readiness, and skill-specific environment readiness.
+description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, repo-local .codex/config.toml, paper_search MCP setup, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, vasp-job uv-tool readiness, and skill-specific environment readiness.
 ---
 
 For MESA repository setup use, read `workflow.md` before applying this skill.
@@ -15,11 +15,10 @@ check the OS, check/install `uv`, then use `uv` to provide Python and run the
 deterministic checker. Keep all non-uv runtime installs opt-in.
 
 Default initialization is a lightweight repository and environment readiness
-check. Do not run install, update, smoke-test-all, `doctor --all`, or
-runtime-plan execution steps unless the user explicitly asks for setup changes
-or the active project requires that specific runtime now. Already-installed
-environments should be treated as reusable; do not re-prove every runtime on
-every initialization.
+check. Do not run install, update, smoke-test-all, or `doctor --all` unless the
+user explicitly asks for setup changes or the active project requires that
+specific runtime now. Already-installed environments should be treated as
+reusable; do not re-prove every runtime on every initialization.
 
 This skill prepares the repository setup only. It does not create project
 profiles, execute a research workflow, select a strategy, run calculations, or
@@ -62,45 +61,11 @@ To dry-run the deterministic core dependency recipe:
 bash DEPENDENCY/bootstrap.sh --install-core
 ```
 
-To write the non-deterministic analyzer profile for machine-specific runtimes
-without installing anything:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir project/<project_name>/initialization
-bash DEPENDENCY/bootstrap.sh --analyze-nondeterministic --nd-dir project/<project_name>/initialization
-```
-
-To notify the user and refresh resumable status:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --output-dir project/<project_name>/initialization --message "Initialization status refreshed."
-```
-
 To synchronize this repo's skills into Codex discovery:
 
 ```bash
 bash DEPENDENCY/sync_codex_skills.sh
 bash DEPENDENCY/sync_codex_skills.sh --apply
-```
-
-To generate and review a saved non-deterministic runtime plan:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma --project-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization
-```
-
-Execute the saved plan only after review and explicit approval:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization --yes
-```
-
-Legacy handoff output remains available:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff --output-dir project/<project_name>/initialization
-bash DEPENDENCY/bootstrap.sh --write-handoff --handoff-dir project/<project_name>/initialization
 ```
 
 To execute that recipe:
@@ -118,14 +83,6 @@ Manual Python fallback:
 ```bash
 python3 DEPENDENCY/tools/mesa_env.py bootstrap
 ```
-
-Initialization-owned artifacts are written under
-`project/<project_name>/initialization/` when an explicit path or active project
-profile selects that directory. Keep the project root for
-workflow outputs such as literature, strategy, modeling, calculation, analysis,
-figures, and manuscript artifacts. Do not clean or migrate older root-level
-initialization files automatically; treat them as historical outputs unless the
-user explicitly asks for cleanup.
 
 ## Workflow
 
@@ -187,65 +144,16 @@ bash DEPENDENCY/bootstrap.sh --install-core
 bash DEPENDENCY/bootstrap.sh --install-mamba --install-core --yes
 ```
 
-8. For non-deterministic runtimes, write a structured analyzer profile instead
-   of installing CUDA, checkpoints, or scheduler setup automatically:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir project/<project_name>/initialization
-```
-
-   This writes `project/<project_name>/initialization/nondeterministic_profile.json` and
-   `project/<project_name>/initialization/nondeterministic_profile.md`. It must
-   not print secret values, download checkpoints, install CUDA-specific wheels,
-   or submit jobs. The profile must separate facts into `cuda`, `scheduler`,
-   `checkpoints`, `python_env`, `platform`, `tools`, and `runtimes` sections.
-
-9. Generate a runtime install plan only after the analyzer profile exists:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma --project-dir project/<project_name>/initialization
-```
-
-   This writes
-   `project/<project_name>/initialization/runtime_plans/<runtime>_plan.json` and
-   `project/<project_name>/initialization/runtime_plans/<runtime>_plan.md`. The plan must
-   state runtime, CUDA/Torch choice, scheduler policy, checkpoint policy, exact
-   commands, blockers, warnings, and the next dry-run/execute commands.
-
-10. Notify the user through status artifacts whenever a plan is generated,
-    dry-run, blocked, started, failed, or completed:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --output-dir project/<project_name>/initialization --message "Plan generated; review before execution."
-```
-
-    Status artifacts are
-    `project/<project_name>/initialization/initialize_status.md` and
-    `project/<project_name>/initialization/initialize_events.jsonl`.
-
-11. Execute a saved non-deterministic runtime plan only after review and
-    explicit approval:
-
-```bash
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization --yes
-```
-
-    Without `--yes`, the executor must dry-run or report blockers. If a saved
-    plan is blocked, the executor must refuse to run commands even with `--yes`.
-    The executor must not submit scheduler jobs or download checkpoints unless
-    those actions are explicitly represented in a reviewed plan and allowed by
-    a future policy.
-
-12. If the user asks for a specific skill, resolve that skill's runtime. Prefer
+8. If the user asks for a specific skill, resolve that skill's runtime. Prefer
 the narrow skill-specific doctor command over `doctor --all`:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py doctor --skill build-slab-models
 ```
 
-13. Do not install or smoke-test every runtime by default. Install or smoke-test
+9. Do not install or smoke-test every runtime by default. Install or smoke-test
 only the runtime needed for the requested skill or workflow.
-14. Do not print secret values. Report API keys only as `SET` or `MISSING`.
+10. Do not print secret values. Report API keys only as `SET` or `MISSING`.
    When a required key is missing, print official acquisition links and the
    exact `DEPENDENCY/.env` variable name to fill.
 
@@ -322,27 +230,9 @@ Treat these as the standard init checks:
   `bootstrap --install-core --yes` executes it. During execution, smoke-test
   each runtime first, skip it if healthy, otherwise install and smoke-test
   again.
-- `analyze-nondeterministic` writes
-  `project/<project_name>/initialization/nondeterministic_profile.json` and
-  `project/<project_name>/initialization/nondeterministic_profile.md`. These files
-  summarize OS/tool/env presence and separate CUDA/GPU, scheduler/HPC,
-  checkpoint, Python/env, and runtime decision facts. They must not contain
-  secret values.
-- `bootstrap --analyze-nondeterministic` performs the same analyzer write as
-  part of bootstrap. It is read-only with respect to dependencies.
-- `notify`/`status` writes or refreshes
-  `project/<project_name>/initialization/initialize_status.md` and appends to
-  `project/<project_name>/initialization/initialize_events.jsonl`. Use these artifacts as
-  the user-facing progress ledger for future Codex sessions.
-- `generate-runtime-plan <runtime>` writes
-  `project/<project_name>/initialization/runtime_plans/<runtime>_plan.json` and
-  `project/<project_name>/initialization/runtime_plans/<runtime>_plan.md` from the
-  non-deterministic profile. It must not execute commands.
-- `execute-runtime-plan <plan.json>` dry-runs by default. It executes only with
-  `--yes`, refuses blocked plans, logs status events, and runs only commands
-  stored in the saved plan.
-- `handoff` and `bootstrap --write-handoff` remain available for legacy
-  `machine_profile.json` and `dependency_handoff.md` output.
+- Project-scoped initialization artifacts, non-deterministic analyzer outputs,
+  dependency handoff files, status ledgers, and runtime plans are outside this
+  skill. Create/select the project with `initialize-project` first.
 - Python readiness is reported, but system Python is not a first dependency
   because `uv` can provide Python. `qsub` is not fatal unless the requested
   workflow needs it.
@@ -356,11 +246,6 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --skills
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --recipes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py check mesa-general
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py doctor --skill build-slab-models
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic --output-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py notify --output-dir project/<project_name>/initialization --message "Initialization status refreshed."
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py generate-runtime-plan mesa-uma --project-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py handoff --output-dir project/<project_name>/initialization
 bash DEPENDENCY/sync_codex_skills.sh
 ```
 
@@ -368,8 +253,6 @@ For install dry-runs:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-core
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --analyze-nondeterministic --nd-dir project/<project_name>/initialization
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --write-handoff --handoff-dir project/<project_name>/initialization
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install mesa-general
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install --skill build-slab-models
 ```
@@ -379,7 +262,6 @@ Execute installs only when the user explicitly wants setup changes:
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba --install-core --yes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py install mesa-general --yes
-uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py execute-runtime-plan project/<project_name>/initialization/runtime_plans/mesa-uma_plan.json --project-dir project/<project_name>/initialization --yes
 ```
 
 ## Reporting
@@ -400,12 +282,8 @@ Report in this order:
 6. `vasp-job` uv-tool readiness when VASP workflows are in scope.
 7. Mamba/micromamba readiness and exact local install command if missing.
 8. Core dependency recipe dry-run or execution status, if requested.
-9. Non-deterministic analyzer or dependency handoff status, if requested.
-10. Runtime plan path, blocked/readiness state, and approval command, if a plan
-   was generated.
-11. Runtime plan dry-run or execution status, if requested.
-12. Runtime registry and requested skill runtime, if applicable.
-13. Exact next commands for missing setup.
+9. Runtime registry and requested skill runtime, if applicable.
+10. Exact next commands for missing setup.
 
 If `.codex/config.toml` was newly added or changed, remind the user that Codex
 loads project config only after the repository is trusted and may need a restart
