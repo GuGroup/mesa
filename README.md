@@ -25,22 +25,17 @@ student. That is what we are working toward.
 
 ## Fresh Clone Setup
 
-After cloning, expose only the initialization skill to Codex. The
-`initialize-mesa` skill will synchronize the rest of this repository's skills
-during initialization.
+Clone the repository, then expose only the initialization skill to Codex:
 
 ```bash
+git clone https://github.com/GuGroup/mesa.git
+cd mesa
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -sfn "$PWD/SKILL/init/initialize-mesa" \
   "${CODEX_HOME:-$HOME/.codex}/skills/initialize-mesa"
 ```
 
-Then run `initialize-mesa` from Codex. It will run the repository bootstrap
-checks and link the remaining MESA skills, including `initialize-project`, into
-`$CODEX_HOME/skills` or `~/.codex/skills`. After repository setup, run
+Then open Codex in this checkout and run `initialize-mesa`. The skill runs the
+repository setup checks and links the remaining MESA skills. After that, run
 `initialize-project` to create `project/<project_name>/project_profile.md`, then
-run `start-research`. To check the environment directly:
-
-```bash
-bash DEPENDENCY/bootstrap.sh
-```
+run `start-research`.

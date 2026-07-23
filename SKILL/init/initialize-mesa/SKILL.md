@@ -20,11 +20,6 @@ user explicitly asks for setup changes or the active project requires that
 specific runtime now. Already-installed environments should be treated as
 reusable; do not re-prove every runtime on every initialization.
 
-This skill prepares the repository setup only. It does not create project
-profiles, execute a research workflow, select a strategy, run calculations, or
-write a manuscript. After repository initialization, run `initialize-project`
-to create/select the active project profile, then run `start-research`.
-
 Recommended entry points:
 
 ```bash
@@ -104,18 +99,16 @@ This is the normal environment-readiness path. After this command, report
 repository readiness and direct project-profile creation to
 `initialize-project` when no active project profile exists.
 
-4a. Synchronize the remaining repository skills into Codex discovery. Fresh
-clones require the user to link only `initialize-mesa`; this step lets the
-agent link `initialize-project`, `start-research`, and the task-specific MESA
-skills during initialization. First dry-run, then apply. Existing non-symlink
-paths are reported as `SKIP` by the script and must not be overwritten:
+5. Synchronize repository skills into Codex discovery. First dry-run, then
+apply. Existing non-symlink paths are reported as `SKIP` by the script and must
+not be overwritten:
 
 ```bash
 bash DEPENDENCY/sync_codex_skills.sh
 bash DEPENDENCY/sync_codex_skills.sh --apply
 ```
 
-5. Check for `mamba`, `micromamba`, or repo-local
+6. Check for `mamba`, `micromamba`, or repo-local
    `DEPENDENCY/bin/mamba`. If no mamba-compatible manager exists and the user
    wants first-run setup, install repo-local micromamba:
 
@@ -130,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File DEPENDENCY/bootstrap.ps1 -InstallMamba
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba
 ```
 
-6. For first-run dependency setup only, dry-run the core recipe before
+7. For first-run dependency setup only, dry-run the core recipe before
 executing it. Do not run this during routine initialization on an already-set-up
 machine:
 
@@ -138,22 +131,22 @@ machine:
 bash DEPENDENCY/bootstrap.sh --install-core
 ```
 
-7. Execute the core recipe only when the user explicitly wants setup changes:
+8. Execute the core recipe only when the user explicitly wants setup changes:
 
 ```bash
 bash DEPENDENCY/bootstrap.sh --install-mamba --install-core --yes
 ```
 
-8. If the user asks for a specific skill, resolve that skill's runtime. Prefer
+9. If the user asks for a specific skill, resolve that skill's runtime. Prefer
 the narrow skill-specific doctor command over `doctor --all`:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py doctor --skill build-slab-models
 ```
 
-9. Do not install or smoke-test every runtime by default. Install or smoke-test
+10. Do not install or smoke-test every runtime by default. Install or smoke-test
 only the runtime needed for the requested skill or workflow.
-10. Do not print secret values. Report API keys only as `SET` or `MISSING`.
+11. Do not print secret values. Report API keys only as `SET` or `MISSING`.
    When a required key is missing, print official acquisition links and the
    exact `DEPENDENCY/.env` variable name to fill.
 

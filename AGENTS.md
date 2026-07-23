@@ -8,14 +8,8 @@ Api keys are saved on ./DEPENDENCY/.env
 
 Before computational chemistry project work, read ./workflow.md.
 
-When the task is scoped to a SKILL subdomain, also read the nearest matching workflow.md:
-- SKILL/modeling/workflow.md for structure/model generation, UMA relaxation, AdsorbDiff, slab/adsorbate work.
-- SKILL/calculation/workflow.md for calculation setup or execution.
-- SKILL/analysis/workflow.md for energy, selectivity, or free-energy analysis.
-- SKILL/literature/workflow.md for literature search or evidence gathering.
-- SKILL/figure/workflow.md for figure generation.
-- SKILL/manuscript/workflow.md for manuscript/export work.
-- SKILL/orchestration/workflow.md or SKILL/strategy/workflow.md for planning, validation, or strategy updates.
+When the task is scoped to a SKILL subdomain, also read that subdomain's
+`workflow.md` before using the skill.
 
 Do not add workflow.md to project_doc_fallback_filenames. Load workflow files explicitly according to task scope.
 
@@ -84,13 +78,17 @@ or project-local script to `project/<project_name>/skill_call_log.md`.
 
 Do not read, rewrite, reorder, or deduplicate the existing log unless the user
 explicitly asks for a log audit. Create the parent directory if needed, then
-append with shell redirection (`>>`) using this fixed block format:
+append with shell redirection (`>>`) using this fixed block format. Start each
+append with a newline and end it with a blank line so adjacent entries cannot
+run together:
 
 ```md
 ## YYYY-MM-DDTHH:MM:SS+TZ - <skill-or-script-name>
+
 - reason:
 - inputs:
 - outputs:
 - validation:
 - boundary:
+
 ```
