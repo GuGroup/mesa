@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 20
     env:
       PYTHONPATH: ${{ github.workspace }}\ENVIRONMENT\build_tools
-      MESA_WEIGHTED_ALPHA_CACHE: ${{ runner.temp }}\mesa-weighted-alpha-cache
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -46,6 +45,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          MESA_WEIGHTED_ALPHA_CACHE: ${{ runner.temp }}\mesa-weighted-alpha-cache
         run: |
           $modulePath = (Resolve-Path "ENVIRONMENT/build_tools/slabuilder/weighted_alpha_runtime.py").Path
           $runtimeJson = python -I -S -c 'import importlib.util,json,sys; p=sys.argv[1]; s=importlib.util.spec_from_file_location("weighted_alpha_runtime_standalone",p); m=importlib.util.module_from_spec(s); sys.modules[s.name]=m; s.loader.exec_module(m); r=m.resolve_first_party_runtime(); print(json.dumps({"exe":str(r.executable),"radius":str(r.radius_file),"manifest":str(r.runtime_manifest),"exe_sha":r.expected_executable_sha256,"radius_sha":r.expected_radius_sha256,"manifest_sha":r.expected_runtime_manifest_sha256,"release":r.release,"mesa_base_commit":r.mesa_base_commit,"private_source_manifest_sha256":r.private_source_manifest_sha256}))' $modulePath
