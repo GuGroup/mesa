@@ -197,19 +197,12 @@ Treat these as the standard init checks:
   - Hugging Face tokens: `https://huggingface.co/settings/tokens`
   - Hugging Face Hub quickstart:
     `https://huggingface.co/docs/huggingface_hub/en/quick-start`
-- `.codex/config.toml` exists and defines `mcp_servers.paper_search`.
-- The project TOML parses and the `paper_search` MCP config has:
-  - `enabled = true`;
-  - `required = false`;
-  - `command = "uv"`;
-  - `args = ["run", "--frozen", "-m", "paper_search_mcp.server"]`;
-  - `cwd = "EXTERNAL/paper-search-mcp"`;
-  - positive `startup_timeout_sec` and `tool_timeout_sec`;
-  - `default_tools_approval_mode = "auto"`;
-  - no `env_vars` list, because secrets are read through
-    `PAPER_SEARCH_MCP_ENV_FILE`.
-- `mcp_servers.paper_search.env.PAPER_SEARCH_MCP_ENV_FILE` resolves from
-  `EXTERNAL/paper-search-mcp` to `DEPENDENCY/.env`.
+- `.codex/config.toml` exists, parses, and defines `mcp_servers.paper_search`.
+  Inspect this file read-only during initialization. Do not add, rewrite, or
+  normalize `.codex/config.toml` unless the user explicitly asks for a Codex
+  config edit.
+- If `codex` is available on PATH, prefer `codex mcp get paper_search` as the
+  readiness check for the project TOML and paper-search MCP registration.
 - `.codex/config.toml` does not contain literal API keys, tokens, or secrets.
 - External MCP package files exist under `EXTERNAL/paper-search-mcp`, including
   `pyproject.toml`, `uv.lock`, and `paper_search_mcp/server.py`.
@@ -285,6 +278,6 @@ Report in this order:
 9. Runtime registry and requested skill runtime, if applicable.
 10. Exact next commands for missing setup.
 
-If `.codex/config.toml` was newly added or changed, remind the user that Codex
-loads project config only after the repository is trusted and may need a restart
-or new session before MCP servers appear.
+If the user explicitly changed `.codex/config.toml`, remind them that Codex
+loads project config only after the repository is trusted and may need a
+restart or new session before MCP servers appear.
