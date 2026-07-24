@@ -54,7 +54,7 @@ Prefer saved `.txt`, `.md`, `.py`, or `.json` extraction artifacts over PDFs. Do
 
 1. Identify the material domain and any user-supplied exact claim selection;
    do not compose a broader target task when an extracted claim exists.
-2. Confirm at least one paper extraction artifact in each domain, strategy, lagacy section is available.
+2. Confirm at least one paper extraction artifact in each domain, strategy, legacy section is available.
 3. Confirm that an experimental extraction contains exactly one
    `author_reported_claim` section with `abstract` and `conclusion` source
    locations. When no experimental claim exists, supply `--target-task`.

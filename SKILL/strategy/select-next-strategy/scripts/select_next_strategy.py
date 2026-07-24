@@ -63,9 +63,13 @@ def main() -> int:
         "cannot_prove": extract_claim_field(selected_strategy, "cannot_prove") if selected_strategy else None,
         "status_dir": str(status_dir),
         "next_action": {
-            "recommendation": "start_modeling" if selected_strategy_id else "needs_strategy_update",
+            "recommendation": (
+                "generate_explicit_calculation_recipe"
+                if selected_strategy_id
+                else "needs_strategy_update"
+            ),
             "reason": (
-                f"Run only strategy {selected_strategy_id} next."
+                f"Generate an explicit calculation recipe only for strategy {selected_strategy_id} next."
                 if selected_strategy_id
                 else "Every strategy in recommended_order is completed, retired, blocked, or superseded."
             ),
@@ -257,6 +261,21 @@ def extract_claim_field(strategy: dict[str, Any] | None, field: str) -> Any:
         container = strategy.get(container_key)
         if isinstance(container, dict) and field in container:
             return container[field]
+    conclusion = strategy.get("conclusion")
+    if isinstance(conclusion, dict):
+        conclusion_fields = {
+            "can_prove": ("causal_mechanism", "design_principle"),
+            "cannot_prove": ("scope_or_limitations",),
+        }
+        values = [
+            conclusion[key]
+            for key in conclusion_fields.get(field, ())
+            if conclusion.get(key) not in (None, "", [], {})
+        ]
+        if len(values) == 1:
+            return values[0]
+        if values:
+            return values
     return None
 
 

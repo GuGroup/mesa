@@ -70,7 +70,7 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 - `strategy/`: `generate-strategies`, `select-next-strategy`,
   `update-strategies-from-manuscript`.
 - `orchestration/`: `generate-explicit-calculation-recipe`,
-  `validate-recipe-execution`, `record-missing-evidence`.
+  `plan-recipe-execution`, `validate-recipe-execution`, `record-missing-evidence`.
 - `modeling/`: `import-bulk-structure`, `build-slab-models`,
   `build-gas-phase-models`,
   `place-adsorbates-with-adsorbdiff`,
