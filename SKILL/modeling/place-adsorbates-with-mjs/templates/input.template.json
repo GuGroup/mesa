@@ -1,0 +1,16 @@
+{
+  "_comment": "Illustrative input contract. The entry script uses CLI flags; an agent should translate these fields to flags for scripts/place_adsorbates_with_mjs.py.",
+  "poscar_path": "slab.POSCAR",
+  "adsorbate_radius": 1.52,
+  "pbc": "110",
+  "engine_alpha": 1.0,
+  "open_axis_side": "open-max",
+  "gap": 0.1,
+  "dedup_distance": 0.6,
+  "placement_step": 0.0125,
+  "placement_max_distance": 8.0,
+  "sample_per_kind": 5,
+  "out_dir": "result",
+  "exe": "${WEIGHTED_ALPHA_EXE}",
+  "radius_file": "${WEIGHTED_ALPHA_RADIUS_FILE}"
+}
