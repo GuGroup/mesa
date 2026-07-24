@@ -14,7 +14,9 @@ import html
 import json
 import math
 import os
+import subprocess
 import sys
+import time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -656,6 +658,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--placement-step", type=float, default=0.0125)
     parser.add_argument("--placement-max-distance", type=float, default=8.0)
+    parser.add_argument("--alpha-factor", type=float, default=1.0, help="weighted-alpha construction factor for --engine-cli new (reference~1.0, production 3.5)")
+    parser.add_argument("--engine-cli", choices=("new", "legacy"), default="new", help="new: -a=contact radius + --alpha-factor + --input-sha256 (PR#21 engine); legacy: -a=alpha + --precursor-radius (reference engine)")
     parser.add_argument("--sample-per-kind", type=int, default=5, help="Number of top/bridge/hollow sites to show in sample HTML")
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--out-dir", type=str, default=None)
@@ -672,6 +676,37 @@ def default_out_dir(input_path: Path, adsorbate_radius: float, pbc_label: str) -
 
 def command_to_string(command: list[str]) -> str:
     return " ".join(f'"{part}"' if " " in str(part) else str(part) for part in command)
+
+
+def sha256_hex(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def run_engine_command(command: list[str], run_dir: Path, timeout_seconds: int) -> dict[str, Any]:
+    """Run a prebuilt (new-CLI) engine command; graph is emitted into run_dir."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    start = time.perf_counter()
+    result = subprocess.run(command, cwd=str(run_dir), text=True, capture_output=True, timeout=timeout_seconds, check=False)
+    runtime = time.perf_counter() - start
+    (run_dir / "weighted_alpha_stdout.log").write_text(result.stdout, encoding="utf-8")
+    (run_dir / "weighted_alpha_stderr.log").write_text(result.stderr, encoding="utf-8")
+    graph = run_dir / "weighted_alpha_graph_geompy_normals.json"
+    if not graph.exists():
+        graph = run_dir / "weighted_alpha_graph.json"
+    return {
+        "command": command,
+        "command_string": command_to_string(command),
+        "returncode": result.returncode,
+        "runtime_seconds": runtime,
+        "stdout_log": str(run_dir / "weighted_alpha_stdout.log"),
+        "stderr_log": str(run_dir / "weighted_alpha_stderr.log"),
+        "graph_json": str(graph),
+        "graph_exists": graph.exists(),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -702,25 +737,52 @@ def main(argv: list[str] | None = None) -> int:
     prepared_poscar = Path(conversion["output"])
 
     extra_args = ["--voro-construction-mode", "pbc_masked_image_aware", "--radius-file", str(radius_file.resolve())]
-    command = [
-        str(exe.resolve()),
-        "-f",
-        str(prepared_poscar.resolve()),
-        "-a",
-        str(engine_alpha),
-        "--pbc",
-        pbc_mask_to_cli(pbc),
-        *extra_args,
-        "--precursor-radius",
-        str(float(args.adsorbate_radius)),
-        "--placement-gap",
-        str(float(args.gap)),
-        "--placement-step",
-        str(float(args.placement_step)),
-        "--placement-max-distance",
-        str(float(args.placement_max_distance)),
-        "--emit-geompy-normals",
-    ]
+    staged_input_sha256 = sha256_hex(prepared_poscar)
+    if args.engine_cli == "new":
+        # PR#21 engine contract: -a = contact-anchor radius, --alpha-factor = weighted-alpha factor,
+        # staged POSCAR bound via --input-sha256 (no --precursor-radius).
+        command = [
+            str(exe.resolve()),
+            "-f",
+            str(prepared_poscar.resolve()),
+            "-a",
+            str(float(args.adsorbate_radius)),
+            "--alpha-factor",
+            str(float(args.alpha_factor)),
+            "--pbc",
+            pbc_mask_to_cli(pbc),
+            *extra_args,
+            "--placement-gap",
+            str(float(args.gap)),
+            "--placement-step",
+            str(float(args.placement_step)),
+            "--placement-max-distance",
+            str(float(args.placement_max_distance)),
+            "--input-sha256",
+            staged_input_sha256,
+            "--emit-geompy-normals",
+        ]
+    else:
+        # Legacy reference engine: -a = weighted-alpha factor, --precursor-radius = probe radius.
+        command = [
+            str(exe.resolve()),
+            "-f",
+            str(prepared_poscar.resolve()),
+            "-a",
+            str(engine_alpha),
+            "--pbc",
+            pbc_mask_to_cli(pbc),
+            *extra_args,
+            "--precursor-radius",
+            str(float(args.adsorbate_radius)),
+            "--placement-gap",
+            str(float(args.gap)),
+            "--placement-step",
+            str(float(args.placement_step)),
+            "--placement-max-distance",
+            str(float(args.placement_max_distance)),
+            "--emit-geompy-normals",
+        ]
     (out_dir / "engine_command.txt").write_text(command_to_string(command) + "\n", encoding="utf-8")
 
     metadata: dict[str, Any] = {
@@ -743,6 +805,9 @@ def main(argv: list[str] | None = None) -> int:
         "engine_sha256_12": sha256_12(exe),
         "radius_file": str(radius_file.resolve()),
         "engine_command": command_to_string(command),
+        "engine_cli": args.engine_cli,
+        "alpha_factor": float(args.alpha_factor),
+        "staged_input_sha256": staged_input_sha256,
         "conversion": conversion,
         "site_filter_policy": "regular_p1_p2_with_p0_top_exception_v1",
     }
@@ -753,22 +818,25 @@ def main(argv: list[str] | None = None) -> int:
         print(out_dir / "regular_adsorption_sites.json")
         return 0
 
-    from fig3_common import run_weighted_alpha  # type: ignore  # noqa: WPS433
+    if args.engine_cli == "new":
+        cpp_run = run_engine_command(command, run_dir, int(args.timeout_seconds))
+    else:
+        from fig3_common import run_weighted_alpha  # type: ignore  # noqa: WPS433
 
-    cpp_run = run_weighted_alpha(
-        executable=exe,
-        input_poscar=prepared_poscar,
-        run_dir=run_dir,
-        alpha=engine_alpha,
-        pbc=pbc,
-        emit_geompy=True,
-        precursor_radius=float(args.adsorbate_radius),
-        placement_gap=float(args.gap),
-        placement_step=float(args.placement_step),
-        placement_max_distance=float(args.placement_max_distance),
-        timeout_seconds=int(args.timeout_seconds),
-        extra_args=extra_args,
-    )
+        cpp_run = run_weighted_alpha(
+            executable=exe,
+            input_poscar=prepared_poscar,
+            run_dir=run_dir,
+            alpha=engine_alpha,
+            pbc=pbc,
+            emit_geompy=True,
+            precursor_radius=float(args.adsorbate_radius),
+            placement_gap=float(args.gap),
+            placement_step=float(args.placement_step),
+            placement_max_distance=float(args.placement_max_distance),
+            timeout_seconds=int(args.timeout_seconds),
+            extra_args=extra_args,
+        )
     metadata["cpp_run"] = cpp_run
     metadata["graph_json"] = cpp_run.get("graph_json")
     if cpp_run["returncode"] != 0 or not cpp_run["graph_exists"]:
