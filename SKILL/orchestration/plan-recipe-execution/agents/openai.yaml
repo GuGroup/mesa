@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Recipe Execution"
+  short_description: "Build recipe execution dependency graphs"
+  default_prompt: "Use $plan-recipe-execution to convert finalized calculation recipes into a skill-neutral execution graph with deterministic paths."

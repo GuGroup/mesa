@@ -52,8 +52,8 @@ results, scientific caveats, or any ordered status policy to block a figure.
 Copy manifest caveats as information only.
 
 If no recipe entry matches an intent, retain the intent with
-`grounding.matched=false` and a nonblocking note. Recipe roles are association
-metadata, not scientific acceptance criteria.
+`grounding.matched=false` and a nonblocking note. Match from C-task text rather
+than a recipe-role taxonomy; attach artifacts only after matching.
 
 ## LLM Contract
 

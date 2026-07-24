@@ -29,9 +29,10 @@ python3 SKILL/orchestration/validate-recipe-execution/scripts/check_recipe_execu
   --outdir project/<project_name>/strategy_execution/S1_recipe_execution_gate
 ```
 
-The checker automatically treats sibling strategy shared roots such as
-`S1_execution/` and `S1_shared_execution/` as allowed shared roots when the
-recipe root is named `S1_explicit_recipe`. Add more allowed shared roots with:
+The checker automatically treats plan-assigned
+`S1_explicit_recipe/shared_execution/` and legacy sibling strategy roots such
+as `S1_execution/` and `S1_shared_execution/` as allowed shared roots. Add more
+allowed shared roots with:
 
 ```bash
 python scripts/check_recipe_execution.py ... \

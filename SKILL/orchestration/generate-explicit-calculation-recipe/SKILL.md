@@ -1,26 +1,11 @@
 ---
 name: generate-explicit-calculation-recipe
-description: Translate a selected computational-chemistry strategy's experiment.computational or experimental.computational section into a procedure-indexed explicit calculation recipe folder tree. Use before any slab, gas, adsorbate, relaxation, vibration, free-energy, DOS, charge, or benchmark-comparison execution when Codex must preserve the strategy's computational procedures as concrete required inputs, operations, and outputs without judging feasibility or silently replacing the requested calculation with a proxy.
+description: Create P### procedure folders, map strategy information, and classify it into C### recipe folders. Use after selecting a computational strategy and before resolving or executing its procedures.
 ---
 
-For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying this skill.
+# Procedure Mapping
 
-# Explicit Calculation Recipe
-
-## Purpose
-
-Use this skill immediately after a strategy is selected and before calculation
-execution. The skill is a translator: it reads the selected strategy's
-computational section and writes a folder tree whose top-level folders correspond
-one-to-one to the original procedure lines.
-
-This skill must not decide whether a recipe is executable, supported by current
-skills, allowed by project policy, or scientifically sufficient. It records what
-the strategy asks for.
-
-## Input
-
-Use the selected strategy artifact produced by `select-next-strategy`, usually:
+Create procedure folders:
 
 ```bash
 python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
@@ -28,96 +13,25 @@ python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generat
   --out project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
 ```
 
-The script accepts a JSON file containing either:
+Map strategy information:
 
-- `selected_strategy.experiment.computational`;
-- `selected_strategy.experimental.computational`;
-- `experiment.computational`;
-- `experimental.computational`;
-- a direct `computational` object.
-
-## Output Layout
-
-The output root must contain:
-
-```text
-recipe_index.json
-recipe_index.md
-source_computational_section.json
-P001/
-  procedure.json
-  procedure_map.md
-  calculations/
-    C001_<calculation_slug>/
-      recipe.json
-      recipe.md
+```bash
+python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/map_strategy_to_procedures.py \
+  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
+  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
 ```
 
-Each `P###` folder preserves a single source procedure. The procedure text stays
-in `procedure.json`, `procedure_map.md`, and the recipe index rather than in the
-folder name. Each `C###` folder is one specific calculation or analysis recipe
-derived from that procedure.
+Classify P information into C recipes:
 
-## Translation Rules
+```bash
+python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/classify_procedure_information.py \
+  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
+  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+```
 
-1. Read the computational section directly. Do not rewrite it from memory or from
-   result artifacts.
-2. Preserve exact source text and JSON-pointer provenance for every procedure.
-3. Include required prior artifacts, inputs, operations, method intent, and
-   outputs when they are stated or implied by the source procedure.
-4. Use source context from `models`, `methods`, `dft_details`,
-   `computational_tests_to_run`, and benchmark-comparison fields only to make the
-   recipe explicit. Do not use those fields to override the source procedure.
-5. Keep every scientific noun and value source-driven. Do not insert a default
-   catalyst, reaction, adsorbate, intermediate sequence, pH, potential,
-   temperature, pressure, or calculation method when it is absent from the
-   procedure and its computational context.
-6. Assign every calculation a canonical semantic `recipe_role` describing the
-   calculation function. Never use `procedure_translation` as a role. Prefer
-   specific roles such as `structure_model_build`,
-   `vibrational_analysis`, `reaction_pathway_search`,
-   `free_energy_diagram_assembly`, or `descriptor_calculation`. Deterministic
-   rules must identify domain-neutral operations, not a particular catalyst or
-   reaction. When no deterministic rule matches, call the LLM to select only
-   canonical roles and require an exact
-   `source_phrase` copied from the procedure. Do not use action-word fallback
-   roles.
-7. Do not add feasibility labels such as `blocked`, `unsupported`, `executable`,
-   or `requires_repair`.
-8. Do not explain why a calculation cannot be done. A later preflight skill owns
-   feasibility checks.
-9. Do not substitute an easier proxy. If the procedure asks for projected DOS,
-   write a projected-DOS recipe; do not replace it with geometry descriptors.
-10. Do not execute calculations, build structures, submit jobs, run UMA/VASP, or
-   create scientific result claims.
-
-## Recipe Semantics
-
-`required_inputs` and `required_prior_artifacts` mean "the calculation recipe
-requires these objects." They are not feasibility claims.
-
-`method_intent` means "the strategy requests this type of method or analysis."
-It is not an instruction to bypass project policy.
-
-`output_artifacts` means "these files should exist after the calculation is
-executed by a later workflow." This skill does not create those scientific
-outputs.
-
-See `references/recipe-schema.md` for the JSON field contract.
-Canonical role templates are data, not branching Python logic; they live in
-`scripts/recipe_role_templates.json`.
-
-## Output Validation
-
-After running the generator on a selected strategy artifact, check that:
-
-- every source procedure has exactly one `P###` folder;
-- every `P###/procedure.json` contains the original procedure text;
-- every generated calculation has a canonical semantic `recipe_role`, and no
-  role equals `procedure_translation`;
-- every LLM-classified recipe contains an exact `source_phrase` from its source
-  procedure;
-- source-defined conditions and entities are copied without inserting
-  domain-specific defaults absent from the source;
-- generated recipes contain no feasibility decision fields;
-- no calculations are executed.
+The first script writes only `P###/procedure.json` with exact `source_text`.
+The second writes only `P###/mapping.json` with validated
+`source_json_pointers`. The third writes `P###/calculations/C###/recipe.json`
+with deterministic IDs, explicit C-task text, and P-shared/C-specific source
+information, then writes `recipe_index.json`. None resolve or execute
+procedures.
