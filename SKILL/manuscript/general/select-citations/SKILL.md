@@ -68,6 +68,13 @@ Useful options:
 - Cite paragraph sentences only. Leave equation blocks unchanged.
 - Prefer primary project papers for literature/background statements about the
   catalyst system.
+- For sentences that state the hypothesis, literature gap, material-design
+  rationale, or strategy motivation, cite all directly supporting primary
+  project papers present in the candidate set. These anchor citations may use
+  more than three keys when each source has a distinct rationale role.
+- Use the original experimental paper for author-reported experimental claims;
+  do not use it as the only citation for strategy-defining hypotheses when
+  separate searched/extracted strategy papers support those hypotheses.
 - Use second-neighbor sources mainly for standard methods, software,
   exchange-correlation functionals, PAW, k-point sampling, computational
   hydrogen electrode references, and other public formalisms.

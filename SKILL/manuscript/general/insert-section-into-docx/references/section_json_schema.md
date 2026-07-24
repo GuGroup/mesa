@@ -38,8 +38,9 @@ Each section object supports:
 The DOCX v1.5 output converts LaTeX equations to Word-native OMML equation
 objects by default with Pandoc. Equation `label` values are not rendered into
 the DOCX manuscript body. Each logical equation block is rendered with one blank
-paragraph before and after the equation block. Use `--equation-mode text` only when
-plain centered LaTeX text is explicitly desired.
+paragraph before and after the equation block. Do not encode displayed equations
+as paragraph text containing LaTeX delimiters or raw TeX. Use `--equation-mode
+text` only when plain centered LaTeX text is explicitly requested.
 
 When `small_title` is present, the inserted bold intro title uses
 `small_title`; otherwise it uses `title`. This lets section writers keep a

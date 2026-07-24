@@ -29,12 +29,14 @@ Strict rules:
 1. Use only candidate citation_key values supplied in the packet.
 2. Return zero citations when no candidate directly supports the sentence.
 3. Prefer primary_project_pdf candidates for literature/background claims about the catalyst system.
-4. Use second_neighbor_reference candidates mainly for standard methods, software, functionals, PAW, k-point sampling, thermodynamic/electrochemical formalisms, and canonical reference conventions.
-5. Do not cite second-neighbor sources for new calculated results, counts, convergence outcomes, or claims unique to the current project.
-6. Do not cite a VASP paper merely because a sentence says the present calculations were not executed with VASP.
-7. Do not cite sentences whose support is the manuscript's own figure, for example sentences centered on "Fig. 1", "Fig. 3", or "Fig. S1", unless the sentence makes an explicit literature or experimental comparison.
-8. Keep citation sets small: normally 1-3 keys.
-9. If unsure, return no citation or mark needs_human_check true.
+4. For strategy_rationale sentences, cite every directly supporting primary_project_pdf candidate that shaped the hypothesis, design rationale, or literature gap. Do not collapse these sentences to only the original experimental paper when separate strategy papers support the rationale.
+5. Use the original experimental paper for author-reported experimental claims; do not use it as a substitute for strategy-defining literature.
+6. Use second_neighbor_reference candidates mainly for standard methods, software, functionals, PAW, k-point sampling, thermodynamic/electrochemical formalisms, and canonical reference conventions.
+7. Do not cite second-neighbor sources for new calculated results, counts, convergence outcomes, or claims unique to the current project.
+8. Do not cite a VASP paper merely because a sentence says the present calculations were not executed with VASP.
+9. Do not cite sentences whose support is the manuscript's own figure, for example sentences centered on "Fig. 1", "Fig. 3", or "Fig. S1", unless the sentence makes an explicit literature or experimental comparison.
+10. Keep citation sets small for ordinary sentences: normally 1-3 keys. Strategy-rationale synthesis sentences may use 2-5 keys when each source has a distinct support role.
+11. If unsure, return no citation or mark needs_human_check true.
 
 Return JSON only.
 
@@ -278,6 +280,8 @@ def classify_sentence(sentence: str, section_id: str) -> str:
         return "method_formalism"
     if re.search(r"\b(computational hydrogen electrode|che|rhe|reversible hydrogen electrode|potential|electron-transfer|free-energy|free energies|free energy|hydrogen chemical potential|liquid water|aqueous hydroxide)\b", s):
         return "electrochemical_formalism"
+    if re.search(r"\b(hypothesis|hypothesize|rationale|motivated|motivation|strategy|design principle|literature gap|gap|suggests|indicates|therefore|accordingly|we target|we examined|selected|chosen)\b", s):
+        return "strategy_rationale"
     if re.search(r"\b(prior|reported|observed|previous|literature|experiment|experimental|catalyst|catalysis|reaction|activity|selectivity|stability|performance)\b", s):
         return "literature_background"
     if section_id == "vibrational_free_energy_corrections":
@@ -338,7 +342,14 @@ def rank_candidates(
                 overlap += min(count, rec["tokens"][tok]) * (1.0 + math.log(1 + rec["tokens"][tok]))
         score += overlap
 
-        if sentence_type == "literature_background":
+        if sentence_type == "strategy_rationale":
+            if rec["source_role"] == "primary_project_pdf":
+                score *= 1.75
+            if rec.get("collection") in {"strategy", "paper_search", "papers", "literature"}:
+                score += 4.0
+            if rec["source_role"] == "second_neighbor_reference":
+                score *= 0.45
+        elif sentence_type == "literature_background":
             if rec["source_role"] == "primary_project_pdf":
                 score *= 1.45
             if rec["citation_key"] in PRIMARY_SYSTEM_KEYS:
@@ -379,7 +390,10 @@ def deterministic_select(sentence: str, sentence_type: str, candidates: list[dic
     if should_skip_sentence(sentence, sentence_type) or not candidates:
         return [], "none", "No citation selected by conservative policy.", False
     high = [c for c in candidates if c["score"] >= 12.0]
-    if sentence_type == "literature_background":
+    if sentence_type == "strategy_rationale":
+        primary = [c for c in candidates if c["source_role"] == "primary_project_pdf" and c["score"] >= 8.0]
+        selected = primary[:5] if primary else high[:2]
+    elif sentence_type == "literature_background":
         primary = [c for c in high if c["source_role"] == "primary_project_pdf"]
         selected = primary[:2] if primary else high[:1]
     elif sentence_type in {"method_formalism", "electrochemical_formalism"}:
