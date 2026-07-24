@@ -14,8 +14,10 @@ import html
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -666,6 +668,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--exe", type=str, required=True)
     parser.add_argument("--radius-file", type=str, required=True)
     parser.add_argument("--dry-run", action="store_true", help="Prepare input and command metadata, but do not execute the engine")
+    parser.add_argument("--debug", action="store_true", help="Preserve full engine graph/logs under engine_run/ for private audit (public output stays IP-minimal by default)")
     return parser
 
 
@@ -731,7 +734,6 @@ def main(argv: list[str] | None = None) -> int:
     engine_alpha_source = "--engine-alpha" if args.engine_alpha is not None else "-a/--adsorbate-radius"
     out_dir = ensure_dir(resolve_path_for_cli(args.out_dir) if args.out_dir else default_out_dir(input_path, args.adsorbate_radius, pbc_label))
     prepared_dir = ensure_dir(out_dir / "prepared_input")
-    run_dir = ensure_dir(out_dir / "engine_run")
     structure_id = input_path.stem
     conversion = prepare_poscar_input(input_path, prepared_dir, structure_id)
     prepared_poscar = Path(conversion["output"])
@@ -783,17 +785,17 @@ def main(argv: list[str] | None = None) -> int:
             str(float(args.placement_max_distance)),
             "--emit-geompy-normals",
         ]
-    (out_dir / "engine_command.txt").write_text(command_to_string(command) + "\n", encoding="utf-8")
-
+    # Public, IP-minimal metadata: parameters + provenance hashes only. Engine path/command,
+    # backend/mode names, and full graph metadata are NEVER written to the public output;
+    # they are preserved under engine_run/ only when --debug is set.
     metadata: dict[str, Any] = {
-        "input": str(input_path),
-        "prepared_poscar": str(prepared_poscar),
+        "input": input_path.name,
         "adsorbate_radius": float(args.adsorbate_radius),
+        "engine_cli": args.engine_cli,
+        "alpha_factor": float(args.alpha_factor),
         "engine_alpha": engine_alpha,
-        "engine_alpha_source": engine_alpha_source,
         "pbc": pbc,
         "pbc_label": pbc_label,
-        "pbc_cli": pbc_mask_to_cli(pbc),
         "gap": float(args.gap),
         "dedup_distance": float(args.dedup_distance),
         "placement_step": float(args.placement_step),
@@ -801,16 +803,15 @@ def main(argv: list[str] | None = None) -> int:
         "candidate_distance": float(args.candidate_distance),
         "normal_source": args.normal_source,
         "open_axis_side": args.open_axis_side,
-        "engine_executable": str(exe.resolve()),
         "engine_sha256_12": sha256_12(exe),
-        "radius_file": str(radius_file.resolve()),
-        "engine_command": command_to_string(command),
-        "engine_cli": args.engine_cli,
-        "alpha_factor": float(args.alpha_factor),
         "staged_input_sha256": staged_input_sha256,
-        "conversion": conversion,
         "site_filter_policy": "regular_p1_p2_with_p0_top_exception_v1",
     }
+
+    # engine_command.txt exposes the exact invocation (flags, construction mode);
+    # keep it only for debug or dry-run preview.
+    if args.debug or args.dry_run:
+        (out_dir / "engine_command.txt").write_text(command_to_string(command) + "\n", encoding="utf-8")
 
     if args.dry_run:
         payload = {"metadata": metadata, "counts": {"top": 0, "bridge": 0, "hollow": 0, "total": 0}, "sites": []}
@@ -818,59 +819,82 @@ def main(argv: list[str] | None = None) -> int:
         print(out_dir / "regular_adsorption_sites.json")
         return 0
 
-    if args.engine_cli == "new":
-        cpp_run = run_engine_command(command, run_dir, int(args.timeout_seconds))
-    else:
-        from fig3_common import run_weighted_alpha  # type: ignore  # noqa: WPS433
+    # Run the engine in a PRIVATE temp dir; the full geometric graph (nodes/edges/metadata)
+    # is a transient internal artifact and is NOT persisted to the public output.
+    run_dir = Path(tempfile.mkdtemp(prefix="wa_run_"))
+    keep_dir = ensure_dir(out_dir / "engine_run") if args.debug else None
+    try:
+        if args.engine_cli == "new":
+            cpp_run = run_engine_command(command, run_dir, int(args.timeout_seconds))
+        else:
+            from fig3_common import run_weighted_alpha  # type: ignore  # noqa: WPS433
 
-        cpp_run = run_weighted_alpha(
-            executable=exe,
-            input_poscar=prepared_poscar,
-            run_dir=run_dir,
-            alpha=engine_alpha,
+            cpp_run = run_weighted_alpha(
+                executable=exe,
+                input_poscar=prepared_poscar,
+                run_dir=run_dir,
+                alpha=engine_alpha,
+                pbc=pbc,
+                emit_geompy=True,
+                precursor_radius=float(args.adsorbate_radius),
+                placement_gap=float(args.gap),
+                placement_step=float(args.placement_step),
+                placement_max_distance=float(args.placement_max_distance),
+                timeout_seconds=int(args.timeout_seconds),
+                extra_args=extra_args,
+            )
+
+        if cpp_run["returncode"] != 0 or not cpp_run["graph_exists"]:
+            # On failure surface only the logs (not the graph) so the run is debuggable.
+            fail_dir = ensure_dir(out_dir / "engine_run")
+            for name in ("weighted_alpha_stdout.log", "weighted_alpha_stderr.log"):
+                src = run_dir / name
+                if src.exists():
+                    shutil.copy2(src, fail_dir / name)
+            payload = {"metadata": metadata, "counts": {"top": 0, "bridge": 0, "hollow": 0, "total": 0}, "sites": [], "error": "engine run failed"}
+            write_json(out_dir / "regular_adsorption_sites.json", payload)
+            raise RuntimeError(f"engine run failed; see logs in {fail_dir}")
+
+        graph_data = read_json(Path(cpp_run["graph_json"]))
+        extraction = extract_regular_sites(
+            graph_data,
+            adsorbate_radius=float(args.adsorbate_radius),
+            gap=float(args.gap),
             pbc=pbc,
-            emit_geompy=True,
-            precursor_radius=float(args.adsorbate_radius),
-            placement_gap=float(args.gap),
-            placement_step=float(args.placement_step),
-            placement_max_distance=float(args.placement_max_distance),
-            timeout_seconds=int(args.timeout_seconds),
-            extra_args=extra_args,
+            normal_source=args.normal_source,
+            dedup_distance=float(args.dedup_distance),
+            candidate_distance=float(args.candidate_distance),
+            open_axis_side=args.open_axis_side,
         )
-    metadata["cpp_run"] = cpp_run
-    metadata["graph_json"] = cpp_run.get("graph_json")
-    if cpp_run["returncode"] != 0 or not cpp_run["graph_exists"]:
-        payload = {"metadata": metadata, "counts": {"top": 0, "bridge": 0, "hollow": 0, "total": 0}, "sites": [], "error": "C++ run failed"}
-        write_json(out_dir / "regular_adsorption_sites.json", payload)
-        raise RuntimeError(f"C++ run failed; see {cpp_run['stderr_log']} and {cpp_run['stdout_log']}")
+        framework_atoms = extract_framework_atoms(graph_data)
 
-    graph_data = read_json(Path(cpp_run["graph_json"]))
-    extraction = extract_regular_sites(
-        graph_data,
-        adsorbate_radius=float(args.adsorbate_radius),
-        gap=float(args.gap),
-        pbc=pbc,
-        normal_source=args.normal_source,
-        dedup_distance=float(args.dedup_distance),
-        candidate_distance=float(args.candidate_distance),
-        open_axis_side=args.open_axis_side,
-    )
-    metadata["graph_metadata_subset"] = {
-        key: graph_data.get("metadata", {}).get(key)
-        for key in (
-            "requested_construction_mode",
-            "resolved_backend",
-            "legacy_equivalent_mode",
-            "p2_topology_invalid_count",
-            "p0_count",
-            "p1_count",
-            "p2_count",
-            "p3_count",
-            "pbc110_p2_geometry_split_mode",
-            "p2_geometry_split",
-        )
-        if key in graph_data.get("metadata", {})
-    }
+        # --debug only: preserve full engine artifacts + internal metadata for private audit.
+        if keep_dir is not None:
+            for item in run_dir.iterdir():
+                if item.is_file():
+                    shutil.copy2(item, keep_dir / item.name)
+            write_json(
+                keep_dir / "debug_metadata.json",
+                {
+                    "engine_executable": str(exe.resolve()),
+                    "radius_file": str(radius_file.resolve()),
+                    "engine_command": command_to_string(command),
+                    "conversion": conversion,
+                    "cpp_run": cpp_run,
+                    "graph_metadata_subset": {
+                        key: graph_data.get("metadata", {}).get(key)
+                        for key in (
+                            "requested_construction_mode", "resolved_backend", "legacy_equivalent_mode",
+                            "p2_topology_invalid_count", "p0_count", "p1_count", "p2_count", "p3_count",
+                            "pbc110_p2_geometry_split_mode", "p2_geometry_split",
+                        )
+                        if key in graph_data.get("metadata", {})
+                    },
+                },
+            )
+    finally:
+        shutil.rmtree(run_dir, ignore_errors=True)
+
     payload = {
         "metadata": metadata,
         "counts": extraction["counts"],
@@ -887,7 +911,7 @@ def main(argv: list[str] | None = None) -> int:
     write_sites_csv(csv_path, extraction["sites"])
     write_sites_xyz(xyz_path, extraction["sites"])
     selected = select_sites_for_html(extraction["sites"], per_kind=int(args.sample_per_kind))
-    write_html(html_sample_path, extract_framework_atoms(graph_data), selected, metadata)
+    write_html(html_sample_path, framework_atoms, selected, metadata)
     print(f"Wrote {json_path}")
     print(f"Wrote {csv_path}")
     print(f"Wrote {xyz_path}")
