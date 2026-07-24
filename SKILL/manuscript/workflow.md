@@ -12,6 +12,19 @@ in public text to at most two decimal places; integers remain integers. This
 presentation rule must not reduce precision in source evidence, provenance, or
 other machine-readable calculation data.
 
+# Manuscript Entry Gate
+
+Before writing manuscript prose, read `SKILL/analysis/workflow.md` and
+`SKILL/figure/workflow.md`, then finish evidence organization and figure
+readiness for the selected strategy. Do not start Results, Methods, abstract,
+conclusion, or DOCX assembly until:
+
+- accepted, caveated, failed, excluded, and missing evidence are separated;
+- required or defensible figures are mapped, realized or explicitly blocked,
+  captioned, and ready for DOCX insertion;
+- any omitted figure type, such as a volcano or Gibbs/free-energy diagram, is
+  recorded with the evidence reason.
+
 # Skills By Stage
 
 - `manuscript/figure/`: `map-strategy-figures`,
