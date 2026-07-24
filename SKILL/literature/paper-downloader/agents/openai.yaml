@@ -1,0 +1,7 @@
+interface:
+  display_name: "Paper Downloader"
+  short_description: "Stage lawful paper PDFs with manifests"
+  default_prompt: "Use $paper-downloader to retrieve legally accessible PDFs from this paper list and prepare them for extraction."
+
+policy:
+  allow_implicit_invocation: true
