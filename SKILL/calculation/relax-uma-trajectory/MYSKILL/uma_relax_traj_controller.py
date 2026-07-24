@@ -204,7 +204,7 @@ def _resolve_uma_config(
     device, device_reason = _decide_device(execution_mode)
     constraints: list[dict[str, Any]] = []
     decision_reasons = [
-        "Defaulted to UMA model uma-s-1p2 for broad MESA relaxation coverage.",
+        "Defaulted to UMA model uma-s-1p1 for broad MESA relaxation coverage.",
         "Defaulted to UMA task_name omat for crystal structure relaxation.",
         device_reason,
         "Defaulted to fixed-cell geometry relaxation because POSCAR-only input does not prove cell optimization is required.",
@@ -235,7 +235,7 @@ def _resolve_uma_config(
             "log": "logs/uma_relax_traj.log",
         },
         "uma": {
-            "model": "uma-s-1p2",
+            "model": "uma-s-1p1",
             "task_name": "omat",
             "device": device,
         },

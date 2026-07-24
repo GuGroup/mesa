@@ -73,7 +73,7 @@ controller-selected values, not placeholders.
   "log_file": "logs/uma_vib_freq.log",
   "vib_cache": "vib_cache/vib",
   "uma": {
-    "model": "uma-s-1p2",
+    "model": "uma-s-1p1",
     "task_name": "omat",
     "device": "cuda"
   },
@@ -92,7 +92,7 @@ controller-selected values, not placeholders.
 ```
 
 Use executable fallback settings when no stronger POSCAR or runtime reason is
-available: `model=uma-s-1p2`, `task_name=omat`, `device=cuda` when available
+available: `model=uma-s-1p1`, `task_name=omat`, `device=cuda` when available
 otherwise `cpu`, `delta=0.01`, and `nfree=2`.
 
 ## Structure-Size Logic
