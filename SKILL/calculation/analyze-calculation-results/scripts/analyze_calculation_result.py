@@ -1051,6 +1051,7 @@ def main() -> int:
     parser.add_argument("--png-height", type=int, default=1100, help=argparse.SUPPRESS)
     parser.add_argument("--visual-review", default=None, help="Path to a completed visual_review.json to ingest. Default: <outdir>/visual_review.json if present.")
     parser.add_argument("--skip-visual-validation", action="store_true", help="Skip the multimodal visual gate; overall verdict equals the deterministic verdict (PNGs are still rendered).")
+    parser.add_argument("--print-full-summary", action="store_true", help="Print the full analysis_summary.json to stdout. Default stdout is compact for batch logs.")
     args = parser.parse_args()
 
     default_fmax_threshold = 0.05
@@ -1236,7 +1237,22 @@ def main() -> int:
     }
     summary_path.write_text(json.dumps(summary, indent=2, default=json_default))
     write_review_markdown(review_path, summary, selected_path)
-    print(json.dumps(summary, indent=2, default=json_default))
+    if args.print_full_summary:
+        print(json.dumps(summary, indent=2, default=json_default))
+    else:
+        compact = {
+            "status": summary["status"],
+            "verdict": overall_verdict,
+            "deterministic_verdict": deterministic_verdict,
+            "visual_status": visual.get("status"),
+            "converged": verdict.get("converged"),
+            "final_fmax_ev_per_a": diagnosis.get("final_fmax"),
+            "fmax_threshold_ev_per_a": fmax_threshold,
+            "warn_reasons": verdict.get("warn_reasons", []),
+            "fail_reasons": verdict.get("fail_reasons", []),
+            "paths": summary["paths"],
+        }
+        print(json.dumps(compact, indent=2, default=json_default))
     # Non-zero exit on a failing overall verdict so unattended workflows can gate.
     return 3 if overall_verdict == "fail" else 0
 

@@ -30,6 +30,9 @@ For MLIP trajectories with a non-default optimizer target, pass
 2. Did the run stop by `NSW`/max ionic steps?
 3. Any energy, late-`fmax`, RMSD, bond-change, or desorption warning?
 4. Open `initial_final_{top,side_a,side_b}.png`: red = initial, blue = final.
+5. For every `warn`, record the warning class and decision: keep with caveat,
+   require visual/manual review, fail, or exclude. Do not collapse many warns
+   into one generic "accepted-with-caveat" statement.
 
 Verdict:
 
@@ -39,3 +42,6 @@ Verdict:
 
 For thresholds, output fields, and batch-gate policy, read
 `references/result-analyzer-policy.md`.
+
+Batch runs must keep analyzer stdout/stderr in log files and report only compact
+counts, warning classes, failed IDs, and review queues in user-facing updates.

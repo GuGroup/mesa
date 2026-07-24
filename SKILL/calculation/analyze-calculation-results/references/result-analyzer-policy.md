@@ -18,6 +18,25 @@ Load only when editing the analyzer or interpreting a nontrivial report.
 3. Energy, late `fmax`, RMSD, and anomaly warnings.
 4. Red/blue endpoint PNGs.
 
+## Warning Triage
+
+Do not treat all `warn` endpoints as equivalent. Aggregate warnings by class
+before downstream energy tables or manuscript claims:
+
+- `visual_review_incomplete` from pending, unavailable, invalid, or missing
+  visual review: keep out of uncaveated evidence; create a review queue with
+  image paths.
+- bond breaking, new bonds, desorption, site migration, flipping, or slab
+  reconstruction: inspect images and either fail/exclude or name the structural
+  change as a caveat.
+- energy/force/RMSD trend warnings: keep only with numerical caveats unless
+  they indicate nonconvergence or a bad endpoint.
+- max-step/nonconverged endpoints: fail or exclude; do not convert to
+  accepted-with-caveat.
+
+Batch summaries must report warning-class counts and representative endpoint
+IDs, not only total `warn` counts.
+
 ## Images
 
 Required review images:
@@ -42,6 +61,12 @@ dissociation, desorption, slab reconstruction, or fixed-layer failure.
 ## Batch Gate
 
 - `pass` -> `accepted`
-- `warn` -> `accepted-with-caveat`
+- `warn` -> triage first, then `accepted-with-caveat`, `failed`, or `excluded`
 - `fail`, missing summary, or incomplete strict visual validation -> `failed`
 - registry `excluded` stays `excluded`
+
+## Log Discipline
+
+Default analyzer stdout is compact. Full JSON belongs in `analysis_summary.json`
+or per-endpoint log files. Batch runners must redirect analyzer stdout/stderr
+to endpoint-local logs and print only progress counts plus paths to summaries.

@@ -41,6 +41,8 @@ def main() -> int:
     counts = count_by(records, "acceptance_state")
     verdict_counts = count_by(records, "verdict")
     visual_counts = count_by(records, "visual_status")
+    warning_class_counts = count_list_values(records, "warning_classes")
+    warning_class_examples = example_ids_by_list_value(records, "warning_classes", limit=5)
     summary = {
         "schema_version": 1,
         "stage": args.stage,
@@ -54,6 +56,8 @@ def main() -> int:
         "excluded_count": counts.get(EXCLUDED, 0),
         "verdict_counts": verdict_counts,
         "visual_status_counts": visual_counts,
+        "warning_class_counts": warning_class_counts,
+        "warning_class_examples": warning_class_examples,
         "policy": (
             "Use accepted and accepted-with-caveat endpoints downstream; carry "
             "caveats into result/manuscript claims. Failed or excluded endpoints "
@@ -218,6 +222,7 @@ def gate_item(item: dict[str, Any], root: Path, *, strict_visual: bool) -> dict[
     elif visual_status in STRICT_VISUAL_PROBLEM_STATUSES:
         caveats.append(f"visual review incomplete: {visual_status}")
 
+    warning_classes = classify_warning_classes(caveats, visual_status, verdict, deterministic, acceptance_state)
     record = {
         "id": first_nonempty(reg.get("id"), row.get("id"), parent_name(summary_path)),
         "kind": first_nonempty(reg.get("kind"), row.get("kind")),
@@ -231,6 +236,7 @@ def gate_item(item: dict[str, Any], root: Path, *, strict_visual: bool) -> dict[
         "visual_status": visual_status,
         "visual_review_request": rel(resolve_path(visual.get("request_path") or row.get("visual_review_request"), root), root),
         "acceptance_state": acceptance_state,
+        "warning_classes": warning_classes,
         "caveats": unique(caveats),
         "final_energy_ev": first_nonempty(diagnosis.get("final_energy"), reg.get("final_energy_ev")),
         "final_fmax_ev_per_a": first_nonempty(diagnosis.get("final_fmax"), reg.get("final_max_force_ev_per_a")),
@@ -267,6 +273,7 @@ def write_csv(path: Path, records: list[dict[str, Any]]) -> None:
         "analysis_summary",
         "trajectory",
         "caveats",
+        "warning_classes",
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -274,6 +281,7 @@ def write_csv(path: Path, records: list[dict[str, Any]]) -> None:
         for record in records:
             row = {field: record.get(field) for field in fields}
             row["caveats"] = "; ".join(record.get("caveats") or [])
+            row["warning_classes"] = "; ".join(record.get("warning_classes") or [])
             writer.writerow(row)
 
 
@@ -298,6 +306,7 @@ def write_visual_queue(path: Path, records: list[dict[str, Any]]) -> None:
                 f"- acceptance_state: `{record.get('acceptance_state')}`",
                 f"- verdict: `{record.get('verdict')}`",
                 f"- visual_status: `{record.get('visual_status')}`",
+                f"- warning_classes: {'; '.join(record.get('warning_classes') or []) or 'none'}",
                 f"- analysis_summary: `{record.get('analysis_summary')}`",
                 f"- visual_review_request: `{record.get('visual_review_request')}`",
                 f"- caveats: {'; '.join(record.get('caveats') or []) or 'none'}",
@@ -312,6 +321,69 @@ def count_by(records: list[dict[str, Any]], key: str) -> dict[str, int]:
         value = str(record.get(key))
         out[value] = out.get(value, 0) + 1
     return out
+
+
+def count_list_values(records: list[dict[str, Any]], key: str) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for record in records:
+        values = record.get(key) or []
+        if not isinstance(values, list):
+            values = [values]
+        for value in values:
+            label = str(value)
+            out[label] = out.get(label, 0) + 1
+    return out
+
+
+def example_ids_by_list_value(records: list[dict[str, Any]], key: str, *, limit: int) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for record in records:
+        record_id = str(record.get("id") or "")
+        values = record.get(key) or []
+        if not isinstance(values, list):
+            values = [values]
+        for value in values:
+            label = str(value)
+            bucket = out.setdefault(label, [])
+            if record_id and len(bucket) < limit:
+                bucket.append(record_id)
+    return out
+
+
+def classify_warning_classes(
+    caveats: list[str],
+    visual_status: str,
+    verdict: str,
+    deterministic: str,
+    acceptance_state: str,
+) -> list[str]:
+    classes: list[str] = []
+    lowered = " | ".join(caveats).lower()
+    if visual_status in STRICT_VISUAL_PROBLEM_STATUSES:
+        classes.append("visual_review_incomplete")
+    if "bond" in lowered and ("broke" in lowered or "new bond" in lowered):
+        classes.append("bond_change")
+    if "dissociation" in lowered:
+        classes.append("possible_dissociation")
+    if "desorption" in lowered:
+        classes.append("possible_desorption")
+    if "site" in lowered and ("migration" in lowered or "wrong" in lowered):
+        classes.append("site_migration")
+    if "reconstruction" in lowered or "distortion" in lowered:
+        classes.append("slab_or_endpoint_distortion")
+    if "energy" in lowered:
+        classes.append("energy_trend")
+    if "fmax" in lowered or "force" in lowered:
+        classes.append("force_trend")
+    if "rmsd" in lowered:
+        classes.append("rmsd_trend")
+    if "max ionic" in lowered or "max-step" in lowered or "nsw" in lowered or "not force-converged" in lowered:
+        classes.append("nonconverged_or_max_steps")
+    if verdict == "fail" or deterministic == "fail" or acceptance_state == FAILED:
+        classes.append("failed_gate")
+    if not classes and (verdict == "warn" or deterministic == "warn" or caveats):
+        classes.append("other_warning")
+    return unique(classes)
 
 
 def resolve_path(value: Any, root: Path) -> Path | None:

@@ -105,6 +105,12 @@ Check and record:
 - whether the artifact is accepted, accepted-with-caveat, exploratory, failed,
   or excluded.
 
+For batch analysis, do not summarize `warn` endpoints only by count. Build a
+warning triage artifact with warning classes, affected endpoint IDs, visual
+review status, and the downstream decision for each class. User-facing progress
+updates should stay compact: counts, top warning classes, failed IDs, and paths
+to summary/triage files. Keep full analyzer JSON and stdout/stderr in files.
+
 # Execution Manifest
 
 Every calculation recipe that produces or uses artifacts must have:
