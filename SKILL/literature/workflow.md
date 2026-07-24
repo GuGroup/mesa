@@ -37,21 +37,23 @@ for computational proof strategy, not a wet-lab plan.
 
 # Paper Search
 
-Use `search-papers-with-mcp` when the project needs papers for strategy
-generation, source-library building, or general background.
+Use `search-papers-with-mcp` when the project needs domain, computational
+proof-strategy, and legacy papers centered on an exact
+`author_reported_claim`.
 
-The user or project context must specify:
+Project the experimental extraction into a claim-only JSON before searching.
+The paper-search step must not use any other experimental-extraction section to
+generate queries, rank candidates, or redefine the proof target. A separately
+supplied material/reaction domain is only a neutral search filter.
 
-- target task or reaction;
-- material family or catalyst domain;
-- desired search role, such as strategy papers, benchmark papers, method
-  papers, or general background.
-
-`search-papers-with-mcp` is search-only. It should recommend Domain Foundation,
-Computational Proof-Strategy, and Legacy Anchor papers, save a search handoff
-and manual-download queue, then stop. Do not download PDFs, call paper
-extraction skills, or proceed to strategy generation from the paper-search
-step.
+`search-papers-with-mcp` is search-only. It must preserve the public output
+contract in this order: Domain Foundation Papers, Computational Proof-Strategy
+Papers, and Legacy Anchor Papers. Direct support, direct challenge,
+computational analogue, and method anchor are classifications inside the
+Computational Proof-Strategy section, not replacement output sections. Save a
+claim-faithful search handoff and manual-download queue, then stop. Do not
+download PDFs, call paper extraction skills, or proceed to strategy generation
+from the paper-search step.
 
 If papers must be downloaded manually or cannot be accessed through the
 available tools, stop and ask the user rather than fabricating source content.
