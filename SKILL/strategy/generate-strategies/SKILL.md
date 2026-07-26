@@ -5,6 +5,44 @@ description: Generate evidence-backed computational chemistry strategies that pr
 
 For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
 
+# Strategy Generation Prerequisites
+
+Before generating any strategy, the agent must complete the following validation steps.
+
+## Mandatory Checks
+
+Do not generate a strategy until all of the following conditions are satisfied:
+
+1. Verify that the following directories exist under the `literature` directory:
+   - `strategy_papers`
+   - `domain_papers`
+   - `legacy_papers`
+
+2. Verify that each directory contains one or more PDF files:
+   - `literature/strategy_papers`
+   - `literature/domain_papers`
+   - `literature/legacy_papers`
+
+3. If any required directory is missing, or if any directory does not contain at least one PDF file, stop the strategy generation process and request the missing materials from the user.
+
+## Failure Handling
+
+If the prerequisites are not met, respond with a message similar to:
+
+> Strategy generation cannot proceed because the required literature sources are incomplete.
+>
+> Please ensure that:
+> - `literature/strategy_papers` exists and contains relevant PDF papers.
+> - `literature/domain_papers` exists and contains relevant PDF papers.
+> - `literature/legacy_papers` exists and contains relevant PDF papers.
+>
+> Upload or provide the missing documents before requesting strategy generation again.
+
+## Enforcement
+
+These validation checks are mandatory and must be completed before any strategy generation, analysis, synthesis, recommendation, or planning activities are performed.
+
+
 # Generate Strategies
 
 ## Overview
