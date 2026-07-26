@@ -1,0 +1,9 @@
+expected,language,prompt
+trigger,en,Apply the Calle-Vallejo HNO3 correction and convert my nitrate adsorption energies to the electrochemical scale.
+trigger,ko,NO3RR의 1.12 eV HNO3 보정과 0.075/0.317 eV cycle을 분리해서 계산해줘.
+trigger,en,Compare an NHO pathway with a pathway that bypasses NHO and calculate the limiting potential.
+trigger,ko,NiCoO2 NO3RR 자유에너지 경로의 pH/RHE 부호와 8전자 closure를 검사해줘.
+trigger,en,Audit whether the HNO3 correction was incorrectly applied to NO2 and NO.
+no_trigger,en,Optimize the VASP k-point mesh for a nitrate-covered slab.
+no_trigger,ko,NO3RR 전이상태의 NEB 장벽과 반응속도를 계산해줘.
+no_trigger,en,Fit Faradaic efficiency from experimental chromatography data.

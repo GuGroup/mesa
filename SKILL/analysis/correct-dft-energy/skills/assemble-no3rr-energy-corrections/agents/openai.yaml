@@ -1,0 +1,6 @@
+interface:
+  display_name: "Assemble NO3RR Energy Corrections"
+  short_description: "Apply HNO3-cycle and CHE corrections to NO3RR"
+  default_prompt: "Use $assemble-no3rr-energy-corrections to apply a provenance-checked HNO3/NO3- reference cycle, build NO3RR-to-NH3 free-energy pathways, audit the 1.12 eV literature correction, and calculate closure and limiting-potential descriptors."
+policy:
+  allow_implicit_invocation: true
