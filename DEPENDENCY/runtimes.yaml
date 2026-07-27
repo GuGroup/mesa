@@ -204,7 +204,7 @@ skills:
   charge-flow-analyzer: mesa-modeling
   build-slab-models: mesa-modeling
   build-gas-phase-models: mesa-modeling
-  analyze-calculation-results: mesa-modeling
+  analyze-relaxation-results: mesa-modeling
   construct-energy-diagram: mesa-modeling
   place-adsorbates-with-adsorbdiff: mesa-adsorbdiff
   propose-surface-models-from-literature: mesa-paper-search

@@ -11,7 +11,7 @@
 # Optional extras: pip install -e ".[opsin]" (chemical-name resolution via
 # OPSIN, also needs Java on PATH), ".[dev]" (tests).
 #
-# Visual result review (analyze-calculation-results) and the structure
+# Visual result review (analyze-relaxation-results) and the structure
 # grid figures (render-adsorbate-structure-grid) render with plain ASE + matplotlib
 # (render_core.py in each skill) — no extra viewer package or browser needed.
 name: modeling

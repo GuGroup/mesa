@@ -1,4 +1,4 @@
-# Result Analyzer Policy
+# Relaxation Result Analyzer Policy
 
 Load only when editing the analyzer or interpreting a nontrivial report.
 
@@ -64,6 +64,23 @@ dissociation, desorption, slab reconstruction, or fixed-layer failure.
 - `warn` -> triage first, then `accepted-with-caveat`, `failed`, or `excluded`
 - `fail`, missing summary, or incomplete strict visual validation -> `failed`
 - registry `excluded` stays `excluded`
+
+## Limited UMA Max-Step Continuation
+
+`scripts/decide_relaxation_revision.py` permits one automatic continuation only
+when all of these are true:
+
+- overall verdict is `fail`, force nonconvergence is confirmed, and `nsw_reached`
+  is true;
+- `warn_reasons` is empty;
+- visual review is completed with `pass` for top and both side views;
+- no connectivity change, dissociation, new bond, or desorption is flagged;
+- no prior automatic continuation is recorded.
+
+Start the continuation from the failed endpoint. Among scientific control
+settings, change only `relaxation.steps`, to twice its prior value. Keep the
+model, optimizer, `fmax`, constraints, and all other settings fixed. Analyze
+the new trajectory from the beginning; never inherit the previous verdict.
 
 ## Log Discipline
 

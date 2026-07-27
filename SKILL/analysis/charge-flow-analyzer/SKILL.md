@@ -142,7 +142,7 @@ The analyzer writes:
 Use this rendering decision:
 
 - Select the existing pure ASE + matplotlib slab-renderer pattern from
-  `render-adsorbate-structure-grid` and `analyze-calculation-results` for
+  `render-adsorbate-structure-grid` and `analyze-relaxation-results` for
   atom/slab context. It is already built for comparable catalyst slabs: fixed
   top/side views, unit-cell wireframes, fixed-atom marks, and adsorbate-scoped
   bonds when metadata exists.

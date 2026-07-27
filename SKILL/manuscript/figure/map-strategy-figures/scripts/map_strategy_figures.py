@@ -90,7 +90,7 @@ FIGURE_ROUTES = (
     },
     {
         "type": "calculation-diagnostic",
-        "skill": "analyze-calculation-results",
+        "skill": "analyze-relaxation-results",
         "keywords": ("local geometry analysis", "geometry analysis", "bond length", "coordination", "relaxation", "relaxed structure"),
         "text": ("relax", "geometry", "bond", "coordination", "distance"),
         "artifacts": ("analysis_summary", "metrics", "relax", "geometry", ".traj", ".extxyz"),

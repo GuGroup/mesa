@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Aggregate calculation-result analyzer outputs into an evidence gate.
 
-This script does not analyze trajectories. Run analyze_calculation_result.py
+This script does not analyze trajectories. Run analyze_relaxation_result.py
 first, complete any requested visual reviews, then use this script to turn many
 analysis_summary.json files into project-level endpoint acceptance records.
 """

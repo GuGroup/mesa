@@ -1,3 +1,5 @@
+"""Render initial and final relaxation endpoints."""
+
 from __future__ import annotations
 
 from pathlib import Path

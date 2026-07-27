@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Analyze relaxation trajectories and endpoint structures."""
+
 from __future__ import annotations
 
 import argparse

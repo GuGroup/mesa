@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Create a demo trajectory for relaxation-result analysis."""
+
 from __future__ import annotations
 
 import argparse

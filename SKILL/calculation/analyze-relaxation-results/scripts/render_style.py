@@ -1,3 +1,5 @@
+"""Shared rendering styles for relaxation-result views."""
+
 from __future__ import annotations
 
 import render_core as rc

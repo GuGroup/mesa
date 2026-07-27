@@ -13,9 +13,8 @@ calculations, hide missing data, or promote proxies into full proof.
 - `assemble-alkaline-her-descriptors`
 - `analyze-dband-center`
 - `charge-flow-analyzer`
-- `correct-dft-energy`
 
-Use `analyze-calculation-results` from the calculation domain for trajectory or
+Use `analyze-relaxation-results` from the calculation domain for trajectory or
 optimization sanity checks before higher-level analysis.
 
 # Entry Requirements
@@ -34,9 +33,6 @@ Before analysis, confirm:
 Before manuscript intake:
 
 - Use calculation-result checks for relaxations, trajectories, and raw outputs.
-- Use `correct-dft-energy` for OER or NO3RR correction layers, CHE profiles,
-  thermodynami-cycle closure, limiting potentials, and bounded thermodynamic
-  rankings when its input contract matches the recipe evidence. 
 - Use `construct-energy-diagram` only when its data model matches the required
   chemistry.
 - Use `evaluate-energy-diagram` when the task is evaluating an energy profile,

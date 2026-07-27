@@ -370,7 +370,7 @@ Poll until done, then verify and recover automatically.
   `remote_dir` outputs appearing.
 
 ### Verify, then gate
-- When `finished`, run `analyze-calculation-results`
+- When `finished`, run `analyze-relaxation-results`
   on `remote_dir` and read its `verdict`:
   - `pass` → accept the endpoint, continue the workflow.
   - `warn` → accept only with the recorded caveat (inspect overlay if a human is

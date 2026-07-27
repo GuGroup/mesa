@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyze Relaxation Results"
+  short_description: "Analyze relaxations and gate endpoint evidence"
+  default_prompt: "Use $analyze-relaxation-results to analyze UMA or VASP relaxation trajectories, flag divergence, generate sampled overlay frames for visual review, and aggregate endpoint evidence readiness."

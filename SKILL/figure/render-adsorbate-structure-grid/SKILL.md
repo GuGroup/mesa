@@ -18,11 +18,11 @@ sentences, or placeholders inside the generated figure. It also works as a
 plain render+crop tool for one-off publication structure images.
 
 It renders with the same pure-ASE + matplotlib engine (`render_core.py`) the
-`analyze-calculation-results` skill uses for visual review, so the look is
+`analyze-relaxation-results` skill uses for visual review, so the look is
 consistent with that skill. No aseview, no browser/playwright — just ase,
 matplotlib, numpy, and Pillow. It does **not** run relaxations, judge
 convergence, or pick frames — feed it structures you already trust (or use
-`analyze-calculation-results` first to validate them).
+`analyze-relaxation-results` first to validate them).
 
 Run everything in the `modeling` env (needs `ase`, `matplotlib`, `Pillow`,
 `numpy`); bare `python` is not enough.
@@ -157,6 +157,6 @@ style/manifest edit that the mtime check can't see, e.g. tweaking `margin_frac`)
 - Renders are a visual aid, not a measurement — do not read bond lengths or
   heights off the figure.
 - Do not use this to claim a structure is relaxed/converged; that is the
-  `analyze-calculation-results` skill's job.
+  `analyze-relaxation-results` skill's job.
 - Do not overwrite the user's structure files; the skill only writes renders and
   the figure outputs.

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Analyze Calculation Results"
-  short_description: "Analyze trajectories and gate endpoint evidence"
-  default_prompt: "Use $analyze-calculation-results to analyze UMA or VASP trajectory results, flag divergence, generate sampled overlay frames for visual review, and aggregate endpoint evidence readiness."

@@ -72,7 +72,7 @@ chooses to treat warnings as blocking.
 ## Interpretation
 
 `pass` means the execution pathway is auditable. It does not mean the chemistry
-is correct. Continue with `analyze-calculation-results`, free-energy
+is correct. Continue with `analyze-relaxation-results`, free-energy
 bookkeeping, missing-evidence recording, and manuscript/result skills only after
 the relevant recipe execution gate passes or the exceptions are explicitly
 accepted by the user.

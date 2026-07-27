@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pure ASE + matplotlib structure rendering core (no aseview, no browser).
+"""Pure ASE + matplotlib relaxation rendering core (no aseview, no browser).
 
 Projects atoms with an orthographic camera (a view direction + up vector,
 same convention as ``camera_views()``), depth-sorts bonds and atoms with a

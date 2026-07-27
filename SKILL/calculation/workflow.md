@@ -11,7 +11,7 @@ Calculations must be authorized by explicit recipe artifacts.
 
 - `relax-uma-trajectory`
 - `calculate-uma-vibrational-frequencies`
-- `analyze-calculation-results`
+- `analyze-relaxation-results`
 - `manage-vasp-jobs`
 - `balance-reaction-pathway`
 
@@ -104,7 +104,7 @@ outputs required by recipes.
 
 # Result Checks
 
-Use `analyze-calculation-results` for relaxation and raw-result sanity checks
+Use `analyze-relaxation-results` for relaxation and raw-result sanity checks
 where trajectories or optimization outputs exist.
 
 Check and record:

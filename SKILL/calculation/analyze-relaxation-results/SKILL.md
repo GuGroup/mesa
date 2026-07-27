@@ -1,24 +1,26 @@
 ---
-name: analyze-calculation-results
+name: analyze-relaxation-results
 description: >-
   Analyze existing UMA/MLIP or VASP relaxation outputs for endpoint acceptance,
   including force convergence, NSW/max-step termination, abnormal
   energy/force/RMSD behavior, and red/blue initial-final image review. Use before
-  accepting catalyst relaxation endpoints for energetics or claims.
+  accepting catalyst relaxation endpoints for energetics or claims, or when
+  deciding whether a clean max-step failure permits one steps-only continuation.
 ---
 
 For MESA end-to-end work, read `SKILL/calculation/workflow.md` first.
 
-# Calculation Result Analyzer
+# Relaxation Result Analyzer
 
-Use only on existing outputs. Do not run calculations or repair structures.
+Use the analyzer only on existing outputs; do not repair structures. Keep its
+diagnosis logic separate from the optional revision helper below.
 
 ## Run
 
 ```bash
-mamba run -n modeling python scripts/analyze_calculation_result.py \
+mamba run -n modeling python scripts/analyze_relaxation_result.py \
   --input path/to/result_or_trajectory \
-  --outdir analysis/calculation_result
+  --outdir analysis/relaxation_result
 ```
 
 For MLIP trajectories with a non-default optimizer target, pass
@@ -42,6 +44,25 @@ Verdict:
 
 For thresholds, output fields, and batch-gate policy, read
 `references/result-analyzer-policy.md`.
+
+## Limited UMA relaxation revision
+
+For a clean max-step failure, run `scripts/decide_relaxation_revision.py` to
+prepare one continuation with `2 × relaxation.steps`. Preserve the model,
+optimizer, `fmax`, constraints, and other calculation settings. Add `--run` to
+invoke the fixed UMA runner; otherwise, only write the retry config.
+
+```bash
+python3 scripts/decide_relaxation_revision.py \
+  --summary analysis_summary.json \
+  --config resolved_uma_config.json \
+  --restart-poscar relaxed/POSCAR \
+  --retry-dir retry_01 [--run]
+```
+
+Refuse warnings, structural anomalies, incomplete/non-passing three-view
+review, and a second continuation. Re-analyze the retry normally. Read
+`references/result-analyzer-policy.md` for the exact gate.
 
 Batch runs must keep analyzer stdout/stderr in log files and report only compact
 counts, warning classes, failed IDs, and review queues in user-facing updates.
