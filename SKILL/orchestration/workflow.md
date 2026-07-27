@@ -10,6 +10,7 @@ calculations.
 # Skills
 
 - `generate-explicit-calculation-recipe`
+- `plan-recipe-execution`
 - `validate-recipe-execution`
 - `record-missing-evidence`
 
@@ -37,15 +38,12 @@ Required output shape:
 
 ```text
 recipe_index.json
-recipe_index.md
-source_computational_section.json
-P###_<procedure_slug>/
+P###/
   procedure.json
-  procedure_map.md
+  mapping.json
   calculations/
-    C###_<calculation_slug>/
+    C###/
       recipe.json
-      recipe.md
 ```
 
 Each `P###` folder preserves a single source procedure. Each `C###` folder is
@@ -63,22 +61,23 @@ Recipe-generation rules:
 
 # Plan Execution From Recipes
 
-After recipe generation, inspect `recipe_index.md` and the `P###/C###`
-`recipe.json` files before executing anything.
+After recipe generation and realization, run:
 
-For each recipe, identify:
+```bash
+python3 SKILL/orchestration/plan-recipe-execution/scripts/plan_recipe_execution.py \
+  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+```
 
-- required prior artifacts;
-- required inputs;
-- operations;
-- method intent;
-- output artifacts;
-- the narrowest skills or scripts needed to produce those outputs.
+The skill writes `execution_plan.json` without modifying recipes. It uses one
+LLM call to define execution units, consumers, dependencies, required
+artifacts, and produced artifacts. Deterministic code validates full C-recipe
+coverage, rejects cycles, assigns `E###` IDs, and assigns all paths inside the
+recipe root.
 
-Record the plan or coverage note separately from the recipe files. The plan may
-state that a recipe requires a prior structure, electronic-structure output,
-VASP-like artifact, vibration output, free-energy bookkeeping, or another
-dependency. Do not alter the generated recipe to store execution status.
+The plan must not select skills, scripts, commands, backends, feasibility, or
+status. The later executor selects tools for each unit but must use the unit's
+assigned `execution_dir`. Do not execute recipe-backed work before this plan
+exists.
 
 If a required calculation cannot be executed under current project policy or
 available skills, do not silently downgrade it. Choose one explicit path:
@@ -114,9 +113,9 @@ analysis outputs are produced.
 
 Validation checks that every produced calculation artifact is either:
 
-- under the corresponding `C###/execution/` folder; or
-- explicitly linked from a recipe-local `execution_manifest.json` to a shared
-  batch artifact, with the exact subset for that recipe identified.
+- under its plan-assigned single-consumer execution-unit directory; or
+- under the plan-assigned `shared_execution/E###/` directory and explicitly
+  linked from every consumer's recipe-local `execution_manifest.json`.
 
 Repair orphan outputs before manuscript intake. Do not treat evidence as
 manuscript-ready until validation passes or the remaining gaps are explicitly

@@ -21,9 +21,8 @@ mamba run -n modeling python scripts/place_surface_adsorbates.py \
   --adsorbate CO
 ```
 
-Full option example:
-
-This example shows every available option.
+Representative legacy-backend workflow example (weighted-alpha override options are
+listed separately in the keyword reference):
 
 ```bash
 mamba run -n modeling python scripts/place_surface_adsorbates.py \
@@ -44,8 +43,16 @@ mamba run -n modeling python scripts/place_surface_adsorbates.py \
 | `--slab` | yes | Parent clean slab file, preferably extxyz with slabuilder metadata. |
 | `--adsorbate` | yes | Adsorbate label, SMILES, `smiles:<SMILES>`, or chemical name. |
 | `--max-sites` | no | Maximum adsorption-site candidates to place. |
-| `--height` | no | Optional adsorbate anchor height above the site in Angstrom. |
-| `--backend` | no | Site/placement backend: `auto`, `acat`, `catkit`, or `pymatgen`. |
+| `--height` | no | Optional legacy-backend adsorbate height in Angstrom; ignored for weighted-alpha contact-anchor placement. |
+| `--backend` | no | Site backend: legacy `auto`, `acat`, `catkit`, `pymatgen`, or strict `weighted_alpha`. |
+| `--weighted-alpha-executable` | no | Optional audited executable override; pair with `--weighted-alpha-radius-file`. Omit both to use the trusted private Release. |
+| `--weighted-alpha-radius-file` | no | Optional audited radius-table override paired with the executable. |
+| `--weighted-alpha-expected-sha256` | no | Executable SHA-256 pin required for an audited explicit override. |
+| `--weighted-alpha-expected-radius-sha256` | no | Radius-table SHA-256 pin required for an audited explicit override. |
+| `--weighted-alpha-runtime-sha256-manifest` | no | Exact artifact→SHA-256 runtime manifest for an explicit override. |
+| `--weighted-alpha-expected-runtime-manifest-sha256` | no | SHA-256 pin for the explicit runtime manifest. |
+| `--weighted-alpha-allow-unpinned-runtime` | no | Unsafe local-development override; never use for audited runs. |
+| `--weighted-alpha-*` physical flags | no | Alpha factor plus contact-anchor radius/gap/step/search-limit/timeout overrides. Numeric overrides work with the trusted first-party runtime. |
 | `--max-atoms` | no | Validation limit for DFT-ready atom count after placement. |
 | `--min-distance` | no | Validation threshold for too-close atoms in Angstrom. |
 | `--outdir` | no | Output directory for extxyz, POSCAR, and metadata files. |
@@ -77,6 +84,22 @@ Prefer `smiles:<SMILES>` or a known label when unambiguous. Use a name only when
 - Leave placement height unset unless a chemically motivated height is supplied.
 - Use `backend=auto`; let slabuilder try AutoAdsorbate/RDKit and fallback site detectors.
 - Build a candidate table before large multi-material or multi-adsorbate generation.
+
+## Weighted-alpha boundary
+
+Use `backend=weighted_alpha` when the strict native geometry backend is requested.
+With no explicit binary paths, MESA downloads the hash-pinned source-free Windows
+bundle from the private GitHub Release and installs it in the verified versioned
+cache. It fails closed and never falls back to legacy detectors. Phase 1 requires
+pbc110, Cartesian +z alignment, selected top-layer height spread <= 0.25 A, and
+complete upper-terrace population. `backend=auto` remains the legacy path.
+
+For weighted-alpha sites, binding atom 0 is placed at
+`anchor_position + normalize(direction) * contact_anchor_radius`; multi-atom
+adsorbates are rigidly aligned to that normal and a minimum-image collision check
+is mandatory. `--height` is ignored on this path and retains its old meaning for
+legacy backends. See `../../../WEIGHTED_ALPHA_BACKEND.md` for distribution,
+configuration, schema, provenance, and verification gates.
 
 ## Output Convention
 

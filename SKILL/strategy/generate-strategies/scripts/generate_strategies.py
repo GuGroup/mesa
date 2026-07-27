@@ -15,9 +15,9 @@ from typing import Any
 
 
 API_URL = "https://api.openai.com/v1/responses"
-DEFAULT_MODEL = "gpt-5.5"
+DEFAULT_MODEL = "gpt-5.6-sol"
 MAX_ARTIFACT_BYTES = 2 * 1024 * 1024
-CLAIM_HEADING = "- author_reported_claim"
+CLAIM_HEADING = "author_reported_claim"
 NOT_STATED = "not explicitly stated"
 
 STRATEGY_PROMPT = """You are generating computational chemistry strategies for a target materials or chemistry task.
@@ -65,7 +65,7 @@ Mechanistic discipline requirements:
 * Generate strategies at the strongest mechanistic depth supported by the authoritative claim and extraction artifacts; do not increase ambition by changing the claim.
 * Use matched controls that isolate each variable named in the claim.
 * Keep observations distinct from causal explanations. Connect an observation to a mechanism only when the evidence or a clearly labeled hypothesis supports that connection.
-* Supported extrapolation is allowed inside strategy hypotheses, but unsupported invention is not. When combining multiple artifacts, label the reference role as "synthesis_basis" and explain the inference chain.
+* Supported extrapolation is allowed inside strategy hypotheses, but unsupported invention is not. When combining multiple artifacts, use the allowed role that matches each source's contribution and explain the inference chain.
 
 Reference schema:
 {
@@ -367,6 +367,13 @@ def read_artifact(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
 
 
+def normalize_heading(line: str) -> str:
+    heading = line.strip().lstrip("#").strip()
+    if heading.startswith("- "):
+        heading = heading[2:].strip()
+    return heading.rstrip(":").strip()
+
+
 def artifact_block(kind: str, path: Path) -> str:
     content = read_artifact(path)
     return (
@@ -380,34 +387,62 @@ def artifact_block(kind: str, path: Path) -> str:
 
 def parse_author_reported_claim(path: Path) -> dict[str, Any] | None:
     lines = read_artifact(path).splitlines()
-    starts = [index for index, line in enumerate(lines) if line.strip() == CLAIM_HEADING]
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if normalize_heading(line) == CLAIM_HEADING
+    ]
     if not starts:
         return None
     if len(starts) != 1:
         raise SystemExit(f"Expected exactly one author_reported_claim section: {path}")
 
-    block: list[str] = []
+    values: dict[str, str] = {}
+    saw_source_locations = False
     for line in lines[starts[0] + 1:]:
-        if line.startswith("- "):
+        stripped = line.strip()
+        if stripped == "- source_locations:":
+            if saw_source_locations:
+                raise SystemExit(
+                    f"author_reported_claim contains duplicate source_locations: {path}"
+                )
+            saw_source_locations = True
+            continue
+        for label in ("statement", "abstract", "conclusion"):
+            prefix = f"- {label}:"
+            if not stripped.startswith(prefix):
+                continue
+            if label in values:
+                raise SystemExit(
+                    f"author_reported_claim contains duplicate {label}: {path}"
+                )
+            value = stripped[len(prefix):].strip()
+            if not value:
+                raise SystemExit(
+                    f"author_reported_claim has an empty {label} value: {path}"
+                )
+            values[label] = value
             break
-        block.append(line)
-    if sum(line.strip() == "- source_locations:" for line in block) != 1:
+        if saw_source_locations and all(
+            label in values for label in ("statement", "abstract", "conclusion")
+        ):
+            break
+
+    if not saw_source_locations:
         raise SystemExit(f"author_reported_claim is missing source_locations: {path}")
+    missing = [
+        label
+        for label in ("statement", "abstract", "conclusion")
+        if label not in values
+    ]
+    if missing:
+        raise SystemExit(
+            f"author_reported_claim is missing: {', '.join(missing)}: {path}"
+        )
 
-    def labeled_value(label: str) -> str:
-        prefix = f"- {label}:"
-        matches = [
-            line.strip()[len(prefix):].strip()
-            for line in block
-            if line.strip().startswith(prefix)
-        ]
-        if len(matches) != 1 or not matches[0]:
-            raise SystemExit(f"author_reported_claim is missing one {label} value: {path}")
-        return matches[0]
-
-    statement = labeled_value("statement")
-    abstract = labeled_value("abstract")
-    conclusion = labeled_value("conclusion")
+    statement = values["statement"]
+    abstract = values["abstract"]
+    conclusion = values["conclusion"]
     if statement.strip("`").casefold() == NOT_STATED:
         return None
     return {
@@ -557,6 +592,52 @@ def validate_generated_output(
         raise SystemExit("Generated target_task.author_reported_claim does not exactly preserve the extraction")
     if author_claim is None and target.get("author_reported_claim") is not None:
         raise SystemExit("Generated target_task.author_reported_claim must be None without an extracted claim")
+
+    allowed_reference_roles = {
+        "benchmark_constraint",
+        "axiom",
+        "mechanism",
+        "method",
+        "descriptor",
+        "computational_test",
+        "risk",
+        "prioritization",
+    }
+    required_reference_fields = {
+        "extraction_artifact",
+        "extraction_type",
+        "inherited_source",
+        "supporting_statement",
+        "decision_role",
+    }
+
+    def validate_references(value: Any, path: str = "generated_strategies") -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}"
+                if key == "references":
+                    if not isinstance(child, list) or not child:
+                        raise SystemExit(f"{child_path} must be a non-empty list")
+                    for index, reference in enumerate(child):
+                        reference_path = f"{child_path}[{index}]"
+                        if not isinstance(reference, dict):
+                            raise SystemExit(f"{reference_path} must be an object")
+                        missing = required_reference_fields.difference(reference)
+                        if missing:
+                            fields = ", ".join(sorted(missing))
+                            raise SystemExit(f"{reference_path} is missing fields: {fields}")
+                        role = reference.get("decision_role")
+                        if role not in allowed_reference_roles:
+                            allowed = ", ".join(sorted(allowed_reference_roles))
+                            raise SystemExit(
+                                f"{reference_path}.decision_role must be one of: {allowed}"
+                            )
+                validate_references(child, child_path)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                validate_references(child, f"{path}[{index}]")
+
+    validate_references(payload)
 
 
 def main() -> int:

@@ -253,6 +253,7 @@ def auto_shared_roots(recipe_root: Path) -> list[Path]:
     strategy_id = name[: -len("_explicit_recipe")]
     parent = recipe_root.parent
     return [
+        recipe_root / "shared_execution",
         parent / f"{strategy_id}_execution",
         parent / f"{strategy_id}_shared_execution",
     ]

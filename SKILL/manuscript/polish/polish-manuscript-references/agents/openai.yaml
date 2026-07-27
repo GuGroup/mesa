@@ -1,4 +1,4 @@
 interface:
   display_name: "Manuscript Reference Polisher"
-  short_description: "Normalize manuscript references from config."
-  default_prompt: "Normalize references in this manuscript DOCX from a reference config."
+  short_description: "Safely normalize scoped DOCX references."
+  default_prompt: "Use $polish-manuscript-references to normalize this DOCX bibliography from my reference config while preserving equations and figures."

@@ -21,10 +21,10 @@ must already exist.
 
 Before modeling, read:
 
-- `recipe_index.md`;
+- `recipe_index.json`;
+- `execution_plan.json`;
 - the relevant `P###/procedure.json`;
 - the relevant `C###/recipe.json`;
-- any execution plan or coverage note.
 
 Model required structures based on explicit recipe artifacts, not from memory or
 from a loose reading of the strategy.
@@ -100,22 +100,23 @@ evidence is present.
 
 # Output Placement
 
-Save model artifacts under the recipe calculation that authorized them:
+Save model artifacts under the execution unit's assigned `execution_dir`.
+Single-consumer units use:
 
 ```text
 project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
-  P###_<procedure_slug>/
+  P###/
     calculations/
-      C###_<calculation_slug>/
+      C###/
         execution/
-          structures/
-          model_manifest.json
-          execution_manifest.json
+          units/
+            E###/
 ```
 
-If one model-generation run naturally creates structures for multiple recipes,
-the shared output may live in a strategy-level shared directory only when each
-recipe-local `execution_manifest.json` links to the exact subset used.
+Multi-consumer units use the plan-assigned
+`<strategy_id>_explicit_recipe/shared_execution/E###/` directory. Each
+consumer's recipe-local `execution_manifest.json` must link the exact subset
+used.
 
 # Model Metadata
 

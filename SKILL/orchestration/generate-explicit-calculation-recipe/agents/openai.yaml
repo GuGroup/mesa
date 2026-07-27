@@ -1,4 +1,4 @@
 interface:
-  display_name: "Explicit Calculation Recipe"
-  short_description: "Translate strategies into recipes"
-  default_prompt: "Use $generate-explicit-calculation-recipe to turn the selected strategy computational section into explicit calculation recipes."
+  display_name: "Procedure Recipes"
+  short_description: "Create, map, and classify procedure recipes"
+  default_prompt: "Use $generate-explicit-calculation-recipe to create procedure folders, map strategy information, and classify it into calculation recipes."

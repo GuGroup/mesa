@@ -1,0 +1,8 @@
+expected,language,prompt
+trigger,en,Correct my OER free-energy diagram using the H2O/H2 O2 cycle and calculate the limiting potential.
+trigger,ko,OER의 *OH *O *OOH 에너지로 4.92 eV closure와 과전압을 계산해줘.
+trigger,en,Audit whether I double counted the O2 overbinding correction in this OER workflow.
+trigger,ko,이 OER 계산에서 RHE와 SHE pH 부호가 맞는지 검토해줘.
+no_trigger,en,Optimize the VASP ENCUT and k-point mesh for my oxide slab.
+no_trigger,ko,OER 전이상태의 NEB 장벽을 계산해줘.
+no_trigger,en,Fit a Tafel slope from experimental polarization data.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Place Adsorbates With MJS"
+  short_description: "Extract regular top/bridge/hollow sites from a slab and emit JSON/CSV/XYZ + an N-each 3D report."
+  default_prompt: "Use $place-adsorbates-with-mjs to extract regular P0/P1/P2 adsorption sites from a slab POSCAR given an adsorbate radius and PBC mask, and produce the standard result set (json/csv/xyz + Neach.html)."

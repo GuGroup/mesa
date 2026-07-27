@@ -1,0 +1,6 @@
+interface:
+  display_name: "Assemble OER Energy Corrections"
+  short_description: "Correct and audit four-step OER free energies"
+  default_prompt: "Use $assemble-oer-energy-corrections to build a closure-checked OER AEM free-energy table, O2 reference cycle, limiting potential, and bounded thermodynamic ranking from my endpoint records."
+policy:
+  allow_implicit_invocation: true

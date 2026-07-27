@@ -18,6 +18,16 @@ API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 MAX_FILE_BYTES = 50 * 1024 * 1024
 CLAIM_HEADING = "- author_reported_claim"
+SECTION_HEADINGS = (
+    "author_reported_claim",
+    "Material identity",
+    "Crystal and structural information",
+    "Experimental conditions",
+    "Measured properties",
+    "Characterization results",
+    "Figure-extracted data",
+    "Missing information",
+)
 EXTRACTION_PROMPT = """You are an information extraction system for computational materials research.
 
 Your task is to extract ONLY experimentally reported information that can reduce uncertainty when setting up a DFT calculation.
@@ -252,12 +262,23 @@ def output_text(response: dict[str, Any]) -> str:
 
 def validate_author_reported_claim(text: str) -> None:
     lines = text.splitlines()
-    starts = [index for index, line in enumerate(lines) if line.strip() == CLAIM_HEADING]
+
+    def normalized_heading(line: str) -> str:
+        heading = line.strip().lstrip("#").strip()
+        if heading.startswith("- "):
+            heading = heading[2:].strip()
+        return heading
+
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if normalized_heading(line) == "author_reported_claim"
+    ]
     if len(starts) != 1:
         raise SystemExit("Extraction must contain exactly one author_reported_claim section")
     block: list[str] = []
     for line in lines[starts[0] + 1:]:
-        if line.startswith("- "):
+        if normalized_heading(line) in SECTION_HEADINGS[1:]:
             break
         block.append(line)
     if sum(line.strip() == "- source_locations:" for line in block) != 1:

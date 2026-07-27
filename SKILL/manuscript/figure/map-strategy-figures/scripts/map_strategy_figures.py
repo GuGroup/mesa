@@ -49,39 +49,35 @@ FIGURE_ROUTES = (
         "type": "structure-grid",
         "skill": "render-adsorbate-structure-grid",
         "keywords": ("optimized adsorption configuration", "adsorbate configuration", "adsorbate structures"),
-        "roles": ("adsorbate_relaxation_matrix",),
-        "text": ("relax", "adsorbate", "adsorption", "configuration", "optimized"),
+        "required": ("relax",),
+        "text": ("adsorbate", "adsorbed", "adsorption configuration", "h*", "oh*", "h2*", "h2o*"),
         "artifacts": ("relax", ".traj", ".extxyz", "poscar", "contcar", ".vasp"),
     },
     {
         "type": "structure-grid",
         "skill": "render-adsorbate-structure-grid",
         "keywords": ("computational model", "model structure", "structure", "slab", "active site", "adsorption site"),
-        "roles": ("structure_model_build",),
-        "text": ("build", "model", "structure", "slab", "site", "motif"),
+        "text": ("build", "construct", "introduce"),
         "artifacts": ("poscar", "contcar", ".vasp", ".cif", ".xyz", ".traj", "model_metadata"),
     },
     {
         "type": "energy-diagram",
         "skill": "plot-energy-diagram",
         "keywords": ("free-energy diagram", "free energy diagram", "reaction energy profile", "energy profile", "reaction coordinate"),
-        "roles": ("free_energy_diagram_assembly", "electrochemical_free_energy_bookkeeping", "potential_shift_analysis"),
-        "text": ("free-energy diagram", "free energy diagram", "relative free energies", "reaction coordinate", "potential"),
+        "text": ("free-energy diagram", "free-energy diagrams", "free energy diagram", "free energy diagrams", "relative free energies", "reaction coordinate", "potential"),
         "artifacts": ("energy_diagram", "free_energy", "relative_free_energies", "plot", "state_table"),
     },
     {
         "type": "descriptor-comparison",
         "skill": "create-nature-figure",
         "keywords": ("adsorption free-energy comparison", "free-energy comparison", "descriptor comparison", "thermodynamic descriptor", "limiting-step comparison"),
-        "roles": ("descriptor_calculation",),
-        "text": ("delta g", "deltag", "adsorption energy", "descriptor", "thermodynamic", "largest uphill"),
+        "text": ("delta g", "deltag", "δg", "δgh", "adsorption energy", "descriptor", "thermodynamic step", "largest uphill", "maximum uphill", "overbinding penalty"),
         "artifacts": ("delta_g", "adsorption", "descriptor", "thermodynamic", "largest_uphill"),
     },
     {
         "type": "electronic-descriptor",
         "skill": "create-nature-figure",
         "keywords": ("projected density of states", "density of states", "projected dos", "pdos"),
-        "roles": ("density_of_states_analysis", "projected_dos_analysis"),
         "text": ("projected dos", "density of states", "pdos"),
         "artifacts": ("dos", "pdos", "projected"),
     },
@@ -89,7 +85,6 @@ FIGURE_ROUTES = (
         "type": "electronic-descriptor",
         "skill": "create-nature-figure",
         "keywords": ("charge density difference", "charge transfer", "bader charge", "charge analysis"),
-        "roles": ("charge_transfer_analysis",),
         "text": ("charge density", "charge transfer", "bader", "charge analysis"),
         "artifacts": ("charge", "bader", "density"),
     },
@@ -97,7 +92,6 @@ FIGURE_ROUTES = (
         "type": "calculation-diagnostic",
         "skill": "analyze-calculation-results",
         "keywords": ("local geometry analysis", "geometry analysis", "bond length", "coordination", "relaxation", "relaxed structure"),
-        "roles": ("clean_structure_relaxation", "adsorbate_relaxation_matrix", "geometry_optimization"),
         "text": ("relax", "geometry", "bond", "coordination", "distance"),
         "artifacts": ("analysis_summary", "metrics", "relax", "geometry", ".traj", ".extxyz"),
     },
@@ -284,14 +278,18 @@ def recipe_entries(recipe_root: Path, index: dict[str, Any]) -> list[dict[str, A
                 continue
             pid, cid = str(procedure.get("procedure_id", "")), str(calculation.get("calculation_id", ""))
             calc_dir = recipe_root / str(calculation.get("folder", ""))
+            recipe_path = calc_dir / "recipe.json"
+            recipe = read_json_or_python(recipe_path) if recipe_path.exists() else {}
             manifest_path = calc_dir / "execution/execution_manifest.json"
             manifest = read_json_or_python(manifest_path) if manifest_path.exists() else {}
             entries.append({
                 "procedure_id": pid,
                 "calculation_ref": f"{pid}/{cid}" if pid and cid else cid or pid,
                 "procedure_text": str(procedure.get("source_text", "")),
-                "calculation_title": str(calculation.get("calculation_title", "")),
-                "recipe_role": str(calculation.get("recipe_role", "")),
+                "c_task": str(
+                    recipe.get("c_task") if isinstance(recipe, dict) and recipe.get("c_task")
+                    else calculation.get("calculation_title", "")
+                ),
                 "calc_dir": calc_dir,
                 "manifest": manifest if isinstance(manifest, dict) else {},
             })
@@ -356,16 +354,15 @@ def route_for(name: str) -> dict[str, Any]:
         if any(keyword in lower for keyword in route["keywords"]):
             return route
     fallback = tuple(token for token in re.split(r"[^a-z0-9]+", lower) if len(token) > 3)
-    return {"type": slug(name), "skill": "", "keywords": fallback, "roles": (), "text": fallback, "artifacts": fallback}
+    return {"type": slug(name), "skill": "", "keywords": fallback, "text": fallback, "artifacts": fallback}
 
 
 def matches(entry: dict[str, Any], route: dict[str, Any]) -> bool:
-    roles = {role.lower() for role in route["roles"]}
-    if roles:
-        return entry["recipe_role"].lower() in roles
-    text = words([entry["procedure_text"], entry["calculation_title"]]).lower()
-    artifacts = words([Path(path).name for path in entry_artifacts(entry)]).lower()
-    return any(term in text for term in route["text"]) or any(term in artifacts for term in route["artifacts"])
+    text = entry["c_task"].lower()
+    contains = lambda term: re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) is not None
+    return all(contains(term) for term in route.get("required", ())) and any(
+        contains(term) for term in route["text"]
+    )
 
 
 def route_artifacts(route: dict[str, Any], entries: list[dict[str, Any]], limit: int) -> list[str]:

@@ -1,250 +1,252 @@
 ---
 name: search-papers-with-mcp
-description: "Search, screen, and recommend catalyst-domain academic papers using paper_search MCP metadata only, organized into three outputs: Background Papers for material-domain knowledge, Computational Proof-Strategy Papers for recent DFT-backed evidence related to the target task, and optional Legacy Anchor Papers for older implicitly related foundations. Use when Codex needs to find and rank candidate catalyst papers for a user-specified target task and material domain, create a manual-download queue, report DOI/URL/PDF-link metadata, or hand off recommended background/strategy/legacy papers before any PDF download or extraction. This skill must not download PDFs or decompose papers."
+description: Search, screen, and recommend catalyst papers from paper_search MCP metadata using an exact author_reported_claim as the scientific boundary. Use when a MESA project needs a no-download literature handoff organized into Domain Foundation Papers, Computational Proof-Strategy Papers, and optional Legacy Anchor Papers without broadening the claim from other experimental-extraction content.
 ---
 
 For MESA end-to-end use, read `SKILL/literature/workflow.md` before applying this skill.
 
 # Search Papers With MCP
 
-## Overview
+## Purpose
 
-Use this skill for catalyst literature discovery when the `paper_search` MCP
-tools are available. Prefer MCP search calls from the `mcp__paper_search`
-namespace over web search, shell scripts, or the bundled `paper-search` CLI
-because the MCP server exposes structured scholarly metadata.
+Build a claim-faithful catalyst literature handoff with exactly three public
+sections:
 
-This is a **search-only and recommendation-only** skill. It must stop after
-reporting ranked candidate papers and a manual-download queue. It must not
-download PDFs, call download tools, call full-text decomposition skills, or
-continue into `extract-strategy-paper` / `extract-general-insights-paper`.
+1. Domain Foundation Papers
+2. Computational Proof-Strategy Papers
+3. Legacy Anchor Papers
 
-The largest permitted domain is **Catalyst**. Every search lane must stay
-connected to catalyst materials, catalytic reactions, active sites, catalytic
-performance, or catalyst design. Computational chemistry is mandatory for the
-proof-strategy lane, but not for the background lane.
+Treat the section contract and the evidence classification as separate
+dimensions. Classify direct support, challenge, analogy, and method relevance
+inside the Computational Proof-Strategy section; never replace the three
+public sections with those classifications.
 
-## Required User Input
+This skill is metadata/abstract search only. Stop after saving recommendations
+and a manual-download queue. Do not download or read PDFs, decompose papers,
+generate strategies, or run calculations.
 
-Require both fields before starting the search:
+## Claim-Only Input Boundary
 
-- `target task`: the claim, hypothesis, comparison, or literature goal the user wants to support.
-- `material domain`: the catalyst material class, chemistry family, or structural class to search within.
+When an experimental extraction is supplied:
 
-If either field is missing, ask for it directly before calling the MCP tools. Example accepted input:
+1. Run `scripts/project_author_claim.py` on the extraction.
+2. Use the resulting claim-only JSON as the exclusive scientific input.
+3. Do not use material identity, structure, phase, characterization, measured
+   properties, figure data, missing-information lists, or any other extraction
+   content to generate queries or rank papers.
 
-- `target task`: Prove CoNiCuRu is great for NO3RR
-- `material domain`: High Entropy Alloy
+The claim-only object contains only:
 
-Treat the target task as a literature-search objective, not as a conclusion to
-force. Search for supporting and contradicting evidence, then report what the
-metadata and abstracts show.
+```json
+{
+  "author_reported_claim": {
+    "statement": "...",
+    "source_locations": {
+      "abstract": "...",
+      "conclusion": "..."
+    },
+    "extraction_artifact": "..."
+  }
+}
+```
 
-## New Idea Handling
+If the claim lacks enough catalyst context, ask the user for a neutral material
+domain or reaction filter. Use it only to constrain discovery. Never append it
+to, reinterpret, or replace the claim.
 
-Assume the project may be trying to prove a new catalyst idea. Do not treat the absence of exact-match papers for the target composition, material, or reaction as a failure. If no equivalent paper exists, explicitly say so and build the evidence from adjacent systems, shared material-domain principles, analogous reactions, similar active-site motifs, and reusable DFT proof strategies.
+## Claim Fidelity Invariants
 
-Prefer a defensible proof route over forced equivalence. The goal is to identify what prior work can justify testing the new idea: which descriptors to compute, which intermediates to compare, which competing pathways to rule out, which stability checks matter, and which related materials establish plausibility.
+- Copy the claim statement byte-for-byte into every saved search artifact.
+- Derive scientific query terms only from concepts explicitly named in the
+  claim. Add only role terms needed by a section, such as `review`,
+  `perspective`, `DFT`, `first-principles`, `free energy`, `activation barrier`,
+  `kinetics`, `stability`, `benchmark`, or `seminal`.
+- Do not introduce a phase, interface, defect, active site, mechanism,
+  descriptor, composition, or causal variable because it appears elsewhere in
+  an extraction.
+- Preserve logical strength. Do not turn association into causation, a trend
+  into a mechanism, a high fraction into phase coexistence, or activity into
+  selectivity or stability.
+- Search for supporting and contradicting computational evidence.
+- Never force an exact-match conclusion when literature supports only an
+  analogy.
+- Keep these rules general. Do not add material-specific rewriting rules,
+  keyword exceptions, or lookup tables.
 
-## Required Output Lanes
+## Required Inputs
 
-Produce a search handoff in these three sections. Run separate searches for
-each lane because each lane has a different purpose and evidence gate.
+- One validated claim-only JSON from `project_author_claim.py`, or an exact
+  user-supplied claim when no extraction exists.
+- An optional neutral catalyst material-domain/reaction filter only when the
+  claim lacks enough search context.
 
-### 1. Background Papers
+Do not accept the full experimental extraction as generation context.
 
-Purpose: build domain knowledge for the input `material domain`.
+## Required Output Sections
 
-Search target: review papers, perspectives, tutorials, highly cited overviews, and broad experimental/computational surveys about the material domain as catalyst materials. Use this lane to explain what the material class is, why it is used in catalysis, common synthesis/structure concepts, stability issues, active-site hypotheses, composition/strain/electronic effects, and known application areas.
+Run separate searches for each section because their purposes and evidence
+requirements differ.
 
-Evidence gate: DFT or computational chemistry evidence is **not required** for this lane. Review papers are recommended. The papers must still be catalyst-relevant and materially useful for understanding the input material domain.
+### 1. Domain Foundation Papers
 
-Example query shape: `<material domain> catalyst review`, `<material domain> electrocatalyst review`, `<material domain> catalysis active site stability overview`.
+Build domain knowledge for the catalyst material and reaction explicitly named
+in the claim. Prefer reviews, perspectives, tutorials, and broad surveys that
+explain the material class, catalytic use, structural vocabulary, stability,
+and established performance context.
+
+Computational chemistry is not required in this section. A paper must still be
+catalyst-relevant and materially useful for interpreting the claim. Do not let
+domain background redefine the proof target.
 
 ### 2. Computational Proof-Strategy Papers
 
-Purpose: find recent approaches for proving similar materials or systems for the `target task`.
+Find papers that show how to computationally support, challenge, or test the
+exact author-reported claim. Require an explicit DFT, first-principles, reactive
+simulation, kinetic-model, or comparable computational-chemistry signal in the
+title, abstract, or metadata.
 
-Search target: papers close to the target task, reaction, material system, or proof style. Prefer recent papers and papers that show how authors used DFT or first-principles calculations to argue activity, selectivity, stability, active sites, reaction pathways, or descriptor trends for similar catalysts.
+Assign one `strategy_relation` to every paper in this section:
 
-Evidence gate: require DFT or closely related computational chemistry information for final inclusion, such as adsorption energies, reaction/free-energy diagrams, activation barriers, projected density of states, charge transfer, Bader/charge analysis, surface/slab models, defect models, Pourbaix/solvation corrections, or microkinetic parameters derived from first-principles calculations.
+- `direct_support`: computationally tests the same variables, comparison, and
+  catalytic outcome and reports a compatible result;
+- `direct_challenge`: tests the same proposition and reports a conflicting or
+  limiting result;
+- `computational_analogue`: tests the same logical relationship in an adjacent
+  catalyst, reaction, or model, with transfer limits stated explicitly;
+- `method_anchor`: supplies a rigorous computational method needed to test or
+  falsify the claim but does not itself establish the claim.
 
-For electrocatalysis tasks, prefer papers that report at least one of these DFT-linked quantities: adsorption energy of intermediates, free-energy limiting step, overpotential descriptor, surface active-site model, charge/electronic-structure descriptor, competing reaction pathway, or kinetic barrier.
-
-Example query shape: `<target task> <material domain> DFT`, `<reaction> electrocatalyst DFT adsorption free energy`, `<similar material> <similar reaction> density functional theory catalyst`.
+Use analogues and method anchors when exact computational papers are
+insufficient. Never allow them to redefine the target.
 
 ### 3. Legacy Anchor Papers
 
-Purpose: optionally identify older or foundational papers that are implicitly related to the `target task`, even if they are not about the exact material domain.
+Optionally identify older or foundational catalyst papers that establish a
+seminal mechanism, descriptor, benchmark, computational protocol, or concept
+explicitly relevant to the claim. Computational chemistry is preferred when
+relevant but is not mandatory for a genuinely foundational anchor.
 
-Search target: seminal mechanism, descriptor, benchmark catalyst, computational protocol, reaction-pathway, or early catalyst-design papers that later work relies on. These papers may explain why a reaction intermediate, descriptor, active-site motif, alloy effect, or computational method matters.
-
-Evidence gate: this lane is useful but not mandatory. Include legacy anchors when they add real context; otherwise state that no strong legacy anchor was found from the MCP search. Computational chemistry is preferred when relevant, but older experimental or conceptual papers may be included if their connection to the target task is explicit in your explanation.
-
-Example query shape: `<reaction> catalyst mechanism seminal`, `<reaction> DFT descriptor catalyst`, `<key intermediate> adsorption energy catalyst`, `<method or descriptor> electrocatalysis`.
+Keep this section even when no strong anchor is found; state that outcome
+instead of filling it with weakly related papers.
 
 ## Workflow
 
-1. Confirm `target task` and `material domain` are present.
-2. Convert them into query groups:
-   - material terms, including formula variants and synonyms;
-   - catalysis terms, such as catalyst, electrocatalyst, photocatalyst, thermocatalyst, active site, reaction pathway;
-   - computational terms, such as DFT, density functional theory, first-principles, adsorption energy, free energy, Gibbs, barrier, electronic structure;
-   - task terms, such as NO3RR, nitrate reduction, HER, ORR, CO2RR, NRR, OER, selectivity, activity, stability.
-3. Run a separate MCP search for Background Papers using material-domain and catalyst terms. Bias toward reviews and broad overview papers. Do not require DFT here.
-4. Run a separate MCP search for Computational Proof-Strategy Papers using target-task, material-system, catalyst, and computational terms. Require DFT or equivalent computational chemistry evidence before final inclusion.
-5. Run a separate legacy-anchor search when the target task suggests known mechanisms, descriptors, benchmark systems, or historical foundations. If no strong result appears, keep the section and state that no strong legacy anchor was found.
-6. Select targeted MCP sources before searching:
-   - Catalyst and computational chemistry coverage: `search_crossref`, `search_semantic`, `search_openalex`, `search_papers` with `crossref,semantic,openalex,arxiv`.
-   - Reviews and broad domain coverage: `search_crossref`, `search_semantic`, `search_openalex`.
-   - Preprints and method-heavy work: `search_arxiv`.
-   - Biomedical or bio-catalyst overlap: `search_pubmed`, `search_pmc`, `search_europepmc` only when relevant.
-   - DOI or known-paper lookup: `get_crossref_paper_by_doi` or
-     `search_unpaywall` for metadata only.
-7. Run small focused searches first, usually 5-10 results per source per lane. Broaden only when a lane lacks useful coverage.
-8. Deduplicate by DOI, arXiv ID, title, and first author/year. Prefer peer-reviewed or authoritative versions over preprints when the user did not ask specifically for preprints.
-9. Do not read or download full papers in this skill. Treat search metadata,
-   abstracts, DOI records, and visible `pdf_url` fields as search evidence only.
-10. Rank recommended papers in each lane. For each recommended paper, record
-    why it belongs in that lane and whether the recommendation is based on
-    title-only, abstract/metadata, DOI metadata, or explicit search result
-    fields such as `pdf_url`.
-11. Build a manual-download queue for papers that should be downloaded by the
-    user before extraction. Include DOI, publisher URL, source URL, and visible
-    PDF URL when the search result provides one, but do not fetch the file.
-12. Do not mix lanes. A paper can appear in more than one lane only if it
-    genuinely serves both purposes; otherwise place it where it is most useful.
-13. If exact target-task papers are absent, continue with adjacent evidence and
-    label it as indirect support, analogy, or proof-strategy evidence.
-14. Stop after reporting and saving the search handoff. Do not call
-    `extract-strategy-paper`, `extract-general-insights-paper`, or
-    `generate-strategies` in the same step unless the user separately provides
-    local PDF/extraction artifacts and asks to proceed.
+1. Produce or load the claim-only object.
+2. Record an immutable claim ledger containing the exact statement, explicit
+   variables/comparisons, catalytic outcome, logical qualifiers, and absent
+   concepts that must not be imported.
+3. Build three query groups from the ledger plus section-role terms:
+   - domain foundation: explicit material/reaction terms plus catalyst and
+     review/overview terms;
+   - computational proof strategy: claim variables and outcome plus generic
+     computational-proof terms;
+   - legacy anchor: explicit material/reaction/outcome terms plus
+     seminal/benchmark/method terms.
+4. Search each section separately through Crossref, Semantic Scholar,
+   OpenAlex, and arXiv as appropriate.
+5. Start with 5-10 results per source and broaden only when a section lacks
+   useful coverage.
+6. Deduplicate by DOI, arXiv ID, title, and author/year. Prefer peer-reviewed
+   versions over preprints unless the preprint is the only accessible record.
+7. Apply the admission gate to every recommended paper.
+8. Rank papers within each of the three sections.
+9. Save the handoff and manual-download queue, then stop.
 
-## Tool Selection
+## Candidate Admission Gate
 
-Use `search_papers` when combining sources is useful and the query is broad.
-Pass `sources` as a comma-separated list such as
-`crossref,semantic,openalex,arxiv` rather than `all` by default.
+Record for every recommended paper:
 
-Use source-native search tools when the user names a source, when a source has better coverage for the domain, or when the query needs source-specific filters:
+- `section`: `domain_foundation`, `computational_proof_strategy`, or
+  `legacy_anchor`;
+- `claim_clause`: an exact substring or faithful minimal clause from the claim;
+- `computational_test`: the calculation signal visible in metadata/abstract,
+  or `not required for this section` outside the strategy section;
+- `strategy_relation`: one of the four values above for strategy papers and
+  `not_applicable` for the other sections;
+- `scope_match`: what matches the claim or its explicit domain;
+- `scope_mismatch`: what differs or is unavailable;
+- `claim_drift_check`: `pass` only when the paper does not redefine the target;
+- bibliographic identifiers, evidence basis, and caveats.
 
-- `search_crossref` / `get_crossref_paper_by_doi` for DOI-centered metadata
-  and publisher records.
-- `search_semantic(query, year=...)` for broad citation metadata and year filtering.
-- `search_openalex` for broad scholarly metadata.
-- `search_arxiv(query, sort_by="submittedDate" or "relevance")` for recent preprints and computational methods.
-- `search_pubmed` / `search_pmc` for catalyst work tied to biomedical or enzymatic systems.
-- `search_unpaywall` for DOI-centered open-access metadata.
+Reject a paper from Computational Proof-Strategy when it lacks a computational
+signal, depends on extraction content outside the claim, merely shares a
+material name, or requires an unclaimed causal variable to appear relevant.
+Retain a useful near match only as `computational_analogue` or `method_anchor`
+with an explicit mismatch; otherwise exclude it.
 
-Use `search_unpaywall` only as DOI-centered open-access metadata for the
-manual-download queue. Do not use Unpaywall URLs to download files in this
-skill.
+Do not move a strategy near match into Domain Foundation merely to bypass the
+computational evidence requirement. Domain papers must independently satisfy
+the domain-purpose gate.
 
-Never call `download_with_fallback`, `download_arxiv`, `download_openalex`,
-`download_doaj`, `download_base`, `download_zenodo`, `download_hal`,
-`download_openaire`, `download_citeseerx`, `download_iacr`, Sci-Hub fallback,
-or any other PDF download tool from this skill. Never call `read_*_paper` or
-local PDF-decomposition skills from this skill.
+## MCP Tool Policy
 
-If the project needs full-text evidence after the search handoff, tell the user
-which PDFs to download manually and where to place them, for example:
+Prefer `mcp__paper_search` metadata tools:
 
-```text
-project/<project_name>/literature/strategy_papers/
-project/<project_name>/literature/background_papers/
-project/<project_name>/literature/legacy_papers/
-```
+- `search_papers` with targeted sources such as
+  `crossref,semantic,openalex,arxiv`;
+- `search_crossref` and `get_crossref_paper_by_doi` for DOI metadata;
+- `search_semantic` and `search_openalex` for citation/abstract coverage;
+- `search_arxiv` for computational preprints;
+- `search_unpaywall` only for DOI-centered open-access metadata.
 
-After the user provides local PDFs, use `extract-strategy-paper` or
-`extract-general-insights-paper` as a separate workflow step.
+Never call download or `read_*_paper` tools in this skill. Do not use general
+web search as the primary paper-search path while paper_search MCP is
+available.
 
-## Saved Search Handoff
+## Saved Handoff
 
-When working inside a MESA project folder, save the search handoff under:
+Save under:
 
 ```text
 project/<project_name>/literature/search/
+  author_reported_claim.json
   paper_search_results.md
   paper_search_results.json
   manual_download_queue.md
 ```
 
-The Markdown result must be suitable for the user to inspect directly. The JSON
-must preserve the lane, rank, title, authors, year/date, DOI/arXiv/PMID/URL,
-source database, `pdf_url` if present in metadata, recommendation reason,
-evidence basis, and caveats.
+The JSON must preserve:
 
-The manual-download queue must group recommended papers by destination folder:
+- the exact claim-only object and claim ledger;
+- search date, queries, and MCP sources;
+- the three top-level sections in contract order;
+- rank, title, authors, year/date, DOI/arXiv/URL, and metadata `pdf_url`;
+- every Candidate Admission Gate field;
+- evidence basis and caveats;
+- a boolean stating that no PDFs were downloaded.
 
-- `strategy_papers`: papers to decompose with `extract-strategy-paper`;
-- `background_papers`: review/background papers for `extract-general-insights-paper`;
-- `legacy_papers`: optional anchors for mechanism/descriptor context.
-
-## Reporting Standard
-
-Start the final answer with the resolved inputs:
-
-- `target task`;
-- `material domain`;
-- search date;
-- MCP sources searched.
-
-Then report the three output lanes in order:
+The Markdown must lead with the exact claim and contain exactly these public
+paper headings in order:
 
 1. `Background Papers`
 2. `Computational Proof-Strategy Papers`
 3. `Legacy Anchor Papers`
 
-For each recommended paper, include:
+Use strategy-relation labels inside the second section only. Do not emit Direct
+Proof, Computational Analogues, or Falsification/Method Anchors as replacement
+top-level sections.
 
-- title;
-- first author et al. or author list if short;
-- year;
-- catalyst/material system;
-- target reaction or catalytic task;
-- lane-specific reason for inclusion;
-- DFT/computational chemistry signal found in metadata/abstract, or
-  `not required for this lane` for Background Papers;
-- recommendation rank and whether the paper is recommended for manual download;
-- source/database;
-- DOI, arXiv ID, PMID/PMCID, URL, and metadata `pdf_url` when present.
+Group the manual-download queue by destination:
 
-For summaries, separate metadata-grounded statements from full-text-grounded
-statements. In this search-only skill, full-text-grounded statements should be
-absent unless they were already present in a prior saved extraction artifact.
-Say when a conclusion is based only on title/abstract/metadata. If papers
-appear to disagree, report the disagreement as a search-stage signal, not as a
-resolved scientific conclusion.
+- `domain_papers/`
+- `strategy_papers/`
+- `legacy_papers/`
 
-When the user frames the task as `prove X is great`, do not overstate the evidence. Use language such as `supports`, `is consistent with`, `contradicts`, or `not enough DFT evidence found` depending on the papers.
+## Validation Checklist
 
-For new-idea searches, include a short `Evidence Gap / Proof Route` note when
-exact equivalent papers are missing. State what was not found, then list the
-most relevant adjacent evidence and the computations or comparisons needed to
-make the new claim credible.
+Before reporting completion, verify:
 
-End the final answer with:
+- the saved claim exactly equals the projected `author_reported_claim`;
+- no scientific query term came from another extraction section;
+- the Markdown and JSON preserve the three-section contract in order;
+- every strategy paper has an explicit computational signal and exactly one
+  valid `strategy_relation`;
+- every mismatch is visible rather than silently generalized;
+- supporting and challenging evidence were considered;
+- no material-specific rewrite rule or exception was added;
+- no PDF was downloaded or read;
+- the workflow stops before paper extraction or strategy generation.
 
-- paths to `paper_search_results.md`, `paper_search_results.json`, and
-  `manual_download_queue.md` when saved;
-- a clear statement that no PDFs were downloaded;
-- the next step: user manually downloads selected PDFs, then Codex runs the
-  appropriate extraction skill.
-
-## Boundaries
-
-Do not use general web search as the primary paper search path while
-`paper_search` MCP tools are available. Use web only for publisher pages,
-missing official links, or non-paper context that MCP cannot provide.
-
-Do not invent citation details or computed values. If a tool response lacks
-DOI, venue, year, authors, or DFT values, mark that field as unavailable or
-verify through another search/metadata source.
-
-Do not include non-catalyst papers in the final evidence set. Do not include papers lacking computational chemistry evidence in the Computational Proof-Strategy lane unless explicitly labeled as background and kept outside that lane.
-
-Do not over-broaden by querying every source for routine searches. Target sources to the lane purpose, then expand if coverage is weak.
-
-Do not download, copy, move, or create PDF files. Do not continue into paper
-extraction or strategy generation from this skill.
+End by reporting artifact paths, stating that no PDFs were downloaded, and
+asking the user to place selected PDFs in their queued domain, strategy, and
+legacy folders for the separate extraction step.

@@ -37,5 +37,29 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.build]
+exclude = [
+    "**/*.exe",
+    "**/*.dll",
+    "**/*.pdb",
+    "**/*.obj",
+    "**/*.lib",
+    "**/*.a",
+    "**/*.so",
+    "**/*.dylib",
+    "**/*.c",
+    "**/*.cc",
+    "**/*.cpp",
+    "**/*.cxx",
+    "**/*.h",
+    "**/*.hh",
+    "**/*.hpp",
+    "**/*.ipp",
+    "**/*.inl",
+    "**/*.tpp",
+    "**/*.cu",
+    "**/*.cuh",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["slabuilder"]

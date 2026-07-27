@@ -75,7 +75,7 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 - `strategy/`: `generate-strategies`, `select-next-strategy`,
   `update-strategies-from-manuscript`.
 - `orchestration/`: `generate-explicit-calculation-recipe`,
-  `validate-recipe-execution`, `record-missing-evidence`.
+  `plan-recipe-execution`, `validate-recipe-execution`, `record-missing-evidence`.
 - `modeling/`: `import-bulk-structure`, `build-slab-models`,
   `build-gas-phase-models`,
   `place-adsorbates-with-adsorbdiff`,
@@ -134,8 +134,9 @@ Repeat this loop for one selected strategy at a time.
    `generate-explicit-calculation-recipe`.
    Read `SKILL/orchestration/workflow.md`.
 
-3. Plan execution from `recipe_index.md` and each recipe's `recipe.json`.
-   Do not alter generated recipes to record execution status.
+3. Create `execution_plan.json` with `plan-recipe-execution`.
+   The plan defines execution units, dependencies, consumers, and paths without
+   selecting skills, commands, backends, feasibility, or status.
 
 4. Build models only from recipe artifacts.
    Read `SKILL/modeling/workflow.md`.
@@ -163,18 +164,19 @@ The explicit recipe output is the bridge between strategy and execution:
 ```text
 project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
   recipe_index.json
-  recipe_index.md
-  source_computational_section.json
-  P###_<procedure_slug>/
+  execution_plan.json
+  shared_execution/
+    E###/
+  P###/
     procedure.json
-    procedure_map.md
+    mapping.json
     calculations/
-      C###_<calculation_slug>/
+      C###/
         recipe.json
-        recipe.md
         execution/
           execution_manifest.json
-          ...
+          units/
+            E###/
 ```
 
 Each `P###` folder preserves a single source procedure. Each `C###` folder is
@@ -193,12 +195,12 @@ Each `execution_manifest.json` must record:
 - caveats, unsupported pieces, or policy boundaries such as "VASP input only;
   no VASP execution".
 
-Shared batch artifacts may live in a strategy-level shared run directory only
-when one command naturally produces outputs for multiple recipes. In that case,
-every corresponding `C###/execution/execution_manifest.json` must link to the
-shared artifacts and identify the exact subset used for that recipe. Do not
-leave calculation outputs only in a shared folder without recipe-local
-provenance.
+Single-consumer execution units must use their plan-assigned
+`P###/calculations/C###/execution/units/E###/` directory. Multi-consumer units
+must use their plan-assigned `<strategy_id>_explicit_recipe/shared_execution/E###/`
+directory. Every corresponding `C###/execution/execution_manifest.json` must
+link the exact artifacts used for that recipe. Legacy sibling shared roots
+remain valid only when recipe-local manifests preserve exact provenance.
 
 # Decision Rules
 

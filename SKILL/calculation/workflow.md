@@ -34,6 +34,7 @@ interoperability artifacts.
 Before running a calculation, confirm:
 
 - the selected strategy has an explicit recipe directory;
+- `execution_plan.json` exists and contains the execution unit;
 - the calculation is tied to a specific `P###/C###/recipe.json`;
 - required structures and prior artifacts exist or are explicitly recorded as
   missing;
@@ -46,10 +47,21 @@ Do not interpret strategy procedures ad hoc when a recipe exists.
 Use `relax-uma-trajectory` for UMA-backed relaxation or trajectory tasks
 requested by a recipe.
 
-Store outputs under:
+Select the skill or script at execution time, but use the execution unit's
+assigned `execution_dir` as its work directory. Never invent or substitute
+another output root. Process `execution_units` in their listed topological order
+and start a unit only after its `depends_on` artifacts exist.
+
+Single-consumer units use:
 
 ```text
-P###_<procedure_slug>/calculations/C###_<calculation_slug>/execution/
+P###/calculations/C###/execution/units/E###/
+```
+
+Multi-consumer units use:
+
+```text
+<strategy_id>_explicit_recipe/shared_execution/E###/
 ```
 
 Include relaxed structures, trajectories, logs, inputs, generated
@@ -116,7 +128,7 @@ to summary/triage files. Keep full analyzer JSON and stdout/stderr in files.
 Every calculation recipe that produces or uses artifacts must have:
 
 ```text
-C###_<calculation_slug>/execution/execution_manifest.json
+C###/execution/execution_manifest.json
 ```
 
 The manifest must record:
@@ -131,4 +143,4 @@ The manifest must record:
   `failed`, or `excluded`;
 - caveats, unsupported pieces, or policy boundaries.
 
-Do not store execution status in generated `recipe.json` or `recipe.md` files.
+Do not store execution status in generated `recipe.json` files.
