@@ -83,7 +83,7 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 - `calculation/`: `relax-uma-trajectory`,
   `calculate-uma-vibrational-frequencies`, `analyze-calculation-results`,
   `manage-vasp-jobs`, `balance-reaction-pathway`.
-- `analysis/`: `evaluate-energy-diagram`, `construct-energy-diagram`,
+- `analysis/`: `correct-dft-energy`, `evaluate-energy-diagram`, `construct-energy-diagram`,
   `assemble-alkaline-her-descriptors`, `analyze-dband-center`,
   `charge-flow-analyzer`.
 - `figure/`: `render-adsorbate-structure-grid`, `plot-energy-diagram`,
