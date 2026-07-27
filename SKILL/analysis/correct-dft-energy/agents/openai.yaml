@@ -1,0 +1,6 @@
+interface:
+  display_name: "Correct DFT Energy"
+  short_description: "Route and audit OER or NO3RR corrections"
+  default_prompt: "Use $correct-dft-energy to select and run the appropriate closure-checked OER or NO3RR free-energy correction workflow for my endpoint records."
+policy:
+  allow_implicit_invocation: true

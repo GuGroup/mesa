@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the combined MESA OER/NO3RR skills-only plugin bundle."""
+"""Validate the independent router and combined OER/NO3RR plugin bundle."""
 
 from __future__ import annotations
 
@@ -27,6 +27,15 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
+    for required in (
+        ROOT / "SKILL.md",
+        ROOT / "agents" / "openai.yaml",
+        ROOT / "scripts" / "run_correct_dft_energy.py",
+        ROOT / "scripts" / "test_run_correct_dft_energy.py",
+    ):
+        if not required.is_file():
+            return fail(f"missing {required.relative_to(ROOT)}")
+
     manifest_path = ROOT / ".codex-plugin" / "plugin.json"
     if not manifest_path.is_file():
         return fail("missing .codex-plugin/plugin.json")
@@ -36,6 +45,15 @@ def main() -> int:
             return fail(f"plugin manifest missing {key}")
     if manifest["skills"] != "./skills/":
         return fail("plugin manifest skills path must be ./skills/")
+
+    for script in (ROOT / "scripts").glob("*.py"):
+        py_compile.compile(str(script), doraise=True)
+    router_tests = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "test_run_correct_dft_energy.py")],
+        cwd=ROOT,
+    )
+    if router_tests.returncode != 0:
+        return router_tests.returncode
 
     for skill in SKILLS:
         if not (skill / "SKILL.md").is_file():
@@ -47,14 +65,27 @@ def main() -> int:
                 return fail(f"invalid skill metadata: {metadata_path.relative_to(ROOT)}")
         for script in (skill / "scripts").glob("*.py"):
             py_compile.compile(str(script), doraise=True)
-        run = subprocess.run(
-            [sys.executable, str(skill / "scripts" / "validate_skill.py")],
-            cwd=skill,
-        )
+        example_assets = skill / "assets"
+        if example_assets.is_dir():
+            command = [sys.executable, str(skill / "scripts" / "validate_skill.py")]
+        else:
+            # Some source distributions intentionally omit generated examples.
+            # Still validate importability and the public CLI without making
+            # the independent router depend on optional fixtures.
+            command = [
+                sys.executable,
+                str(next((skill / "scripts").glob("compute_*_corrections.py"))),
+                "--help",
+            ]
+            print(
+                f"NOTE: {skill.name} has no assets directory; "
+                "running CLI smoke validation instead of fixture regression tests."
+            )
+        run = subprocess.run(command, cwd=skill)
         if run.returncode != 0:
             return run.returncode
 
-    print("Combined OER/NO3RR plugin bundle validation passed.")
+    print("Independent router and combined OER/NO3RR bundle validation passed.")
     return 0
 
 
