@@ -227,7 +227,7 @@ def _resolve_uma_vib_config(
         )
 
     decision_reasons = [
-        "Defaulted to UMA model uma-s-1p2 for broad MESA frequency coverage.",
+        "Defaulted to UMA model uma-s-1p1 for broad MESA frequency coverage.",
         "Defaulted to UMA task_name omat for crystal and materials structures.",
         device_reason,
         "Selected finite-difference displacement delta=0.01 and nfree=2 for a minimal ASE Vibrations workflow.",
@@ -246,7 +246,7 @@ def _resolve_uma_vib_config(
         "log_file": "logs/uma_vib_freq.log",
         "vib_cache": "vib_cache/vib",
         "uma": {
-            "model": "uma-s-1p2",
+            "model": "uma-s-1p1",
             "task_name": "omat",
             "device": device,
         },

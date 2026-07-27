@@ -60,15 +60,15 @@ mamba run -n modeling python scripts/build_slab_model.py \
   --miller 1 1 1 \
   --backend auto \
   --prefer-symmetry \
-  --target-n-atoms 60 \
+  --target-n-atoms 70 \
   --target-lateral-size 7.5 \
-  --target-slab-thickness 6.0 \
+  --target-slab-thickness 8.0 \
   --vacuum 15.0 \
   --supercell-na 2 \
   --supercell-nb 2 \
   --n-layers 6 \
   --fix-layers 2 \
-  --fix-ratio 0.4 \
+  --fix-ratio 0.48 \
   --termination 0 \
   --allow-nonstoichiometric \
   --write-extxyz \
@@ -129,8 +129,8 @@ mamba run -n modeling python scripts/build_slab_model.py \
 
 - Keep `max_atoms=120` unless the user explicitly asks for a larger
   non-DFT-ready model.
-- Use compact target-based sizing: `target_n_atoms=60`,
-  `target_lateral_size=7.5`, `target_slab_thickness=6`, `vacuum=15`.
+- Use compact target-based sizing: `target_n_atoms=70`,
+  `target_lateral_size=7.5`, `target_slab_thickness=8`, `vacuum=15`.
 - Leave `backend=auto` unless the task requires `catkit`, `pymatgen`, or
   `surfaxe`.
 - Prefer compact, square-like in-plane cells. Slabuilder estimates an
@@ -140,7 +140,7 @@ mamba run -n modeling python scripts/build_slab_model.py \
   this scoring is repeated against the actual CatKit surface cell before
   writing POSCAR, so an estimator-good matrix that makes an oblique final cell
   should be rejected when a better square-like alternative is available.
-- Bottom fixing defaults to `--fix-ratio 0.4`: the bottom 40% of the slab's
+- Bottom fixing defaults to `--fix-ratio 0.48`: the bottom 48% of the slab's
   material thickness is fixed, measured in c-axis fractional coordinates
   (tilt-safe, independent of added vacuum). Change the fraction with
   `--fix-ratio`, or pass `--fix-layers N` to fix an explicit layer count instead

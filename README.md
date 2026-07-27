@@ -22,3 +22,20 @@ grounded in explicit calculations and reviewable evidence.
 
 Our direction is simple: build an agent that can do research better than a PhD
 student. That is what we are working toward.
+
+## Fresh Clone Setup
+
+Clone the repository, then expose only the initialization skill to Codex:
+
+```bash
+git clone https://github.com/GuGroup/mesa.git
+cd mesa
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -sfn "$PWD/SKILL/init/initialize-mesa" \
+  "${CODEX_HOME:-$HOME/.codex}/skills/initialize-mesa"
+```
+
+Then open Codex in this checkout and run `initialize-mesa`. The skill runs the
+repository setup checks and links the remaining MESA skills. After that, run
+`initialize-project` to create `project/<project_name>/project_profile.md`, then
+run `start-research`.

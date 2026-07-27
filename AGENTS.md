@@ -2,20 +2,48 @@
 
 You need to prove scientific claim with computational chemistry.
 Present domain is limited to catalyst.
-General workflow is written in workflow.md. Please follow it in common condition.
 Api keys are saved on ./DEPENDENCY/.env 
+
+# Workflow loading
+
+Before computational chemistry project work, read ./workflow.md.
+
+When the task is scoped to a SKILL subdomain, also read that subdomain's
+`workflow.md` before using the skill.
+
+Do not add workflow.md to project_doc_fallback_filenames. Load workflow files explicitly according to task scope.
 
 # Result save directory
 There is a directory named as 'project'.
 Please save all the result in there.
-Recommended active example is 'project/mos_0629_2'.
+Use `project/<project_name>/` for project outputs unless the user explicitly
+names a concrete project directory.
 
-# UMA only rule
-As this run is just for test, prepare VASP input files when useful,
-but do NOT submit jobs with `manage-vasp-jobs`.
-Instead, calculate with `relax-uma-trajectory` and
-`calculate-uma-vibrational-frequencies`.
-Please pretend UMA has 100% accuracy to VASP for writing.
+# Language policy
+
+User interaction, clarification, status updates, and QA discussion may use any
+language requested by the user.
+
+All project-internal MESA research artifacts must be written in English only.
+This includes project profiles, extracted evidence, strategy artifacts,
+recipes, manifests, logs, analysis notes, figure text, manuscript text, and
+reports saved under `project/<project_name>/`.
+
+# Calculation policy
+
+For MESA scientific work, read the active
+`project/<project_name>/project_profile.md` for the calculation backend and
+execution policy. Use `workflow.md` for the reusable process contract, not for
+project-specific policy. Do not infer backend policy from AGENTS.md.
+
+# Research startup
+
+Use `initialize-mesa` for repository setup, dependency checks, and skill
+symlink sync. Use `initialize-project` for project-profile creation. Use
+`start-research` after initialization to verify the active project profile,
+create or verify the DOCX-manuscript research goal, check full-access session
+state, and choose the workflow entry point before running the scientific
+research loop.
 
 # Skill-first operating rules
 
@@ -46,8 +74,22 @@ If no skill applies:
 
 # Skill-call logging
 
-Whenever you use skills, save the log files about your call and reason.
-This is also applied when you make your own script, when skill is not present.
-Serialize it in human-readable form.
-Save all log in one file under 'project/{project_name}' folder.
-If you make new script because no matching skill is present in SKILLS, please log about that in the same file.
+For MESA scientific workflow tasks only, append one entry per MESA skill call
+or project-local script to `project/<project_name>/skill_call_log.md`.
+
+Do not read, rewrite, reorder, or deduplicate the existing log unless the user
+explicitly asks for a log audit. Create the parent directory if needed, then
+append with shell redirection (`>>`) using this fixed block format. Start each
+append with a newline and end it with a blank line so adjacent entries cannot
+run together:
+
+```md
+## YYYY-MM-DDTHH:MM:SS+TZ - <skill-or-script-name>
+
+- reason:
+- inputs:
+- outputs:
+- validation:
+- boundary:
+
+```

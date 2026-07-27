@@ -72,6 +72,7 @@ tmp/
 temp/
 
 project/
+AGENTS.omo.md
 
 # Jupyter
 .ipynb_checkpoints/

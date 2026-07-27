@@ -10,11 +10,28 @@ driver compatibility, and cluster queues are machine-specific.
 
 Required runtime capabilities:
 
-- Python environment with `ase`
+- Mamba environment `fairchem` on this machine.
+- Python environment with `ase`.
 - FAIRChem/UMA import path providing:
   `from fairchem.core import FAIRChemCalculator, pretrained_mlip`
 - Local or cluster execution with `qsub` when using submit mode
 - GPU-capable PyTorch when running on CUDA, or CPU support for small/debug runs
+
+Configured local command prefix:
+
+```bash
+mamba run -n fairchem
+```
+
+Environment specification:
+
+```text
+ENVIRONMENT/fairchem/environment.yml
+```
+
+The YAML records the major packages observed in the existing machine-local
+`fairchem` runtime. Treat this environment as external/manual unless the user
+explicitly asks to recreate or update it.
 
 Optional environment variables:
 
@@ -25,7 +42,7 @@ Optional environment variables:
 Smoke test:
 
 ```bash
-python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
+mamba run -n fairchem python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
 ```
 
 Do not install this runtime automatically from a generic bootstrap step unless

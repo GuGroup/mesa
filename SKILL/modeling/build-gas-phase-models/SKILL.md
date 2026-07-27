@@ -11,11 +11,12 @@ For MESA end-to-end use, read `SKILL/modeling/workflow.md` before applying this 
 
 Use this skill to create neutral gas-phase starting structures only. It builds a
 molecule from an existing slabuilder adsorbate/gas geometry resolver, centers it
-in a cubic box, writes POSCAR and metadata, and stops.
+in a slightly asymmetric orthorhombic cell, writes POSCAR and metadata, and stops.
 
 Do not use this skill for slab generation, adsorbate placement on surfaces,
 calculation input generation, relaxation, static energies, or frequency calculations.
-Use the calculation workflow after this skill for calculation setup under the root calculation policy.
+Use the calculation workflow after this skill for calculation setup under the
+active project profile's calculation policy.
 
 ## Charge and Spin Boundary
 
@@ -33,8 +34,9 @@ set spin-related inputs without guessing:
   a dipole correction in downstream calculation setup).
 
 The calculation workflow owns the final calculator-specific inputs. It may read
-`spin_reference`/`dipole_hint` and translate them under the root calculation
-policy. This skill never writes calculator execution inputs.
+`spin_reference`/`dipole_hint` and translate them under the active project
+profile's calculation policy. This skill never writes calculator execution
+inputs.
 
 ## Quick Start
 
@@ -52,7 +54,7 @@ SMILES input:
 mamba run -n modeling python scripts/build_gas_phase_model.py \
   --species 'smiles:O=C=O' \
   --label CO2 \
-  --box-size 15.0 \
+  --cell-size 20 20 21 \
   --outdir structures/gas/CO2
 ```
 
@@ -62,7 +64,8 @@ mamba run -n modeling python scripts/build_gas_phase_model.py \
 | --- | --- | --- |
 | `--species` | yes | Label, alias, raw SMILES, `smiles:<SMILES>`, or name supported by slabuilder's molecule resolver. |
 | `--label` | no | Output label. Defaults to a safe name derived from `--species`. |
-| `--box-size` | no | Cubic cell length in Angstrom. Default: `15.0`. |
+| `--cell-size A B C` | no | Orthorhombic gas-cell lengths in Angstrom. Default: `20 20 21`. |
+| `--box-size` | no | Backward-compatible cubic cell length in Angstrom; overrides `--cell-size` when set. |
 | `--spin-multiplicity` | no | Gas-phase spin multiplicity (2S+1). Default: closed-shell singlet (`1`). |
 | `--min-distance` | no | Minimum intramolecular distance sanity threshold. Default: `0.5`. |
 | `--max-atoms` | no | Atom-count validation threshold. Default: `80`. |
@@ -74,7 +77,7 @@ mamba run -n modeling python scripts/build_gas_phase_model.py \
 1. Resolve the gas molecule identity from reaction metadata or user input.
 2. Build the molecule with `slabuilder.build_adsorbate_atoms`; do not implement
    a second molecule builder.
-3. Put the molecule in a cubic box, centered in the cell.
+3. Put the molecule in a `20 20 21` Å orthorhombic cell by default, centered in the cell.
 4. Write POSCAR and JSON metadata.
 5. Validate atom count, cell size, and minimum intramolecular distance.
 6. Report paths and explicitly state that charge/spin and relax/freq are
@@ -87,7 +90,7 @@ Each metadata file records:
 - `kind: gas_molecule`;
 - input species and output label;
 - molecular formula and atom count;
-- cubic box size (default 15 Å) and cell lengths;
+- gas-cell size (default `20 20 21` Å) and cell lengths;
 - builder provenance copied from slabuilder;
 - `charge_spin_policy` (charge not inferred) plus a `spin_reference` block
   (multiplicity, `recommended_ispin`/`nupdown`/`total_magmom`);

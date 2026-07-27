@@ -31,6 +31,17 @@ Before generating a figure, confirm:
 Use `render-adsorbate-structure-grid` for adsorbate, slab, gas, or surface
 structure panels where the input structures already exist.
 
+For manuscript figures, explicitly cover the structures used in the completed
+calculation set. Do not stop at a single representative clean slab when
+adsorbate or reference calculations were part of the evidence. Include, as
+applicable, clean slabs, gas references, and relaxed adsorbate states across
+the modeled surfaces, adsorbates, and site classes.
+
+Prioritize compact main-text grids for the structures needed to understand the
+central result. Put the remaining calculation-used structures in Supporting
+Information grids, grouped by surface, adsorbate, site class, or acceptance
+state when the full set is large.
+
 Do not use a rendered structure panel as evidence for an uncomputed adsorption
 state.
 

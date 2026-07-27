@@ -298,7 +298,7 @@ def render_nondeterministic_profile(profile: dict[str, Any]) -> str:
     )
     return "\n".join(lines)
 
-def write_nondeterministic_analysis(output_dir: Path, contracts_path: Path) -> int:
+def write_nondeterministic_analysis(output_dir: Path | None, contracts_path: Path) -> int:
     print("\nNon-deterministic analyzer")
     contracts_path = repo_path(contracts_path) or DEFAULT_HANDOFF_CONTRACT
     try:
@@ -310,7 +310,7 @@ def write_nondeterministic_analysis(output_dir: Path, contracts_path: Path) -> i
     handoff = contracts.get("handoff", {})
     if not isinstance(handoff, dict):
         handoff = {}
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     json_name = str(handoff.get("analyzer_output_json", "nondeterministic_profile.json"))
     markdown_name = str(handoff.get("analyzer_output_markdown", "nondeterministic_profile.md"))
@@ -329,7 +329,7 @@ def write_nondeterministic_analysis(output_dir: Path, contracts_path: Path) -> i
     print("  scheduler jobs: none")
     return 0
 
-def write_dependency_handoff(output_dir: Path, contracts_path: Path) -> int:
+def write_dependency_handoff(output_dir: Path | None, contracts_path: Path) -> int:
     print("\nNon-deterministic runtime handoff")
     contracts_path = repo_path(contracts_path) or DEFAULT_HANDOFF_CONTRACT
     try:
@@ -339,7 +339,7 @@ def write_dependency_handoff(output_dir: Path, contracts_path: Path) -> int:
         return 1
 
     profile = collect_machine_profile(contracts_path)
-    out_dir = repo_path(output_dir) or DEFAULT_INITIALIZATION_DIR
+    out_dir = initialization_dir(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / "machine_profile.json"
     markdown_path = out_dir / "dependency_handoff.md"

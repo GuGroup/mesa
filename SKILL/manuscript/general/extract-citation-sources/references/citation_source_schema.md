@@ -8,7 +8,7 @@ decision file.
 ```json
 {
   "schema_version": 2,
-  "project": "mos_0629_2",
+  "project": "<project_name>",
   "created_at": "2026-07-06T00:00:00+09:00",
   "extraction_policy": {
     "additive_search": false,

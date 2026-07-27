@@ -476,7 +476,7 @@ def write_summary(path: Path, evidence: dict[str, Any]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, help="Project directory, for example project/mos_0629_2.")
+    parser.add_argument("--project", required=True, help="Project directory, for example project/<project_name>.")
     parser.add_argument("--strategy-id", default="", help="Strategy id such as S1. Inferred from selected_strategy.json when omitted.")
     parser.add_argument("--strategy", default="", help="Path to selected_strategy.json.")
     parser.add_argument("--result-artifact", default="", help="Path to <strategy_id>_bounded_result_artifact.json.")

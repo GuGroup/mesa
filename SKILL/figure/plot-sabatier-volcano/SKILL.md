@@ -13,7 +13,8 @@ For MESA end-to-end use, read `SKILL/figure/workflow.md` before applying this sk
 2. Prefer `scripts/plot_volcano.py` for deterministic output. Patch the script only when the requested behavior is not exposed by JSON fields.
 3. Keep labels concise and readable. Label only important points by default; dense volcano plots should not label every catalyst unless requested.
 4. Run the script and verify that the output file exists. For manuscript output, prefer SVG or PDF with editable text.
-5. Report the output path and any unresolved modeling assumptions, such as whether the volcano envelope is theoretical, fitted, or user-supplied.
+5. Export or also render a PNG preview, inspect the generated plot image directly, and fix/regenerate if the legend overlaps points, labels, the peak marker, or the volcano envelope.
+6. Report the output path and any unresolved modeling assumptions, such as whether the volcano envelope is theoretical, fitted, or user-supplied.
 
 ## Quick Start
 
@@ -38,7 +39,7 @@ The script requires `matplotlib` and `numpy`.
 - Use a restrained palette: neutral points for context, one or two signal families, and sparse accent color for the optimum or target catalyst.
 - Draw the volcano envelope as a quiet but visible line; do not imply a fitted law unless the data or user specifies one.
 - Place the legend inside the axes, but avoid covering points, labels, the peak, or the volcano envelope. Keep `legend_loc: "auto"` unless the user explicitly asks for a fixed position.
-- Use editable SVG/PDF text, bold axis labels, readable tick labels, and short catalyst labels.
+- Use editable SVG/PDF text, bold axis labels, larger default typography, readable tick labels, and short catalyst labels.
 - Preserve scientific meaning over visual polish. Flag missing units, unclear descriptor definitions, and ambiguous activity metrics.
 
 ## Customization

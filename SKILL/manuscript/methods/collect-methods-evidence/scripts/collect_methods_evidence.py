@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SECTION_TITLES = {
     "model_construction": "Model construction",
@@ -244,7 +244,14 @@ def build_minimal_evidence(
             },
             "project_details": {
                 "relaxation_summary": relax_compact,
-                "vasp_execution_boundary": "VASP-compatible input files may be prepared, but VASP jobs are not submitted in this UMA-only test run.",
+                "calculation_execution_boundary": (
+                    "Interpret collected method parameters under the active "
+                    "project_profile.md calculation_policy. VASP input details "
+                    "are required only when that policy uses or permits VASP; "
+                    "UMA/MLIP-only policies do not require VASP calculation "
+                    "parameters unless they explicitly allow interoperability "
+                    "artifacts."
+                ),
             },
             "procedure_inputs": procedures_by_index(procedures, [1]),
         },
@@ -318,7 +325,7 @@ def default_outdir(project: Path, strategy_id: str) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, help="Project directory, for example project/mos_0629_2.")
+    parser.add_argument("--project", required=True, help="Project directory, for example project/<project_name>.")
     parser.add_argument("--strategy-id", default="", help="Strategy id such as S1. Inferred from selected_strategy.json when omitted.")
     parser.add_argument("--strategy", default="", help="Path to selected_strategy.json.")
     parser.add_argument("--execution-root", default="", help="Path to <strategy_id>_execution.")

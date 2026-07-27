@@ -56,7 +56,7 @@ gates:
 6. Never run `freq` by default. Frequency jobs are only for selected relaxed
    endpoints and require an explicit user request.
 7. For gas-phase molecules, use `build-gas-phase-models` first to create the
-   isolated 15 Å-box POSCAR. Do not put gas structure generation in
+   isolated `20 20 21` Å orthorhombic POSCAR. Do not put gas structure generation in
    `build-slab-models`.
 
 If a user asks to "run VASP" on many structures, first create/spec dry-runs and

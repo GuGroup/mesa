@@ -73,7 +73,7 @@ settings, decision reasons, and controller metadata.
     "log": "logs/uma_relax_traj.log"
   },
   "uma": {
-    "model": "uma-s-1p2",
+    "model": "uma-s-1p1",
     "task_name": "omat",
     "device": "cuda"
   },
@@ -89,7 +89,7 @@ settings, decision reasons, and controller metadata.
 ```
 
 Use executable fallback settings when no stronger POSCAR or runtime reason is
-available: `model=uma-s-1p2`, `task_name=omat`, `device=cuda` when available
+available: `model=uma-s-1p1`, `task_name=omat`, `device=cuda` when available
 otherwise `cpu`, `relax_type=geometry`, `fmax=0.05`, `steps=300`, and
 `optimizer=FIRE`.
 

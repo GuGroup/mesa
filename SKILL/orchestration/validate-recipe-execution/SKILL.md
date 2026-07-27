@@ -36,7 +36,7 @@ allowed shared roots with:
 
 ```bash
 python scripts/check_recipe_execution.py ... \
-  --shared-root project/mos_0629_2/strategy_execution/S1_extra_shared_outputs
+  --shared-root project/<project_name>/strategy_execution/S1_extra_shared_outputs
 ```
 
 For policy details, read `references/gate-policy.md`.

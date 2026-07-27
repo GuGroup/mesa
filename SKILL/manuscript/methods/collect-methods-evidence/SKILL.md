@@ -63,8 +63,12 @@ Use `--keep-legacy` only when comparing old and new schemas.
 
 ## Extraction Rules
 
+- Read the active `project/<project_name>/project_profile.md` calculation
+  policy before interpreting calculator-specific fields.
 - Always include the strategy computational block:
   `models`, `methods`, `dft_details`, and `procedures`.
+- Collect available `dft_details`, but let the active profile decide whether
+  those fields imply VASP input preparation or are merely retained context.
 - For model details, extract only `records.motif_label` and `records.state`
   from `model_manifest.json`; current artifacts do not store full slab-builder
   arguments.

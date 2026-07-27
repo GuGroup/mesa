@@ -1,8 +1,6 @@
 version: 1
 
 handoff:
-  default_project: project/mos
-  default_initialization_dir: project/mos/initialization
   output_markdown: dependency_handoff.md
   output_json: machine_profile.json
   analyzer_output_markdown: nondeterministic_profile.md
@@ -17,6 +15,10 @@ runtimes:
   mesa-uma:
     description: FAIRChem/UMA runtime for MLIP relaxation trajectories and finite-displacement vibrations.
     deterministic:
+      environment_name: fairchem
+      environment_policy: existing_external
+      environment_spec: ENVIRONMENT/fairchem/environment.yml
+      run_prefix: mamba run -n fairchem
       python: machine-specific
       required_imports:
         - ase
@@ -28,7 +30,7 @@ runtimes:
         - MESA_UMA_DEVICE
         - CUDA_VISIBLE_DEVICES
         - PYTHON_BIN
-      smoke: "python -c \"import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')\""
+      smoke: "mamba run -n fairchem python -c \"import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')\""
       checkpoint_policy: Do not download UMA model/checkpoint files without explicit user approval.
     codex_must_decide:
       cuda:

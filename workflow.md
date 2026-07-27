@@ -1,9 +1,7 @@
 # General MESA Skill Workflow
 
-TEST VERSION.
-
-Use `project/mos_0629_2` as the active result directory unless the user
-explicitly names a different project folder.
+Use `project/<project_name>/` as the active result directory unless the user
+explicitly names a concrete project folder.
 
 This root workflow is the authoritative end-to-end contract. Domain manuals
 under `SKILL/<domain>/workflow.md` hold the detailed instructions for each
@@ -24,8 +22,8 @@ that skill unless it would violate this root workflow.
   planning, recipe validation, and missing-evidence records.
 - `SKILL/modeling/workflow.md`: slab, gas-phase, surface, and adsorbate model
   preparation from recipe artifacts.
-- `SKILL/calculation/workflow.md`: UMA relaxation, UMA vibration, VASP input
-  preparation policy, calculation manifests, and raw-result checks.
+- `SKILL/calculation/workflow.md`: backend-specific calculation execution,
+  calculation manifests, reaction bookkeeping, and raw-result checks.
 - `SKILL/analysis/workflow.md`: evidence readiness, energy diagrams,
   descriptor assembly, caveats, and accepted evidence boundaries.
 - `SKILL/figure/workflow.md`: standalone structure grids, energy diagrams,
@@ -35,10 +33,17 @@ that skill unless it would violate this root workflow.
 
 # Central Loop
 
+Start a research run through `start-research` after `initialize-mesa` has
+prepared the repository and `initialize-project` has created or selected the
+active project profile. The start gate must confirm
+the project profile, create or verify the Codex goal for producing a DOCX
+manuscript, confirm full-access session state, project calculation policy, and
+required runtime readiness before entering the loop below.
+
 This workflow is a loop. It is not a linear checklist and it is not valid to
 move directly from one strategy calculation into the next strategy calculation.
 
-For this test project, if strategy generation artifacts already exist under the
+If strategy generation artifacts already exist under the active
 project folder, start from the Per-Strategy Execution Loop using the latest
 `generated_strategies` artifact. Do not regenerate strategies unless the user
 asks or the existing strategy artifact is missing, invalid, or superseded.
@@ -91,8 +96,12 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 - Use the skill-first operating rule: inspect available skills, select the
   narrowest relevant skill, read that skill's `SKILL.md`, and follow it.
 - Save project outputs under `project/<project_name>/`.
-- Log every skill call and project-local script in
-  `project/<project_name>/skill_call_log.md`.
+- User-facing conversation and QA may be multilingual, but all saved MESA
+  research artifacts under `project/<project_name>/` must be written in
+  English only.
+- Append every MESA skill call and project-local script to
+  `project/<project_name>/skill_call_log.md` without reading or rewriting the
+  existing log unless the user asks for a log audit.
 - Keep strategy work computational chemistry focused. In strategy artifacts,
   `experiment` means computational experiment unless the user explicitly asks
   for a wet-lab plan.
@@ -101,23 +110,18 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
 - Never treat a bounded proxy as a full proof unless the target was explicitly
   narrowed to that proxy.
 
-# Test Calculation Policy
+# Project Calculation Policy
 
-The active calculation execution backend for this test project is UMA only.
-Treat UMA outputs as the authoritative calculation results for this test.
+This root workflow is reusable and must not hard-code an active calculation
+backend, project name, test mode, or scheduler policy. The active
+`project/<project_name>/project_profile.md` is the single source of truth for
+project-specific calculation policy.
 
-For this test project:
-
-- Prepare VASP-compatible input files when useful for interoperability.
-- Do not execute or submit VASP jobs unless the project policy changes.
-- Do not use `manage-vasp-jobs` to submit calculations in this test. Use it
-  only for preparation, dry-run, status inspection, or future policy-enabled
-  VASP work.
-- Use `relax-uma-trajectory` for structure relaxations, including bulk and
-  clean-slab optimization.
-- Use `calculate-uma-vibrational-frequencies` for vibrational calculations.
-- If local GPU UMA execution is requested, run UMA locally on the GPU node; do
-  not submit UMA through qsub unless explicitly required.
+Before any calculation-domain step, read the active project profile and apply
+its backend, artifact-generation, scheduler, submission, acceptance, and
+cross-check rules. If the profile is missing or ambiguous, stop and return to
+`initialize-project` or `start-research` instead of assuming UMA, VASP, or a test
+policy.
 
 # Per-Strategy Execution Loop
 
@@ -233,12 +237,18 @@ remain valid only when recipe-local manifests preserve exact provenance.
 
 # Logging
 
-For every skill call and every project-local script, update the project skill
-log under `project/<project_name>/skill_call_log.md` with:
+For MESA scientific workflow tasks only, append one entry per MESA skill call
+or project-local script to `project/<project_name>/skill_call_log.md`.
 
-- skill or script name;
-- reason for use;
-- input artifacts;
-- output artifacts;
-- validation result;
-- boundary notes such as "translation only" or "no calculations executed".
+Do not read, rewrite, reorder, or deduplicate the existing log unless the user
+explicitly asks for a log audit. Create the parent directory if needed, then
+append with shell redirection (`>>`) using this fixed block format:
+
+```md
+## YYYY-MM-DDTHH:MM:SS+TZ - <skill-or-script-name>
+- reason:
+- inputs:
+- outputs:
+- validation:
+- boundary:
+```

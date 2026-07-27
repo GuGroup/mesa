@@ -1,4 +1,4 @@
 interface:
   display_name: "Build Gas Phase Models"
   short_description: "Build neutral gas reference POSCARs"
-  default_prompt: "Use $build-gas-phase-models to build neutral gas-phase reference POSCAR files in 15 Å boxes from labels or SMILES."
+  default_prompt: "Use $build-gas-phase-models to build neutral gas-phase reference POSCAR files in 20 20 21 Å cells from labels or SMILES."

@@ -52,14 +52,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         print("  not requested")
         print_core_install_help()
 
-    if args.analyze_nondeterministic:
-        status = max(status, write_nondeterministic_analysis(args.nd_dir, args.nd_contracts))
-    elif args.write_handoff:
-        status = max(status, write_dependency_handoff(args.handoff_dir, args.handoff_contracts))
-    else:
-        print("\nNon-deterministic analyzer")
-        print("  not requested")
-        print("  uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py analyze-nondeterministic")
+    print("\nProject-scoped initialization artifacts")
+    print("  not handled by bootstrap")
+    print("  run initialize-project before analyzer, handoff, status, or runtime-plan artifacts")
 
     print("\nRuntime next checks")
     print("  uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --skills")
@@ -209,40 +204,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="When executing --install-core, continue to later runtimes after a failure.",
     )
-    p_bootstrap.add_argument(
-        "--write-handoff",
-        action="store_true",
-        help="Write legacy machine-profile and Codex handoff files for non-deterministic runtimes.",
-    )
-    p_bootstrap.add_argument(
-        "--analyze-nondeterministic",
-        action="store_true",
-        help="Write structured non-deterministic analyzer profile files.",
-    )
-    p_bootstrap.add_argument(
-        "--nd-dir",
-        type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Output directory for --analyze-nondeterministic.",
-    )
-    p_bootstrap.add_argument(
-        "--nd-contracts",
-        type=Path,
-        default=DEFAULT_HANDOFF_CONTRACT,
-        help="Contract YAML for --analyze-nondeterministic.",
-    )
-    p_bootstrap.add_argument(
-        "--handoff-dir",
-        type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Output directory for --write-handoff.",
-    )
-    p_bootstrap.add_argument(
-        "--handoff-contracts",
-        type=Path,
-        default=DEFAULT_HANDOFF_CONTRACT,
-        help="Contract YAML for --write-handoff.",
-    )
     p_bootstrap.add_argument("--yes", action="store_true", help="Actually execute --install-core commands.")
     p_bootstrap.set_defaults(func=cmd_bootstrap)
 
@@ -280,8 +241,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_handoff.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Directory for machine_profile.json and dependency_handoff.md.",
+        default=None,
+        help=(
+            "Directory for machine_profile.json and dependency_handoff.md. Defaults to the "
+            "unique active project profile's initialization directory."
+        ),
     )
     p_handoff.add_argument(
         "--contracts",
@@ -299,8 +263,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_nd.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Directory for nondeterministic_profile.json and nondeterministic_profile.md.",
+        default=None,
+        help=(
+            "Directory for nondeterministic_profile.json and nondeterministic_profile.md. "
+            "Defaults to the unique active project profile's initialization directory."
+        ),
     )
     p_nd.add_argument(
         "--contracts",
@@ -318,8 +285,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_notify.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Initialization artifact directory for initialize_status.md and initialize_events.jsonl.",
+        default=None,
+        help=(
+            "Initialization artifact directory for initialize_status.md and "
+            "initialize_events.jsonl. Defaults to the unique active project profile's "
+            "initialization directory."
+        ),
     )
     p_notify.add_argument(
         "--contracts",
@@ -343,8 +314,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument(
         "--profile",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR / "nondeterministic_profile.json",
-        help="Path to nondeterministic_profile.json.",
+        default=None,
+        help=(
+            "Path to nondeterministic_profile.json. Defaults to the selected initialization "
+            "directory's analyzer output."
+        ),
     )
     p_plan.add_argument(
         "--contracts",
@@ -355,14 +329,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR / "runtime_plans",
-        help="Directory for <runtime>_plan.json and <runtime>_plan.md.",
+        default=None,
+        help=(
+            "Directory for <runtime>_plan.json and <runtime>_plan.md. Defaults to "
+            "<initialization>/runtime_plans."
+        ),
     )
     p_plan.add_argument(
         "--project-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Initialization artifact directory for status/event artifacts.",
+        default=None,
+        help=(
+            "Initialization artifact directory for status/event artifacts. Defaults to the "
+            "unique active project profile's initialization directory."
+        ),
     )
     p_plan.add_argument(
         "--no-auto-analyze",
@@ -386,8 +366,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_execute.add_argument(
         "--project-dir",
         type=Path,
-        default=DEFAULT_INITIALIZATION_DIR,
-        help="Initialization artifact directory for status/event artifacts.",
+        default=None,
+        help=(
+            "Initialization artifact directory for status/event artifacts. Defaults to the "
+            "unique active project profile's initialization directory."
+        ),
     )
     p_execute.set_defaults(func=cmd_execute_runtime_plan)
 

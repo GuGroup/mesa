@@ -218,7 +218,7 @@ The JSON must preserve:
 The Markdown must lead with the exact claim and contain exactly these public
 paper headings in order:
 
-1. `Domain Foundation Papers`
+1. `Background Papers`
 2. `Computational Proof-Strategy Papers`
 3. `Legacy Anchor Papers`
 

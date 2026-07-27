@@ -12,6 +12,19 @@ in public text to at most two decimal places; integers remain integers. This
 presentation rule must not reduce precision in source evidence, provenance, or
 other machine-readable calculation data.
 
+# Manuscript Entry Gate
+
+Before writing manuscript prose, read `SKILL/analysis/workflow.md` and
+`SKILL/figure/workflow.md`, then finish evidence organization and figure
+readiness for the selected strategy. Do not start Results, Methods, abstract,
+conclusion, or DOCX assembly until:
+
+- accepted, caveated, failed, excluded, and missing evidence are separated;
+- required or defensible figures are mapped, realized or explicitly blocked,
+  captioned, and ready for DOCX insertion;
+- any omitted figure type, such as a volcano or Gibbs/free-energy diagram, is
+  recorded with the evidence reason.
+
 # Skills By Stage
 
 - `manuscript/figure/`: `map-strategy-figures`,
@@ -224,7 +237,11 @@ project/<project_name>/strategy_execution/<strategy_id>_methods/text/
 Use `insert-section-into-docx` to insert `methods_section_text.json` into the
 manuscript skeleton or figure-containing DOCX.
 
-Use OMML/Pandoc equation conversion mode when equation blocks are present. Keep
+Use OMML/Pandoc equation conversion mode when equation blocks are present.
+Displayed equations must enter section JSON as `content_blocks` with
+`type: "equation"` and `latex`, not as paragraph text containing LaTeX delimiters
+or raw TeX. Do not accept a manuscript DOCX where equations remain visible as
+LaTeX strings unless the user explicitly requested plain-text equations. Keep
 equation labels out of the visible DOCX body unless explicitly requested.
 
 # 8. Citation Source Extraction
@@ -258,6 +275,11 @@ Rules:
 
 - select only citation keys present in `citation_sources.json`;
 - return no citation when support is weak;
+- cite the primary papers that shaped the hypothesis, strategy rationale, and
+  literature gap when a sentence uses that rationale; do not collapse these
+  sentences to only the original experimental paper;
+- use the original experimental paper for author-reported experimental claims,
+  not as a substitute for the strategy-defining literature;
 - do not cite a sentence whose support is only the manuscript's own figure;
 - keep decisions reviewable with confidence and human-check flags.
 - honor validated comparison-layer citation requests for their exact sentences;

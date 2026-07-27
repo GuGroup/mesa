@@ -61,8 +61,9 @@ Resolve the source bulk in this order:
    recipe lacks enough information to import, register, or create the bulk.
 
 Bulk optimization and clean slab optimization belong to the calculation domain
-and inherit the active backend policy from root `workflow.md`. Modeling skills
-must not choose a calculation backend on their own.
+and inherit the active backend policy from
+`project/<project_name>/project_profile.md`. Modeling skills must not choose a
+calculation backend on their own.
 
 Use `build-slab-models` only after an accepted optimized bulk artifact exists.
 Pass that optimized artifact through `--bulk-file`; do not let slab generation
@@ -139,4 +140,4 @@ model without rereading raw files:
 - Do not mark a recipe satisfied by a model that lacks required metadata or
   recipe-local provenance.
 - Do not choose the calculation backend in modeling skills; inherit it from the
-  root workflow during calculation-domain steps.
+  active project profile during calculation-domain steps.

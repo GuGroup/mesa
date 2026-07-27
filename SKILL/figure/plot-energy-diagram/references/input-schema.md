@@ -38,7 +38,7 @@ Optional fields:
 - `zero_label_positions`: x positions where a shared `0.00` label should be drawn once.
 - `show_zero_line`: whether to draw a horizontal zero-reference line. Default: `false`; enable it only when the user explicitly requests a baseline.
 - `show_state_ticks`: whether to draw short vertical tick bars under each reaction state. Default: `true`.
-- `legend_loc`: in-box matplotlib legend location. Default: `upper right`.
+- `legend_loc`: in-box matplotlib legend location. Default: `upper right`; after rendering, inspect the image directly and move this if it overlaps paths, annotations, state labels, or the boxed frame.
 
 Notes:
 
@@ -50,3 +50,4 @@ Notes:
 - The default style follows a compact publication figure hierarchy: a `5.4 × 4 in` canvas, wider plateaus, compact bold state labels, a slightly inset boxed frame, editable SVG/PDF text, visible state tick bars centered on the x-axis spine, and an in-box legend placed where it least interferes with the paths. Preserve the full tight-layout canvas instead of applying a second tight bounding-box crop.
 - Keep the horizontal export bounds flush with the outer state-label extents. Do not add blank left or right canvas margins around those labels.
 - Keep x-axis state labels and legend labels concise. They do not need to be cryptic abbreviations, but they should be short enough to scan, such as `Initial`, `Adsorbed H2O`, `TS`, `H* + OH*`, `OH* + H2`, `Final`.
+- Always inspect a rendered preview before final handoff. If the legend or labels overlap the plotted energy diagram, change `legend_loc`, shorten labels, or adjust canvas/limits and regenerate.

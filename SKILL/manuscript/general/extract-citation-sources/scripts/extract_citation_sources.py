@@ -723,7 +723,7 @@ def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | No
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, type=Path, help="Project directory, e.g. project/mos_0629_2")
+    parser.add_argument("--project", required=True, type=Path, help="Project directory, e.g. project/<project_name>")
     parser.add_argument("--pdf-root", action="append", type=Path, help="PDF root to scan. Can be repeated.")
     parser.add_argument("--search-report", type=Path, help="Optional paper_search/search_report.md for primary metadata matching.")
     parser.add_argument("--outdir", type=Path, help="Output directory. Defaults to <project>/references.")

@@ -131,9 +131,9 @@ runtimes:
     spec: ENVIRONMENT/vasp-submit-linker/pyproject.toml
     run_prefix: vasp-job
     install:
-      - uv tool install --python 3.11 . --constraint constraints.txt --force
+      - CFLAGS="${CFLAGS:-} -std=gnu99" uv tool install --python 3.11 --editable . --constraint constraints.txt --force
     update:
-      - uv tool install --python 3.11 . --constraint constraints.txt --force
+      - CFLAGS="${CFLAGS:-} -std=gnu99" uv tool install --python 3.11 --editable . --constraint constraints.txt --force
     check_tools:
       - uv
       - vasp-job
@@ -148,14 +148,15 @@ runtimes:
     description: FAIRChem/UMA runtime for MLIP single-point, relaxation trajectory, and finite-displacement vibration tasks.
     cwd: DEPENDENCY/uma
     spec: DEPENDENCY/uma/runtime.md
-    run_prefix: python
+    environment_spec: ENVIRONMENT/fairchem/environment.yml
+    run_prefix: mamba run -n fairchem
     install:
       - See DEPENDENCY/uma/runtime.md
     check_tools:
-      - python
+      - mamba
       - qsub
     smoke:
-      - python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
+      - mamba run -n fairchem python -c "import ase; from fairchem.core import FAIRChemCalculator, pretrained_mlip; print('mesa-uma ok')"
     env_optional:
       - HF_TOKEN
       - HF_HOME
@@ -240,3 +241,5 @@ skills:
   number-manuscript-equations: mesa-manuscript
   nature-reviewer: no-runtime
   initialize-mesa: no-runtime
+  initialize-project: no-runtime
+  start-research: no-runtime

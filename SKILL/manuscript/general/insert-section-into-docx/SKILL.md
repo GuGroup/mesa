@@ -37,8 +37,9 @@ the DOCX manuscript body.
 
 Equation rendering defaults to `--equation-mode omml`, which requires Pandoc.
 The script first checks `PATH`, then the repo-local
-`DEPENDENCY/tools/pandoc/bin/pandoc`. Use `--equation-mode text` only for a
-plain-text fallback.
+`DEPENDENCY/tools/pandoc/bin/pandoc`. Use `--equation-mode text` only when the
+user explicitly asks for plain-text equations. A manuscript-ready DOCX must not
+show raw LaTeX equation strings in place of Word-native equations.
 
 If a LaTeX equation is wrapped in `\begin{aligned}...\end{aligned}`, each row
 separated by `\\` is rendered as a separate Word equation object. Blank
@@ -74,6 +75,9 @@ Information figures such as `Fig. S1` are not moved by this option.
 ## Rules
 
 - Prefer structured JSON over Markdown when both are available.
+- Displayed equations must be represented as `content_blocks` with
+  `type: "equation"` and `latex`; do not place LaTeX math delimiters or raw TeX
+  in paragraph text as a substitute for equation blocks.
 - Do not overwrite the template DOCX.
 - Do not insert `missing_details` into the manuscript body by default.
 - Keep citation keys as literal text if present; citation resolution belongs to

@@ -7,6 +7,19 @@ For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying th
 
 # mesa-uma-traj
 
+## Runtime Environment
+
+Run this skill in the configured UMA runtime:
+
+```bash
+mamba run -n fairchem
+```
+
+The existing machine-local `fairchem` mamba environment provides ASE and
+FAIRChem/UMA. Its major package specification is recorded at
+`ENVIRONMENT/fairchem/environment.yml`; do not assume a bootstrap-created
+`mesa-uma` env exists.
+
 `relax-uma-trajectory` is a minimal MESA skill for generating a UMA/ASE
 relaxation trajectory from one POSCAR file. The upstream task provides only the
 POSCAR path. The controller decides all UMA execution settings, writes the

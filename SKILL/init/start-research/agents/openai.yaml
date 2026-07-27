@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start Research"
+  short_description: "Gate MESA research startup"
+  default_prompt: "Use $start-research after initialize-mesa and initialize-project to create or verify the DOCX-manuscript research goal, check project profile, full-access session state, and runtime readiness, then start the MESA research loop."
