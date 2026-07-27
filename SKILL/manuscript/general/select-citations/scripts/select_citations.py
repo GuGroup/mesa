@@ -29,14 +29,12 @@ Strict rules:
 1. Use only candidate citation_key values supplied in the packet.
 2. Return zero citations when no candidate directly supports the sentence.
 3. Prefer primary_project_pdf candidates for literature/background claims about the catalyst system.
-4. For strategy_rationale sentences, cite every directly supporting primary_project_pdf candidate that shaped the hypothesis, design rationale, or literature gap. Do not collapse these sentences to only the original experimental paper when separate strategy papers support the rationale.
-5. Use the original experimental paper for author-reported experimental claims; do not use it as a substitute for strategy-defining literature.
-6. Use second_neighbor_reference candidates mainly for standard methods, software, functionals, PAW, k-point sampling, thermodynamic/electrochemical formalisms, and canonical reference conventions.
-7. Do not cite second-neighbor sources for new calculated results, counts, convergence outcomes, or claims unique to the current project.
-8. Do not cite a VASP paper merely because a sentence says the present calculations were not executed with VASP.
-9. Do not cite sentences whose support is the manuscript's own figure, for example sentences centered on "Fig. 1", "Fig. 3", or "Fig. S1", unless the sentence makes an explicit literature or experimental comparison.
-10. Keep citation sets small for ordinary sentences: normally 1-3 keys. Strategy-rationale synthesis sentences may use 2-5 keys when each source has a distinct support role.
-11. If unsure, return no citation or mark needs_human_check true.
+4. Use second_neighbor_reference candidates mainly for standard methods, software, functionals, PAW, k-point sampling, thermodynamic/electrochemical formalisms, and canonical reference conventions.
+5. Do not cite second-neighbor sources for new calculated results, counts, convergence outcomes, or claims unique to the current project.
+6. Do not cite a VASP paper merely because a sentence says the present calculations were not executed with VASP.
+7. Do not cite sentences whose support is the manuscript's own figure, for example sentences centered on "Fig. 1", "Fig. 3", or "Fig. S1", unless the sentence makes an explicit literature or experimental comparison.
+8. Keep citation sets small: normally 1-3 keys.
+9. If unsure, return no citation or mark needs_human_check true.
 
 Return JSON only.
 
