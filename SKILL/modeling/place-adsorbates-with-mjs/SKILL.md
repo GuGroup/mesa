@@ -23,11 +23,20 @@ Site acceptance policy is `regular_p1_p2_with_p0_top_exception_v1`:
 ## Engine (not bundled)
 
 The weighted-alpha C++ executable and the element radius table are **not shipped in this repo**
-(the native engine is internal-only / do-not-publish). Provide them explicitly; the `modeling`
-runtime is expected to export their paths:
+(the native engine is internal-only / do-not-publish). They are located by explicit flag or, if
+omitted, by environment — **no PATH discovery** (same contract as `slabuilder.weighted_alpha_backend` /
+`WEIGHTED_ALPHA_BACKEND.md`):
 
-- `--exe`  → hash-pinned `weighted_alpha_complex` executable (e.g. `$WEIGHTED_ALPHA_EXE`).
-- `--radius-file` → element radius table such as `UFF.rad` (e.g. `$WEIGHTED_ALPHA_RADIUS_FILE`).
+- `--exe` or `MESA_WEIGHTED_ALPHA_EXE` → the `weighted_alpha_complex` executable.
+- `--radius-file` or `MESA_WEIGHTED_ALPHA_RADIUS_FILE` → element radius table such as `UFF.rad`.
+
+Provenance is SHA-256 pinned when an expected digest is supplied (verified fail-closed):
+
+- `--expected-exe-sha256` or `MESA_WEIGHTED_ALPHA_EXPECTED_SHA256`.
+- `--expected-radius-sha256` or `MESA_WEIGHTED_ALPHA_EXPECTED_RADIUS_SHA256`.
+
+Without a pin the run proceeds but prints an unpinned-provenance warning (suppress with
+`--allow-unpinned-runtime` for local dev). Audited/mesa runs should always pass the pins.
 
 ## Quick Start
 
@@ -53,8 +62,11 @@ mamba run -n modeling python scripts/place_adsorbates_with_mjs.py \
 | `-f, --input` | yes | – | slab `POSCAR`/`CIF` |
 | `-a, --adsorbate-radius` | yes | – | adsorbate probe radius (= `--precursor-radius`); also engine `-a` unless `--engine-alpha` set |
 | `--pbc` | yes | – | PBC mask `111`/`110`/`000` or comma form `1,1,0` |
-| `--exe` | yes | – | hash-pinned weighted-alpha executable (not bundled) |
-| `--radius-file` | yes | – | element radius table (not bundled) |
+| `--exe` | yes* | env | weighted-alpha executable (not bundled); *or `MESA_WEIGHTED_ALPHA_EXE` |
+| `--radius-file` | yes* | env | element radius table (not bundled); *or `MESA_WEIGHTED_ALPHA_RADIUS_FILE` |
+| `--expected-exe-sha256` | no | env | expected exe SHA-256, verified fail-closed; or `MESA_WEIGHTED_ALPHA_EXPECTED_SHA256` |
+| `--expected-radius-sha256` | no | env | expected radius-file SHA-256; or `MESA_WEIGHTED_ALPHA_EXPECTED_RADIUS_SHA256` |
+| `--allow-unpinned-runtime` | no | off | suppress the unpinned-provenance warning (local dev only) |
 | `--engine-alpha` | no | `-a` | explicit weighted-alpha coefficient (kept separate from probe radius) |
 | `--gap` | no | `0.1` | required clearance |
 | `--dedup-distance` | no | `0.6` | per-kind dedup distance |

@@ -229,3 +229,68 @@ def test_extract_regular_sites_can_filter_open_axis_side_for_tilted_slab():
     assert top_site["open_axis_index"] == 2
     assert top_site["open_axis_fractional"] == 0.9
     assert result["rejected"]["open_axis_side_filter"] == 1
+
+
+def test_verify_engine_pin_matches_mismatches_and_warns(tmp_path):
+    mod = load_module()
+    import hashlib
+
+    exe = tmp_path / "weighted_alpha_complex.exe"
+    exe.write_bytes(b"ENGINE-BINARY-BYTES")
+    digest = hashlib.sha256(exe.read_bytes()).hexdigest()
+    # Correct pin verifies.
+    assert mod.verify_engine_pin("exe", exe, digest, allow_unpinned=False) is True
+    # Uppercase / whitespace-padded pin still verifies (normalized).
+    assert mod.verify_engine_pin("exe", exe, f"  {digest.upper()}  ", allow_unpinned=False) is True
+    # Mismatch is fail-closed.
+    for bad in ["0" * 64, "nothex"]:
+        try:
+            mod.verify_engine_pin("exe", exe, bad, allow_unpinned=False)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"expected ValueError for pin {bad!r}")
+    # No pin + allow_unpinned returns False without raising.
+    assert mod.verify_engine_pin("exe", exe, None, allow_unpinned=True) is False
+
+
+def test_resolve_engine_artifacts_flag_env_and_missing(tmp_path, monkeypatch):
+    mod = load_module()
+    from types import SimpleNamespace
+
+    exe = tmp_path / "weighted_alpha_complex.exe"
+    exe.write_bytes(b"ENGINE-BINARY-BYTES")
+    rad = tmp_path / "UFF.rad"
+    rad.write_bytes(b"H 1.0\n")
+
+    def args(**kw):
+        base = dict(
+            exe=None,
+            radius_file=None,
+            expected_exe_sha256=None,
+            expected_radius_sha256=None,
+            allow_unpinned_runtime=True,
+        )
+        base.update(kw)
+        return SimpleNamespace(**base)
+
+    monkeypatch.delenv("MESA_WEIGHTED_ALPHA_EXE", raising=False)
+    monkeypatch.delenv("MESA_WEIGHTED_ALPHA_RADIUS_FILE", raising=False)
+    # Explicit flags resolve; unpinned -> pinned False.
+    exe_path, rad_path, status = mod.resolve_engine_artifacts(args(exe=str(exe), radius_file=str(rad)))
+    assert exe_path.name == "weighted_alpha_complex.exe" and rad_path.name == "UFF.rad"
+    assert status["pinned"] is False
+    # Environment fallback when flags absent.
+    monkeypatch.setenv("MESA_WEIGHTED_ALPHA_EXE", str(exe))
+    monkeypatch.setenv("MESA_WEIGHTED_ALPHA_RADIUS_FILE", str(rad))
+    exe_env, rad_env, _ = mod.resolve_engine_artifacts(args())
+    assert exe_env.name == "weighted_alpha_complex.exe" and rad_env.name == "UFF.rad"
+    # Neither flag nor env -> ValueError.
+    monkeypatch.delenv("MESA_WEIGHTED_ALPHA_EXE", raising=False)
+    monkeypatch.delenv("MESA_WEIGHTED_ALPHA_RADIUS_FILE", raising=False)
+    try:
+        mod.resolve_engine_artifacts(args())
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError when neither flag nor env provided")

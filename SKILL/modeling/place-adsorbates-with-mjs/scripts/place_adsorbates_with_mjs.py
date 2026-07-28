@@ -39,10 +39,12 @@ from fig3_common import (  # type: ignore  # noqa: E402
     pbc_distance,
     prepare_poscar_input,
     read_json,
+    read_poscar_atoms,
     row_vec_mat,
     v_add,
     v_mul,
     write_json,
+    write_poscar,
 )
 
 SITE_KIND_BY_NODE_TYPE = {"P0": "top", "P1": "bridge", "P2": "hollow"}
@@ -665,10 +667,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sample-per-kind", type=int, default=5, help="Number of top/bridge/hollow sites to show in sample HTML")
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--out-dir", type=str, default=None)
-    parser.add_argument("--exe", type=str, required=True)
-    parser.add_argument("--radius-file", type=str, required=True)
+    parser.add_argument("--exe", type=str, default=None, help="Pinned weighted-alpha executable (else MESA_WEIGHTED_ALPHA_EXE); not bundled")
+    parser.add_argument("--radius-file", type=str, default=None, help="Element radius table (else MESA_WEIGHTED_ALPHA_RADIUS_FILE); not bundled")
+    parser.add_argument("--expected-exe-sha256", type=str, default=None, help="Expected SHA-256 of the exe; verified fail-closed when set (else MESA_WEIGHTED_ALPHA_EXPECTED_SHA256)")
+    parser.add_argument("--expected-radius-sha256", type=str, default=None, help="Expected SHA-256 of the radius file; verified fail-closed when set (else MESA_WEIGHTED_ALPHA_EXPECTED_RADIUS_SHA256)")
+    parser.add_argument("--allow-unpinned-runtime", action="store_true", help="Suppress the unpinned-provenance warning (unsafe local dev only)")
     parser.add_argument("--dry-run", action="store_true", help="Prepare input and command metadata, but do not execute the engine")
     parser.add_argument("--debug", action="store_true", help="Preserve full engine graph/logs under engine_run/ for private audit (public output stays IP-minimal by default)")
+    parser.add_argument("--jitter", type=float, default=0.0, help="Gaussian atom displacement stdev in Angstrom applied to the staged input to break degenerate (near-cospherical) symmetry that can stall the geometry engine (0=off); recorded in metadata for reproducibility")
+    parser.add_argument("--jitter-seed", type=int, default=0, help="Random seed for --jitter (reproducible)")
     return parser
 
 
@@ -687,6 +694,58 @@ def sha256_hex(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def verify_engine_pin(label: str, path: Path, expected: str | None, allow_unpinned: bool) -> bool:
+    """SHA-256-verify a pinned engine artifact. Fail-closed on mismatch.
+
+    Returns True when verified against a supplied pin. When no pin is supplied it warns
+    (unless allow_unpinned) and returns False. Mirrors slabuilder.weighted_alpha_backend /
+    WEIGHTED_ALPHA_BACKEND.md, with one documented divergence: a *missing* pin warns instead
+    of hard-failing so the standalone skill stays usable in local dev; audited/mesa runs pass
+    the expected pins (or MESA_WEIGHTED_ALPHA_EXPECTED_* env).
+    """
+    actual = sha256_hex(path)
+    if expected:
+        expected_norm = expected.strip().lower()
+        if len(expected_norm) != 64 or any(character not in "0123456789abcdef" for character in expected_norm):
+            raise ValueError(f"{label} expected SHA-256 must be 64 hex characters")
+        if actual.lower() != expected_norm:
+            raise ValueError(f"{label} SHA-256 mismatch: expected {expected_norm}, got {actual}")
+        return True
+    if not allow_unpinned:
+        print(
+            f"Warning: {label} is not SHA-256 pinned ({actual}); pass an expected pin for audited runs.",
+            file=sys.stderr,
+        )
+    return False
+
+
+def resolve_engine_artifacts(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Any]]:
+    """Locate the pinned weighted-alpha exe + radius table and SHA-256-verify them.
+
+    Resolution order (no PATH discovery, per WEIGHTED_ALPHA_BACKEND.md):
+    explicit ``--exe`` / ``--radius-file`` flag, then ``MESA_WEIGHTED_ALPHA_EXE`` /
+    ``MESA_WEIGHTED_ALPHA_RADIUS_FILE`` environment.
+    """
+    exe_raw = args.exe or os.environ.get("MESA_WEIGHTED_ALPHA_EXE")
+    if not exe_raw:
+        raise ValueError("weighted-alpha executable not provided: pass --exe or set MESA_WEIGHTED_ALPHA_EXE")
+    radius_raw = args.radius_file or os.environ.get("MESA_WEIGHTED_ALPHA_RADIUS_FILE")
+    if not radius_raw:
+        raise ValueError("radius file not provided: pass --radius-file or set MESA_WEIGHTED_ALPHA_RADIUS_FILE")
+    exe = resolve_path_for_cli(exe_raw)
+    if not exe.exists():
+        raise FileNotFoundError(f"weighted-alpha executable not found: {exe}")
+    radius_file = resolve_path_for_cli(radius_raw)
+    if not radius_file.exists():
+        raise FileNotFoundError(f"radius file not found: {radius_file}")
+    expected_exe = args.expected_exe_sha256 or os.environ.get("MESA_WEIGHTED_ALPHA_EXPECTED_SHA256")
+    expected_radius = args.expected_radius_sha256 or os.environ.get("MESA_WEIGHTED_ALPHA_EXPECTED_RADIUS_SHA256")
+    allow_unpinned = bool(args.allow_unpinned_runtime)
+    exe_pinned = verify_engine_pin("weighted-alpha executable", exe, expected_exe, allow_unpinned)
+    radius_pinned = verify_engine_pin("radius file", radius_file, expected_radius, allow_unpinned)
+    return exe, radius_file, {"pinned": bool(exe_pinned and radius_pinned)}
 
 
 def run_engine_command(command: list[str], run_dir: Path, timeout_seconds: int) -> dict[str, Any]:
@@ -723,12 +782,7 @@ def main(argv: list[str] | None = None) -> int:
     input_path = resolve_path_for_cli(args.input)
     if not input_path.exists():
         raise FileNotFoundError(f"input not found: {input_path}")
-    exe = resolve_path_for_cli(args.exe)
-    if not exe.exists():
-        raise FileNotFoundError(f"weighted-alpha executable not found: {exe}")
-    radius_file = resolve_path_for_cli(args.radius_file)
-    if not radius_file.exists():
-        raise FileNotFoundError(f"radius file not found: {radius_file}")
+    exe, radius_file, engine_pin_status = resolve_engine_artifacts(args)
 
     engine_alpha = float(args.engine_alpha) if args.engine_alpha is not None else float(args.adsorbate_radius)
     engine_alpha_source = "--engine-alpha" if args.engine_alpha is not None else "-a/--adsorbate-radius"
@@ -739,6 +793,17 @@ def main(argv: list[str] | None = None) -> int:
     prepared_poscar = Path(conversion["output"])
 
     extra_args = ["--voro-construction-mode", "pbc_masked_image_aware", "--radius-file", str(radius_file.resolve())]
+    if float(args.jitter) > 0.0:
+        # Break near-degenerate (cospherical) symmetry that can stall the geometry engine.
+        # Native (ASE-free) reproducible Cartesian jitter.
+        import random as _random
+        _jcell, _jatoms = read_poscar_atoms(prepared_poscar)
+        _jrng = _random.Random(int(args.jitter_seed))
+        _js = float(args.jitter)
+        for _jat in _jatoms:
+            _jp = _jat["position"]
+            _jat["position"] = [_jp[0] + _jrng.gauss(0.0, _js), _jp[1] + _jrng.gauss(0.0, _js), _jp[2] + _jrng.gauss(0.0, _js)]
+        write_poscar(prepared_poscar, "jittered", _jcell, _jatoms, direct=False)
     staged_input_sha256 = sha256_hex(prepared_poscar)
     if args.engine_cli == "new":
         # PR#21 engine contract: -a = contact-anchor radius, --alpha-factor = weighted-alpha factor,
@@ -804,7 +869,10 @@ def main(argv: list[str] | None = None) -> int:
         "normal_source": args.normal_source,
         "open_axis_side": args.open_axis_side,
         "engine_sha256_12": sha256_12(exe),
+        "engine_pinned": bool(engine_pin_status["pinned"]),
         "staged_input_sha256": staged_input_sha256,
+        "jitter": float(args.jitter),
+        "jitter_seed": int(args.jitter_seed),
         "site_filter_policy": "regular_p1_p2_with_p0_top_exception_v1",
     }
 
