@@ -1,6 +1,6 @@
 ---
 name: initialize-project
-description: Interview for and create a MESA project profile after repository setup. Use when Codex or a user needs to start or switch a MESA research project, choose project_name, record source materials such as prompts/PDFs/proposals/manuscripts/numeric data, define the scientific objective, choose evidence level and calculation backend policy, set scheduler/submission/API-key expectations, or write/update a project profile before start-research.
+description: Interview for and create a MESA project profile after repository setup. Use when Codex or a user needs to start or switch a MESA research project, choose project_name, record source materials such as prompts/PDFs/proposals/manuscripts/numeric data, define the scientific objective, choose evidence level and calculation backend policy, set scheduler/submission/API-key expectations, or write/update a project profile. Treat start-research as an optional explicit next step, not an automatic continuation.
 ---
 
 For MESA project setup use, read `workflow.md` before applying this skill.
@@ -17,7 +17,9 @@ cannot be inferred, then write the active
 
 This skill must not install dependencies, generate runtime plans, run
 calculations, select strategies, write manuscripts, or enter the research loop.
-After the project profile exists, run `start-research`.
+After the project profile exists, stop and report the profile path. Mention
+`start-research` only as an optional explicit next step for users who want a
+guided or autonomous research startup.
 
 This skill owns the real project name and project output directory decision.
 Never use `mos`, `<project_name>`, or any placeholder as a default project. If
@@ -122,7 +124,8 @@ Keep the calculation policy short but explicit. Examples:
   backend policy, ask.
 - Do not treat repository setup as project setup. Use `initialize-mesa` for
   dependency checks, MCP config, skill symlink sync, and environment repair.
-- Do not start the research loop. Use `start-research` after the profile is
+- Do not start the research loop or invoke `start-research` automatically. Treat
+  `start-research` as an optional explicit next step after the profile is
   complete.
 - Do not append a MESA scientific skill-call log entry for this setup-only
   skill unless it is invoked as part of a scientific workflow run.

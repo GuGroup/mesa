@@ -37,5 +37,9 @@ ln -sfn "$PWD/SKILL/init/initialize-mesa" \
 
 Then open Codex in this checkout and run `initialize-mesa`. The skill runs the
 repository setup checks and links the remaining MESA skills. After that, run
-`initialize-project` to create `project/<project_name>/project_profile.md`, then
-run `start-research`.
+`initialize-project` to create `project/<project_name>/project_profile.md`.
+
+Explicit start is the default. Full filesystem access and a Codex goal can be
+helpful for long autonomous research runs, but they are not required for project
+profile creation or ordinary manual startup. If you want automated startup of
+the research loop, explicitly ask Codex to use the `start-research` skill.
