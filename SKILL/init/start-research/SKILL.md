@@ -1,16 +1,22 @@
 ---
 name: start-research
-description: Start a MESA scientific research run after initialize-mesa and initialize-project. Use when the user says start research, begin the project, run the MESA workflow, proceed autonomously, or provides research inputs such as prompts, reference papers, experimental-only papers, numeric data, collaborator proposals, existing manuscripts, reviewer comments, or gap/weakness-repair instructions and asks Codex to verify project profile, create or verify a Codex goal for writing a DOCX manuscript, check full-access filesystem/session state, runtime readiness, and choose the correct workflow entry point before executing the catalyst research loop.
+description: Optional startup gate for a MESA scientific research run after initialize-mesa and initialize-project. Use only when the user explicitly invokes start-research, asks to start the MESA research loop, or requests guided/autonomous execution. This skill verifies the project profile and runtime readiness, optionally handles full-access session checks and Codex goal setup when the user wants automation, and chooses the correct workflow entry point before executing the catalyst research loop.
 ---
 
 # Start Research
 
 ## Overview
 
-Use this skill after `initialize-mesa` has prepared the repository and
-`initialize-project` has created or selected the project profile. This skill
-verifies that the current Codex session is allowed to run the research workflow
-and then enters the root `workflow.md` loop.
+Use this optional skill after `initialize-mesa` has prepared the repository and
+`initialize-project` has created or selected the project profile. Do not invoke
+this skill implicitly from project initialization. Use it only after an explicit
+user request to start, guide, or automate the MESA research loop.
+
+Full filesystem access and Codex goal management are helpful for long
+autonomous manuscript-producing runs, but they are not mandatory for every
+startup. Treat them as opt-in automation controls and continue with bounded
+profile review, readiness checks, or user-directed workflow entry when the
+current session does not need them.
 
 ## Required Inputs
 
@@ -24,31 +30,34 @@ and then enters the root `workflow.md` loop.
 If the project profile is missing or incomplete, stop and run
 `initialize-project` before starting research.
 
-## Session Gate
+## Startup Gate
 
 Before executing research steps:
 
-1. Confirm the session has full filesystem access from the active environment
-   context. Accept `danger-full-access`, unrestricted filesystem access, or an
-   equivalent full-access profile. If access is workspace-only, read-only, or
-   otherwise restricted, stop and tell the user to restart the session with
-   full access.
-2. Create or confirm the Codex goal. If the `get_goal`/`create_goal` tools are
-   available:
+1. Read `project/<project_name>/project_profile.md` and root `workflow.md`.
+   Treat the profile as the active project policy source and root `workflow.md`
+   as the reusable execution contract.
+2. Verify the project profile's calculation policy before calculation work. If
+   the policy is missing or ambiguous, return to `initialize-project` instead of
+   assuming a backend.
+3. Record the current filesystem/session access state. Full filesystem access
+   such as `danger-full-access`, unrestricted filesystem access, or an equivalent
+   full-access profile is recommended for autonomous calculation and manuscript
+   runs. If the session is workspace-only, read-only, or otherwise restricted,
+   continue only with steps that fit the current access and stop before any
+   required operation that the session cannot perform.
+4. Manage a Codex goal only when the user explicitly asks for goal setup or asks
+   for an autonomous manuscript-producing run. If the `get_goal`/`create_goal`
+   tools are available in that mode:
    - call `get_goal`;
    - if no goal is active, call `create_goal` with an objective built from the
      project profile and the user's research request using the template below;
    - if a different goal is active, stop and report the conflict;
    - if the active goal already matches the manuscript objective for this
      project, continue.
-   If the goal tools are unavailable, stop and tell the user this surface cannot
-   create the required research goal automatically.
-3. Read `project/<project_name>/project_profile.md` and root `workflow.md`.
-   Treat the profile as the active project policy source and root `workflow.md`
-   as the reusable execution contract.
-4. Verify the project profile's calculation policy before calculation work. If
-   the policy is missing or ambiguous, return to `initialize-project` instead of
-   assuming a backend.
+   If the goal tools are unavailable, report that no Codex goal will be managed
+   in this surface and continue only if the requested workflow does not depend on
+   goal-managed autonomous continuation.
 5. Run the relevant readiness checks for the profile's required runtimes:
 
 ```bash
@@ -61,11 +70,12 @@ Use `initialize-project` for missing or ambiguous project-profile decisions.
 Do not use this skill to install dependencies except when the user explicitly
 asks for setup changes.
 
-## Goal Objective Template
+## Optional Goal Objective Template
 
-When calling `create_goal`, do not invent a broad prompt. Use one concrete
-objective derived from `project_profile.md`. The goal must be to satisfy the
-user's research objective by producing a manuscript DOCX:
+When the user explicitly requests goal setup and `create_goal` is available, do
+not invent a broad prompt. Use one concrete objective derived from
+`project_profile.md`. The goal should satisfy the user's research objective by
+producing a manuscript DOCX:
 
 ```text
 Complete the MESA research workflow for project/<project_name> and write a
@@ -124,7 +134,7 @@ User-facing clarification and QA may use the user's preferred language.
 
 ## Entry Point
 
-After the session gate passes, choose exactly one starting point:
+After the startup checks pass, choose exactly one starting point:
 
 - If the active project has a current strategy artifact, enter the
   Per-Strategy Execution Loop at `select-next-strategy`.

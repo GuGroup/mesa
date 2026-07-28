@@ -39,11 +39,11 @@ project-specific policy. Do not infer backend policy from AGENTS.md.
 # Research startup
 
 Use `initialize-mesa` for repository setup, dependency checks, and skill
-symlink sync. Use `initialize-project` for project-profile creation. Use
-`start-research` after initialization to verify the active project profile,
-create or verify the DOCX-manuscript research goal, check full-access session
-state, and choose the workflow entry point before running the scientific
-research loop.
+symlink sync. Use `initialize-project` for project-profile creation. After
+project initialization, wait for an explicit user request before starting the
+scientific research loop. Use `start-research` only as an optional explicit
+startup gate for guided/autonomous execution; Codex goal setup and full-access
+session checks are helpful automation controls, not mandatory defaults.
 
 # Skill-first operating rules
 

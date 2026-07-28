@@ -33,12 +33,15 @@ that skill unless it would violate this root workflow.
 
 # Central Loop
 
-Start a research run through `start-research` after `initialize-mesa` has
-prepared the repository and `initialize-project` has created or selected the
-active project profile. The start gate must confirm
-the project profile, create or verify the Codex goal for producing a DOCX
-manuscript, confirm full-access session state, project calculation policy, and
-required runtime readiness before entering the loop below.
+After `initialize-mesa` has prepared the repository and `initialize-project` has
+created or selected the active project profile, the default is to wait for an
+explicit user start. Do not enter the research loop automatically from project
+initialization. When the user explicitly invokes `start-research` or asks for
+guided/autonomous MESA execution, use that optional start gate to confirm the
+project profile, project calculation policy, and required runtime readiness.
+Codex goal setup and full-access session checks are helpful for autonomous
+manuscript-producing runs, but they are optional automation controls and should
+only be enforced when the requested run depends on them.
 
 This workflow is a loop. It is not a linear checklist and it is not valid to
 move directly from one strategy calculation into the next strategy calculation.
