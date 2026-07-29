@@ -85,6 +85,8 @@ PARTIAL_JOB_SPEC_SCHEMA: dict[str, object] = {
                         "preset48std",
                         "preset64gam",
                         "preset64std",
+                        "presetg018gam",
+                        "presetg018std",
                         "presetg01gam",
                         "presetg01std",
                     ],

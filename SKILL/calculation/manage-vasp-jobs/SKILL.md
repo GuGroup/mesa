@@ -79,10 +79,11 @@ screening mode:
 - Set explicit Gamma-only sampling with `vasp.kpts: [1, 1, 1]` and
   `vasp.gamma: true`; omit `vasp.parameters.kspacing` and
   `vasp.parameters.kgamma`.
-- Use `queue.preset: presetg01gam` for Gamma-only test specs. Use
-  `presetg01std` only if the spec is not Gamma-only.
+- Use `queue.preset: presetg018gam` for Gamma-only test specs when g01 already
+  has noticeable load. Use `presetg01gam` only when the user asks for 16 slots.
+  Use `presetg018std` / `presetg01std` only if the spec is not Gamma-only.
 - g01 submissions are sequential: the `presetg01*` templates request
-  `a6000.q`, `hostname=g01`, and `mpi_16 16`, and `vasp-job submit` refuses a
+  `a6000.q`, `hostname=g01`, and either 8 or 16 MPI slots, and `vasp-job submit` refuses a
   second indexed g01 preset job while another g01 preset job is still queued or
   running. Submit the next g01 job only after `vasp-job status <job_uid>` reports
   `finished` or `failed`.
@@ -114,7 +115,7 @@ screening mode:
   lightweight test behavior. Read `profile.dft_test.common` and
   `profile.dft_test.task.<task>` from `defaults.yaml`, set
   `vasp.kpts: [1, 1, 1]`, set `vasp.gamma: true`, omit `kspacing`/`kgamma`, apply
-  system-specific overrides, and set `queue.preset: presetg01gam` unless the
+  system-specific overrides, and set `queue.preset: presetg018gam` unless the
   calculation is explicitly non-Gamma-only.
 
 ### Reuse common parameters (`extends` / `--common`)
@@ -183,7 +184,7 @@ vasp:
     ediffg: -8.0e-2
     potim: 0.1
 queue:
-  preset: presetg01gam
+  preset: presetg018gam
 ```
 
 Example for a default refined `slab` job (top-level common + task.slab, smearing
@@ -391,10 +392,12 @@ queue:
 
 - `auto` picks 48- vs 64-core from current free/remaining nodes (`qq`). If no node is currently free, `auto` defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
 - `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin it explicitly.
+- `presetg018std`, `presetg018gam` — pin to SGE `a6000.q`, `hostname=g01`, and
+  `mpi_8 8`. Prefer these for quick DFT tests when g01 has existing load.
 - `presetg01std`, `presetg01gam` — pin to SGE `a6000.q`, `hostname=g01`, and
-  `mpi_16 16`. These presets are not selected by `auto`; set them explicitly
-  for DFT tests. `vasp-job submit` enforces one active indexed g01 preset job at
-  a time.
+  `mpi_16 16`. Use only when the user asks for 16 slots. These g01 presets are
+  not selected by `auto`; set them explicitly for DFT tests. `vasp-job submit`
+  enforces one active indexed g01 preset job at a time.
 
 ## Workflow
 

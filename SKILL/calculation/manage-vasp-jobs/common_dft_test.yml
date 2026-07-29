@@ -10,7 +10,7 @@
 #
 # Then add task params in the job spec, e.g. DFT-test slab:
 #   vasp: { parameters: { ibrion: 2, isif: 2, nsw: 100, ediffg: -8.0e-2, potim: 0.1 } }
-#   queue: { preset: presetg01gam }
+#   queue: { preset: presetg018gam }
 #
 # System-dependent overrides (set in the job spec when needed):
 #   gas-phase molecule / insulator -> ismear: 0, sigma: 0.05

@@ -49,4 +49,4 @@ vasp:
     potim: 0.1
 
 queue:
-  preset: presetg01gam     # g01, a6000.q, mpi_16; guarded to one active g01 job
+  preset: presetg018gam    # g01, a6000.q, mpi_8; guarded to one active g01 job

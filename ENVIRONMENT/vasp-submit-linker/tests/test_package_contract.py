@@ -13,6 +13,8 @@ EXPECTED_TEMPLATES = {
     "vasp_submit/templates/sge/preset48std.sh",
     "vasp_submit/templates/sge/preset64gam.sh",
     "vasp_submit/templates/sge/preset64std.sh",
+    "vasp_submit/templates/sge/presetg018gam.sh",
+    "vasp_submit/templates/sge/presetg018std.sh",
     "vasp_submit/templates/sge/presetg01gam.sh",
     "vasp_submit/templates/sge/presetg01std.sh",
 }

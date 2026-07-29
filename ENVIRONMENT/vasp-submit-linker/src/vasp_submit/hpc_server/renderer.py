@@ -18,7 +18,7 @@ from vasp_submit.hpc_server.auto_preset import auto_select_preset
 from vasp_submit.hpc_server.jobs import now_iso, read_index_entries, status_job
 
 
-G01_PRESETS = {"presetg01gam", "presetg01std"}
+G01_PRESETS = {"presetg018gam", "presetg018std", "presetg01gam", "presetg01std"}
 
 
 def write_text(path: Path, content: str) -> None:

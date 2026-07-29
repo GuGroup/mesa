@@ -14,6 +14,8 @@ QUEUE_PRESETS = {
     "preset48std",
     "preset64gam",
     "preset64std",
+    "presetg018gam",
+    "presetg018std",
     "presetg01gam",
     "presetg01std",
 }

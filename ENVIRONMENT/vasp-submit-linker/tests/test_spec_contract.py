@@ -68,6 +68,8 @@ class NormalizeSpecContractTests(unittest.TestCase):
         structure_fields = top_level_fields["structure"]["properties"]
 
         self.assertEqual(set(queue_fields), {"preset", "submit"})
+        self.assertIn("presetg018gam", queue_fields["preset"]["enum"])
+        self.assertIn("presetg018std", queue_fields["preset"]["enum"])
         self.assertIn("presetg01gam", queue_fields["preset"]["enum"])
         self.assertIn("presetg01std", queue_fields["preset"]["enum"])
         self.assertEqual(set(structure_fields), {"format", "content", "path"})
