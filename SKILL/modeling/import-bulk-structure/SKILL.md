@@ -61,6 +61,8 @@ Start only from recipe-authorized requirements:
 4. Write an unoptimized bulk structure artifact and sidecar metadata.
 5. Hand the artifact to the calculation workflow for bulk optimization under the
    active project profile's calculation policy.
+   For VASP-backed bulk-cell handoffs, a compact volume scan/EOS-derived cell is
+   preferred when practical; do not make this skill perform the scan.
 
 ## Direct Bulk Creation
 

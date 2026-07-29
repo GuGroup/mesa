@@ -28,6 +28,8 @@ Slab generation must start from an accepted optimized bulk artifact.
 - Use `import-bulk-structure` first to import, register, or directly create the
   source bulk, then complete the required bulk optimization under the root
   calculation policy, then run this skill with the optimized bulk file.
+- For VASP-backed optimized bulk inputs, prefer volume-scan/EOS-derived cells
+  when practical; accept other backend-authorized optimized bulk artifacts.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \

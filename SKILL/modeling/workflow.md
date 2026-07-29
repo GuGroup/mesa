@@ -64,6 +64,9 @@ Bulk optimization and clean slab optimization belong to the calculation domain
 and inherit the active backend policy from
 `project/<project_name>/project_profile.md`. Modeling skills must not choose a
 calculation backend on their own.
+For VASP-backed optimized-bulk handoffs, prefer a compact volume-scan/EOS-derived
+cell when practical, rather than defaulting to a one-shot free-cell relaxation;
+other backend-authorized bulk optimization routes remain valid.
 
 Use `build-slab-models` only after an accepted optimized bulk artifact exists.
 Pass that optimized artifact through `--bulk-file`; do not let slab generation
