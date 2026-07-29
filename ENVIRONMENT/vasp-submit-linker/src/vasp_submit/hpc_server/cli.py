@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "prepare":
                 json_print(prepared_result(directory))
             else:
-                result = submit_job(directory)
+                result = submit_job(directory, config)
                 json_print(result)
                 if not result.get("ok"):
                     return 2

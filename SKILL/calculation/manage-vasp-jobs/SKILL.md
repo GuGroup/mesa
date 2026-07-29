@@ -1,6 +1,6 @@
 ---
 name: manage-vasp-jobs
-description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling, refinement-default actual calculation settings, and explicit quick-screening settings. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose screening versus refinement settings, check job status, list recent jobs, or inspect result files on the cluster.
+description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling, refinement-default actual calculation settings, explicit quick-screening settings, and lightweight DFT-test jobs on g01. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose test/screening/refinement settings, check job status, list recent jobs, or inspect result files on the cluster.
 ---
 
 For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
@@ -64,9 +64,34 @@ ask which few structures should be submitted. Do not silently submit a large
 job matrix. If the user wants a broad low-cost comparison, ask or record that
 screening mode is being used explicitly.
 
+### DFT test policy
+
+When the user explicitly asks for a DFT test, lightweight test run, g01 test, or
+minimum VASP sanity run, use **DFT test explicit mode** instead of refinement or
+screening mode:
+
+- Use only `profile.dft_test` from [`defaults.yaml`](defaults.yaml), or the
+  reusable [`common_dft_test.yml`](common_dft_test.yml). Do not merge the
+  top-level refinement defaults and do not use `common_refinement.yml`.
+- Keep DFT-test INCAR minimal and fast. Do not add refinement/accuracy helpers
+  such as `lasph`, `addgrid`, or `ivdw` unless the user explicitly asks for
+  them.
+- Set explicit Gamma-only sampling with `vasp.kpts: [1, 1, 1]` and
+  `vasp.gamma: true`; omit `vasp.parameters.kspacing` and
+  `vasp.parameters.kgamma`.
+- Use `queue.preset: presetg01gam` for Gamma-only test specs. Use
+  `presetg01std` only if the spec is not Gamma-only.
+- g01 submissions are sequential: the `presetg01*` templates request
+  `a6000.q`, `hostname=g01`, and `mpi_16 16`, and `vasp-job submit` refuses a
+  second indexed g01 preset job while another g01 preset job is still queued or
+  running. Submit the next g01 job only after `vasp-job status <job_uid>` reports
+  `finished` or `failed`.
+- Report DFT-test jobs as lightweight sanity/test calculations, not final
+  adsorption/surface energy evidence.
+
 ## Job spec
 
-`vasp-job` does not fill in VASP defaults. Choose one of three parameter modes:
+`vasp-job` does not fill in VASP defaults. Choose one of four parameter modes:
 
 - **Minimal edit mode**: Use when the user already provides VASP parameters, an
   INCAR-derived parameter set, or asks to preserve an existing setup. Keep their
@@ -85,6 +110,12 @@ screening mode is being used explicitly.
   top-level `common` and `task.<task>`, overlay `profile.screening.common` and
   `profile.screening.task.<task>`, apply system-specific overrides, and write
   the final merged values explicitly into `vasp.parameters`.
+- **DFT test explicit mode**: Use only when the user asks for DFT test or g01
+  lightweight test behavior. Read `profile.dft_test.common` and
+  `profile.dft_test.task.<task>` from `defaults.yaml`, set
+  `vasp.kpts: [1, 1, 1]`, set `vasp.gamma: true`, omit `kspacing`/`kgamma`, apply
+  system-specific overrides, and set `queue.preset: presetg01gam` unless the
+  calculation is explicitly non-Gamma-only.
 
 ### Reuse common parameters (`extends` / `--common`)
 
@@ -93,16 +124,22 @@ reusable common spec file before the job spec (the job spec always wins on
 conflict; merge is deep/recursive). This is the preferred way to run many jobs
 in one project without hand-assembly drift.
 
-- Bundled reusable blocks: [`common_refinement.yml`](common_refinement.yml) and
-  [`common_screening.yml`](common_screening.yml). Each carries only the
-  task-agnostic `common` block.
-- External file (recommended): `vasp-job prepare spec.yml --common <path>/common_refinement.yml`.
+- Bundled reusable blocks: [`common_refinement.yml`](common_refinement.yml),
+  [`common_screening.yml`](common_screening.yml), and
+  [`common_dft_test.yml`](common_dft_test.yml). Each carries only the
+  task-agnostic `common` block for its mode.
+- External file (recommended): use the common file for the selected mode, e.g.
+  `vasp-job prepare spec.yml --common <path>/common_dft_test.yml` for DFT tests
+  or `vasp-job prepare spec.yml --common <path>/common_refinement.yml` for
+  refinement jobs.
   `--common` accepts an absolute path or a path relative to the current
   directory.
-- In-spec: add `extends: common_refinement.yml` to the job spec. `extends` is a
-  relative path (or list of relative paths) resolved **under the spec file's
-  directory** — copy the common file next to the spec first. A list merges left
-  to right (later wins), then the spec wins over all.
+- In-spec: add the selected mode's common file to `extends`, such as
+  `extends: common_dft_test.yml` for DFT tests or
+  `extends: common_refinement.yml` for refinement. `extends` is a relative path
+  (or list of relative paths) resolved **under the spec file's directory** —
+  copy the common file next to the spec first. A list merges left to right
+  (later wins), then the spec wins over all.
 
 With reuse, the job spec only needs `job_name`, `task`, `structure`, the
 `task.<task>` parameters, system overrides (`ismear`/`sigma`,
@@ -126,6 +163,28 @@ queue: { preset: auto }
 
 The preserved input record (`input_specs/*.yml`) stores the fully merged spec,
 so a reused job remains self-contained and reproducible.
+
+Example for a lightweight DFT-test `slab` job on g01:
+
+```yaml
+extends: common_dft_test.yml
+job_name: co_pt111_test_001
+task: slab
+project: dft_test
+structure: { format: poscar, path: POSCAR }
+vasp:
+  kpts: [1, 1, 1]
+  gamma: true
+  parameters:
+    # task.slab from profile.dft_test.task.slab
+    ibrion: 2
+    isif: 2
+    nsw: 100
+    ediffg: -8.0e-2
+    potim: 0.1
+queue:
+  preset: presetg01gam
+```
 
 Example for a default refined `slab` job (top-level common + task.slab, smearing
 left at the metal default):
@@ -186,6 +245,10 @@ Parameter rules:
   `profile.screening.common` + `profile.screening.task.<task>` overlaid, then
   apply system-specific overrides. Record in the user-facing response that the
   job is a screening job and is not final-quality evidence.
+- In DFT test explicit mode, assemble parameters only from
+  `profile.dft_test.common` + `profile.dft_test.task.<task>`, set the top-level
+  `vasp.kpts`/`vasp.gamma` from `profile.dft_test.vasp`, and record that the job
+  is lightweight test evidence only.
 - Decide the system-dependent ones per job: `ismear`/`sigma` (metal slab vs
   gas-phase molecule/insulator) and `ispin`/`magmom`. If `ispin: 2`, include
   `magmom` (per-atom initial moments).
@@ -198,13 +261,16 @@ Parameter rules:
   `structure.content` instead to inline the POSCAR text, but set exactly one of
   `path` or `content`.
 - `vasp.parameters` keys are lowercase vasp-ase keywords, not uppercase INCAR.
-- k-points: use `kspacing` by default. Both actual calculation and explicit
+- k-points: use `kspacing` by default for refinement/screening. Both actual calculation and explicit
   screening use `kspacing: 0.30` (screening saves cost via encut/ediff/nelm/nsw,
   not by coarsening k-points). Set explicit `vasp.kpts` only when the user asks
   for a fixed mesh or the calculation is clearly a one-point Gamma-only job; then omit
   `kspacing`/`kgamma`. Do not add top-level `vasp.gamma` for ordinary KSPACING
   jobs; `vasp.parameters.kgamma` already controls Gamma-centered KSPACING
   meshes.
+- DFT test mode is always explicit one-point Gamma-only unless the user
+  explicitly asks otherwise: set `vasp.kpts: [1, 1, 1]`, set
+  `vasp.gamma: true`, and omit `kspacing`/`kgamma`.
 - Treat `vasp.parameters.kgamma` and top-level `vasp.gamma` as different
   controls. `kgamma: true` means a Gamma-centered KSPACING mesh; it does not
   select the gamma-only VASP executable.
@@ -325,6 +391,10 @@ queue:
 
 - `auto` picks 48- vs 64-core from current free/remaining nodes (`qq`). If no node is currently free, `auto` defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
 - `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin it explicitly.
+- `presetg01std`, `presetg01gam` — pin to SGE `a6000.q`, `hostname=g01`, and
+  `mpi_16 16`. These presets are not selected by `auto`; set them explicitly
+  for DFT tests. `vasp-job submit` enforces one active indexed g01 preset job at
+  a time.
 
 ## Workflow
 
@@ -332,16 +402,19 @@ queue:
 2. Ensure upstream gates are complete: selected slab termination, selected
    adsorption site/intermediate, atom count, fixed atoms, and structure
    validation. Do not use VASP as the first filter over a large generated set.
-3. Write the spec to a file, e.g. `spec.yml`: choose minimal edit, refinement
-   explicit by default for actual calculations, or screening explicit only when
-   the user asked for quick screening/comparison. Set `task` only to `bulk`,
-   `slab`, `freq`, or `static`, and point `structure.path` at the POSCAR file
-   (or inline it with `structure.content`).
+3. Write the spec to a file, e.g. `spec.yml`: choose minimal edit, DFT test
+   explicit for requested g01/lightweight tests, refinement explicit by default
+   for actual calculations, or screening explicit only when the user asked for
+   quick screening/comparison. Set `task` only to `bulk`, `slab`, `freq`, or
+   `static`, and point `structure.path` at the POSCAR file (or inline it with
+   `structure.content`).
 4. Dry-run: `vasp-job prepare spec.yml`. On success you get
    `{"ok": true, "prepared": true, "job_uid": "...", "remote_dir": "..."}`. Inspect
    `remote_dir` (`INCAR`, `KPOINTS`, `POTCAR`, `submit_vasp.sh`) if the user wants to
    review before submitting.
-5. Submit only after the user has selected the small candidate set:
+5. Submit only after the user has selected the small candidate set. For g01
+   DFT tests, submit one spec at a time and wait for the previous g01 job to
+   finish or fail before submitting the next:
    `vasp-job submit spec.yml` →
    `{"ok": true, "job_uid": "...", "scheduler_id": "123456", "remote_dir": "..."}`.
    Keep the `job_uid` — it is the handle for everything after this.
@@ -413,6 +486,7 @@ overrides.
 | `structure.path not found` | Check the POSCAR path relative to the spec file directory. |
 | `vasp.parameters must be a mapping` | `parameters` is a mapping of lowercase keys. |
 | `job_name must contain only ...` | Use letters, numbers, `.`, `_`, `-` only. |
-| `Unknown queue.preset` / `No free 48/64 nodes` | Use a valid preset, or retry `auto` later when nodes free up. |
+| `Unknown queue.preset` / `No free 48/64 nodes` | Use a valid preset, retry `auto` later when nodes free up, or reinstall/update `vasp-job` if `presetg01std`/`presetg01gam` is missing from `vasp-job schema`. |
+| `g01 sequential policy blocked submission` | A `presetg01*` job is still queued/running. Wait for `vasp-job status <job_uid>` to report `finished` or `failed`, then submit the next g01 test job. |
 | `vasp-ase did not generate required file` | Server-side POTCAR/`vasp_pp_path` issue — report it to the user. |
 | `Unknown job_uid` | The id is wrong or the job index is on another root — check `vasp-job list`; use `vasp-job list --verbose` if you need roots or directories. |

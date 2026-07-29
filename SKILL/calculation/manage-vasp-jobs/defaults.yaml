@@ -38,6 +38,34 @@ task:
   static: { ibrion: -1, nsw: 0, ediff: 1.0e-6, algo: Normal }
 
 profile:
+  # Explicit DFT-test profile. Use when the user asks for this lightweight
+  # DFT test path. This is deliberately not final-quality evidence:
+  # one-point Gamma-only sampling is set at the job-spec vasp.kpts/gamma level
+  # (not inside vasp.parameters), and kspacing/kgamma must be omitted.
+  dft_test:
+    vasp:
+      kpts: [1, 1, 1]
+      gamma: true
+    common:
+      gga: PE
+      prec: Low
+      encut: 350
+      ediff: 5.0e-4
+      algo: Fast
+      nelm: 80
+      ismear: 1
+      sigma: 0.20
+      ispin: 1
+      isym: 0
+      lreal: Auto
+      ncore: 4
+      lcharg: false
+      lwave: false
+    task:
+      bulk:   { ibrion: 2, isif: 3, nsw: 100, ediffg: -8.0e-2, potim: 0.1 }
+      slab:   { ibrion: 2, isif: 2, nsw: 100, ediffg: -8.0e-2, potim: 0.1 }
+      static: { ibrion: -1, nsw: 0, ediff: 5.0e-4 }
+
   # Explicit quick-screening profile. Use only when the user asks for screening,
   # quick comparison, rough triage, or geometry sanity checks across candidates.
   # Do not use this as the default for actual submitted calculations.

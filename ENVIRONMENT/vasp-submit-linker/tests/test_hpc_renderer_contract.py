@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 import types
@@ -289,6 +290,93 @@ class HpcRendererContractTests(unittest.TestCase):
 
             self.assertIs(result["ok"], False)
             self.assertIsNone(result["scheduler_id"])
+
+    def test_submit_job_blocks_second_active_g01_job(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index = root / "job_index"
+            index.mkdir()
+            (index / "active.json").write_text(
+                json.dumps(
+                    {
+                        "job_uid": "active",
+                        "job_name": "old_g01",
+                        "preset": "presetg01gam",
+                        "scheduler_id": "111",
+                        "remote_dir": str(root / "jobs" / "active"),
+                        "state": "submitted",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            directory = root / "jobs" / "new"
+            directory.mkdir(parents=True)
+            (directory / ".vasp_submit_metadata.json").write_text(
+                json.dumps({"job_uid": "new", "preset": "presetg01gam"}),
+                encoding="utf-8",
+            )
+            config = {"trusted_roots": [str(root)], "default_project_root": str(root)}
+
+            with (
+                patch(
+                    "vasp_submit.hpc_server.renderer.status_job",
+                    return_value={"ok": True, "state": "running", "finished": False},
+                ),
+                patch("vasp_submit.hpc_server.renderer.subprocess.run") as qsub,
+            ):
+                result = submit_job(directory, config)
+
+            self.assertIs(result["ok"], False)
+            self.assertIn("g01 sequential policy blocked", result["error"])
+            self.assertEqual(result["active_job"]["job_uid"], "active")
+            qsub.assert_not_called()
+
+    def test_submit_job_allows_g01_when_previous_finished(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index = root / "job_index"
+            index.mkdir()
+            (index / "done.json").write_text(
+                json.dumps(
+                    {
+                        "job_uid": "done",
+                        "job_name": "done_g01",
+                        "preset": "presetg01std",
+                        "scheduler_id": "111",
+                        "remote_dir": str(root / "jobs" / "done"),
+                        "state": "submitted",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            directory = root / "jobs" / "new"
+            directory.mkdir(parents=True)
+            metadata_path = directory / ".vasp_submit_metadata.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "job_uid": "new",
+                        "preset": "presetg01std",
+                        "index_path": str(index / "new.json"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = {"trusted_roots": [str(root)], "default_project_root": str(root)}
+            completed = types.SimpleNamespace(returncode=0, stdout="Your job 222 has been submitted\n", stderr="")
+
+            with (
+                patch(
+                    "vasp_submit.hpc_server.renderer.status_job",
+                    return_value={"ok": True, "state": "finished", "finished": True},
+                ),
+                patch("vasp_submit.hpc_server.renderer.subprocess.run", return_value=completed) as qsub,
+            ):
+                result = submit_job(directory, config)
+
+            self.assertIs(result["ok"], True)
+            self.assertEqual(result["scheduler_id"], "222")
+            qsub.assert_called_once()
 
     def test_generated_job_dir_defaults_to_hyphenless_uuid(self) -> None:
         job_dir = generated_job_dir("si_relax_001", {})

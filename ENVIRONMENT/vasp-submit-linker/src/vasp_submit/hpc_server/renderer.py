@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from string import Template
@@ -14,12 +15,86 @@ from vasp_submit.common.config import dump_yaml
 from vasp_submit.common.paths import require_safe_segment, resolve_under, safe_relative_path
 from vasp_submit.common.spec import normalize_spec, project_input_specs_dir, validated_job_dir
 from vasp_submit.hpc_server.auto_preset import auto_select_preset
-from vasp_submit.hpc_server.jobs import now_iso
+from vasp_submit.hpc_server.jobs import now_iso, read_index_entries, status_job
+
+
+G01_PRESETS = {"presetg01gam", "presetg01std"}
 
 
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
+
+
+def read_job_metadata(directory: Path) -> dict[str, Any]:
+    metadata_path = directory / ".vasp_submit_metadata.json"
+    if not metadata_path.exists():
+        return {}
+    try:
+        data = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def g01_lock_path(config: dict[str, Any], directory: Path) -> Path:
+    root = config.get("default_project_root")
+    if root:
+        base = Path(str(root)).expanduser()
+    else:
+        base = directory.parent
+    base.mkdir(parents=True, exist_ok=True)
+    return base / ".vasp_submit_g01.lock"
+
+
+@contextmanager
+def g01_submission_lock(config: dict[str, Any], directory: Path):
+    import fcntl
+
+    path = g01_lock_path(config, directory)
+    with path.open("w", encoding="utf-8") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def active_g01_job(config: dict[str, Any], exclude_job_uid: str | None) -> dict[str, Any] | None:
+    for entry in read_index_entries(config):
+        if entry.get("job_uid") == exclude_job_uid:
+            continue
+        if entry.get("preset") not in G01_PRESETS:
+            continue
+        scheduler_id = entry.get("scheduler_id")
+        if not scheduler_id:
+            continue
+        status = status_job(str(scheduler_id), entry.get("remote_dir"), entry.get("job_uid"))
+        if status.get("finished"):
+            continue
+        return {
+            "job_uid": entry.get("job_uid"),
+            "scheduler_id": str(scheduler_id),
+            "job_name": entry.get("job_name"),
+            "preset": entry.get("preset"),
+            "state": status.get("state"),
+            "remote_dir": entry.get("remote_dir"),
+        }
+    return None
+
+
+def reject_if_g01_busy(directory: Path, config: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any] | None:
+    if metadata.get("preset") not in G01_PRESETS:
+        return None
+    job_uid = metadata.get("job_uid") or directory.name
+    conflict = active_g01_job(config, str(job_uid))
+    if conflict is None:
+        return None
+    return {
+        "ok": False,
+        "error": "g01 sequential policy blocked submission: another presetg01 job is still queued or running",
+        "active_job": conflict,
+    }
 
 
 def apply_vasp_ase_environment(spec: dict[str, Any], config: dict[str, Any]) -> None:
@@ -256,7 +331,19 @@ def prepare_job(
     return directory
 
 
-def submit_job(directory: Path) -> dict[str, Any]:
+def submit_job(directory: Path, config: dict[str, Any] | None = None) -> dict[str, Any]:
+    config = config or {}
+    metadata = read_job_metadata(directory)
+    if metadata.get("preset") in G01_PRESETS:
+        with g01_submission_lock(config, directory):
+            blocked = reject_if_g01_busy(directory, config, metadata)
+            if blocked is not None:
+                return blocked
+            return _submit_job_unlocked(directory, metadata)
+    return _submit_job_unlocked(directory, metadata)
+
+
+def _submit_job_unlocked(directory: Path, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     proc = subprocess.run(
         ["qsub", "submit_vasp.sh"],
         cwd=directory,
@@ -278,7 +365,7 @@ def submit_job(directory: Path) -> dict[str, Any]:
             "stderr": "qsub succeeded but returned no scheduler ID",
         }
     metadata_path = directory / ".vasp_submit_metadata.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
+    metadata = dict(metadata or read_job_metadata(directory))
     write_text(directory / ".vasp_submit_scheduler_id", scheduler_id)
     metadata["scheduler_id"] = scheduler_id
     metadata["state"] = "submitted"
