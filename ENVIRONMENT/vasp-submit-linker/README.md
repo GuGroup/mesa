@@ -56,6 +56,10 @@ submit_templates:
   preset48std: templates/sge/preset48std.sh
   preset64gam: templates/sge/preset64gam.sh
   preset64std: templates/sge/preset64std.sh
+  # Lightweight/limited-resource preset pinned to node g01 (a6000.q queue,
+  # 16 MPI slots). Not part of `auto` selection — pin it explicitly.
+  presetg01gam: templates/sge/presetg01gam.sh
+  presetg01std: templates/sge/presetg01std.sh
 ```
 
 Notes:
@@ -63,16 +67,18 @@ Notes:
 - `vasp_pp_path` is mapped to `VASP_PP_PATH` only while `vasp-ase` writes inputs.
 - `queue_status_command` should print node names in the `n31` style used by the auto preset selector. It may print bare node names or include remaining/free-slot hints such as `n31 remaining=0`.
 - `queue.preset: auto` chooses 64-core or 48-core from node availability. If no node is currently free, it defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. It chooses the Gamma-only VASP executable only for explicit `vasp.kpts: [1, 1, 1]` plus `vasp.gamma: true`; ordinary `kspacing` jobs use `vasp_std`.
+- `presetg01std` / `presetg01gam` pin the job to node `g01` (`a6000.q` queue, 16 MPI slots) instead of the shared 48/64-core pool. Use this for lightweight/fast-inference test jobs; it is never chosen by `auto` — set it explicitly in `queue.preset`.
 - VASP/INCAR defaults are not loaded from the server config. The agent skill writes final `vasp.parameters` explicitly into each job spec.
 
 ## Job Spec
 
-A minimal KSPACING-based bulk relaxation spec looks like this:
+A minimal lightweight slab relaxation spec (this branch's fast/test defaults,
+explicit Gamma-only mesh) looks like this:
 
 ```yaml
 schema_version: 1
-job_name: si_bulk_001
-task: bulk
+job_name: co_pt111_001
+task: slab
 project: null
 
 structure:
@@ -80,35 +86,34 @@ structure:
   path: POSCAR
 
 vasp:
+  kpts: [1, 1, 1]
+  gamma: true
   parameters:
-    gga: RP
-    prec: Normal
-    encut: 400
-    ediff: 1.0e-4
-    nelm: 1000
-    ismear: 0
-    sigma: 0.05
-    ispin: 1
-    ivdw: 12
-    isym: 0
-    ncore: 8
-    lreal: Auto
-    lcharg: false
-    lwave: false
-    kspacing: 0.30
-    kgamma: true
-    ibrion: 2
-    isif: 3
-    nsw: 1000
-    ediffg: -5.0e-2
-    potim: 0.1
+    gga: PE
+    prec: Low
+    encut: 350
+    ediff: 5.0e-4
     algo: Fast
+    nelm: 80
+    ismear: 1
+    sigma: 0.20
+    ibrion: 2
+    nsw: 100
+    isif: 2
+    ediffg: -0.08
+    lreal: Auto
+    ncore: 4
+    isym: 0
+    lasph: true
+    addgrid: true
+    lwave: false
+    lcharg: false
 
 queue:
-  preset: auto
+  preset: presetg01gam
 ```
 
-`structure.path` is resolved relative to the spec file. Use explicit `vasp.kpts` only when a fixed mesh is required; for the default workflow, prefer `vasp.parameters.kspacing` and `kgamma`.
+`structure.path` is resolved relative to the spec file. This branch's default is always the explicit one-point Gamma-only mesh shown above (`vasp.kpts: [1, 1, 1]` + `vasp.gamma: true`, with `kspacing`/`kgamma` omitted); only switch to a `kspacing` + `kgamma` mesh if the user explicitly asks for denser sampling.
 
 ## CLI Usage
 

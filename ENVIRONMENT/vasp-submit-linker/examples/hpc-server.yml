@@ -45,3 +45,7 @@ submit_templates:
   preset48std: templates/sge/preset48std.sh
   preset64gam: templates/sge/preset64gam.sh
   preset64std: templates/sge/preset64std.sh
+  # Lightweight/limited-resource preset pinned to node g01 (a6000.q queue,
+  # 16 MPI slots). Not part of `auto` selection — pin it explicitly.
+  presetg01gam: templates/sge/presetg01gam.sh
+  presetg01std: templates/sge/presetg01std.sh

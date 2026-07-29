@@ -1,6 +1,6 @@
 ---
 name: vasp-job
-description: Prepare, submit, and track VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative VASP parameter handling. Use when the user wants to run a VASP relaxation/SCF job, queue a job with qsub, choose minimal versus full parameter edits, check job status, list recent jobs, or inspect result files on the cluster.
+description: Prepare, submit, and track VASP calculations on the SGE HPC login node using the `vasp-job` CLI. This branch is a fast-inference/smoke-test protocol — it always assembles `vasp.parameters` from this skill's lightweight `defaults.yaml`, never from user-supplied parameters. Use when the user wants to run a fast/lightweight VASP relaxation or SCF job, queue a job with qsub, check job status, list recent jobs, or inspect result files on the cluster.
 ---
 
 # vasp-job
@@ -32,21 +32,28 @@ code — read `error`, fix the spec, and retry.
 
 ## Job spec
 
-`vasp-job` does not fill in VASP defaults. Choose one of two parameter modes:
+This branch (`mesa-dft-test`) is a fast-inference/smoke-test protocol: **always
+use the lightweight defaults in [`defaults.yaml`](defaults.yaml), never anything
+else.** Do not switch into a "minimal edit" mode that preserves a user-supplied
+`vasp.parameters` set or an INCAR pasted by the user — even if the user provides
+their own parameters or asks to keep an existing setup, assemble
+`vasp.parameters` from `defaults.yaml` (`common` + `task.<task>` + only the
+required system-dependent overrides below) and write the merged result
+explicitly into the spec. If the user's request conflicts with these fast
+defaults (e.g. asks for tighter convergence or a denser k-mesh), point this out
+before overriding anything, but the default action on this branch is always the
+`defaults.yaml` values, not the user's numbers.
 
-- **Minimal edit mode**: Use when the user already provides VASP parameters, an
-  INCAR-derived parameter set, or asks to preserve an existing setup. Keep their
-  `vasp.parameters` values unchanged unless a value is invalid for the schema or
-  the user explicitly asks for a change. Add only required job-spec structure
-  (`job_name`, POSCAR reference or inline POSCAR, queue preset) and point out missing risky choices
-  instead of silently replacing them.
-- **Full explicit mode**: Use when the user asks you to prepare a job from a
-  structure without a complete parameter set, or asks for this protocol's
-  defaults. Read [`defaults.yaml`](defaults.yaml), take `common`, overlay
-  `task.<task>`, apply system-specific overrides, and write the final merged
-  values explicitly into `vasp.parameters`.
+The only overrides you should still decide per job are system-dependent, not a
+matter of style:
 
-Example for a `slab` job (common + task.slab, smearing left at the metal default):
+- `ismear`/`sigma`: metal slab keeps the `defaults.yaml` values (`1`/`0.20`);
+  switch to `0`/`0.05` only for a gas-phase molecule or insulator.
+- `ispin`/`magmom`: non-magnetic systems omit them (VASP default `ispin: 1`);
+  magnetic systems (Fe/Co/Ni/Mn/Cr/...) need `ispin: 2` + per-atom `magmom`.
+
+Example for a `slab` job (common + task.slab, this branch's lightweight/fast
+defaults, smearing left at the metal default, explicit Gamma-only mesh):
 
 ```yaml
 job_name: co_pt111_001          # letters, numbers, . _ - only (used in paths)
@@ -58,59 +65,60 @@ structure:
   path: POSCAR                   # relative to this spec file; or use content: | inline
 
 vasp:
-  # Omit gamma unless this is explicitly a Gamma-only calculation; see below.
+  kpts: [1, 1, 1]                # this branch's default: one-point Gamma-only mesh
+  gamma: true
   parameters:                   # lowercase vasp-ase keywords, not uppercase INCAR tags
     # --- common (from defaults.yaml) ---
-    gga: RP
-    prec: Normal
-    encut: 400
-    ediff: 1.0e-4
-    nelm: 1000
+    gga: PE
+    prec: Low                   # fastest PREC tier — always use this on this branch
+    encut: 350
+    ediff: 5.0e-4
+    algo: Fast
+    nelm: 80
     ismear: 1                   # metal slab; gas molecule/insulator -> 0 + sigma 0.05
-    sigma: 0.1
+    sigma: 0.20
     ispin: 1                    # magnetic system -> 2 (+ magmom: [...] per atom)
-    ivdw: 12
     isym: 0
-    ncore: 8
+    lasph: true
+    addgrid: true
+    ncore: 4
     lreal: Auto
     lcharg: false
     lwave: false
-    kspacing: 0.30              # or set vasp.kpts for a fixed mesh (then drop kspacing)
-    kgamma: true
-    # --- task.slab ---
+    # --- task.slab (inherits common ionic-relaxation defaults as-is) ---
     ibrion: 2
-    isif: 0
-    nsw: 1000
-    ediffg: -5.0e-2
-    potim: 0.1
-    algo: Fast
+    isif: 2
+    nsw: 100
+    ediffg: -0.08
 
 queue:
-  preset: auto                  # see "Queue presets" below
+  preset: presetg01gam          # this branch's default: pinned to the lightweight g01 node
 ```
 
 Parameter rules:
 
-- In minimal edit mode, preserve user-supplied VASP parameters. Do not rewrite
-  smearing, spin, k-points, convergence, vdW, or relaxation controls just because
-  they differ from `defaults.yaml`; warn or ask only when the choice is clearly
-  inconsistent with the requested calculation.
-- In full explicit mode, assemble parameters from `defaults.yaml`
-  (`common` + `task.<task>` + overrides) and write them explicitly. The CLI
-  passes `vasp.parameters` to vasp-ase as-is; it does not add or override
-  anything.
-- Decide the system-dependent ones per job: `ismear`/`sigma` (metal slab vs
-  gas-phase molecule/insulator) and `ispin`/`magmom`. If `ispin: 2`, include
-  `magmom` (per-atom initial moments).
+- Always assemble parameters from `defaults.yaml` (`common` + `task.<task>` +
+  the system-dependent overrides above) and write them explicitly. Do not carry
+  over a user-supplied `vasp.parameters` set or INCAR wholesale on this branch.
+  The CLI passes `vasp.parameters` to vasp-ase as-is; it does not add or
+  override anything.
 - `task` is optional but, when present, must be one of `bulk`, `slab`, `freq`, or
-  `static`. It is recorded in metadata and helps choose the defaults overlay in
-  full explicit mode; the CLI itself does not merge task defaults.
+  `static`. It is recorded in metadata and selects the `defaults.yaml` overlay;
+  the CLI itself does not merge task defaults.
 - POSCAR is usually referenced with `structure.path`; relative paths are resolved
   from the spec file's directory. `structure.format` must be `poscar`. You may use
   `structure.content` instead to inline the POSCAR text, but set exactly one of
   `path` or `content`.
 - `vasp.parameters` keys are lowercase vasp-ase keywords, not uppercase INCAR.
-- k-points: use `kspacing` (default). Set explicit `vasp.kpts` only when the user asks for a fixed mesh or the calculation is clearly a one-point Gamma-only job; then omit `kspacing`/`kgamma`. Do not add top-level `vasp.gamma` for ordinary KSPACING jobs; `vasp.parameters.kgamma` already controls Gamma-centered KSPACING meshes.
+- k-points: this branch's default — always — is the explicit one-point
+  Gamma-only mesh: `vasp.kpts: [1, 1, 1]` + `vasp.gamma: true`, with
+  `kspacing`/`kgamma` omitted entirely. Do not set `kgamma` alongside an
+  explicit `vasp.kpts`; it only affects KSPACING-generated meshes and has no
+  effect once `kpts` is set, so adding it is a no-op that just invites
+  confusion with the `gamma`/`kgamma` distinction below. Only switch to a
+  `kspacing` mesh (and drop `vasp.kpts`/`vasp.gamma`) if the user explicitly
+  asks for denser sampling; point out the accuracy/speed tradeoff before doing
+  so.
 - Treat `vasp.parameters.kgamma` and top-level `vasp.gamma` as different
   controls. `kgamma: true` means a Gamma-centered KSPACING mesh; it does not
   select the gamma-only VASP executable.
@@ -120,19 +128,74 @@ Parameter rules:
 Run `vasp-job schema` for accepted top-level fields. The spec you submit (with
 your full parameters) is recorded in the job's `input.yml`.
 
+## Frequency (`freq`) task: fix the slab, free only the adsorbate
+
+`vasp-job` never edits POSCAR content — it writes exactly what
+`structure.path`/`structure.content` gives it. Before submitting a `task: freq`
+job on an optimized adslab, prepare that POSCAR/CONTCAR yourself (outside
+`vasp-job`) so that:
+
+- **every slab atom is fixed** — Selective Dynamics `F F F` — regardless of
+  which atoms were free during the prior `task: slab` optimization. This is
+  stricter than the bottom-layer fixing used when *building* the slab (e.g.
+  `build-slab-models`'s `--fix-ratio`): a frequency/Hessian calculation must
+  not move any slab atom, not just the bottom support layers.
+- **only the adsorbate atoms are free** — Selective Dynamics `T T T` — so
+  `IBRION=5` only finite-displaces those atoms. This restricts the computed
+  Hessian to the adsorbate's vibrational modes (the ones that feed ZPE/entropy
+  corrections) and keeps the calculation cheap, which is the point of this
+  branch's lightweight protocol. Do not skip this step even for a quick test —
+  an unfixed slab turns a small adsorbate-only Hessian into a full slab-phonon
+  calculation and defeats the "fast inference" goal entirely.
+
+Never reuse the relaxed `task: slab` CONTCAR's Selective Dynamics flags
+as-is for a `freq` job — those still mark the top slab layers as free (correct
+for relaxation, wrong for the frequency calculation). Regenerate the flags
+first, e.g. with ASE:
+
+```python
+from ase.io import read, write
+from ase.constraints import FixAtoms
+
+atoms = read("CONTCAR", format="vasp")  # optimized adslab from task: slab
+adsorbate_indices = [...]  # from the placement skill's tags/metadata, not the slab
+slab_indices = [i for i in range(len(atoms)) if i not in adsorbate_indices]
+atoms.set_constraint(FixAtoms(indices=slab_indices))
+write("POSCAR_freq", atoms, format="vasp")
+```
+
+Point the `freq` job spec's `structure.path` at the regenerated file
+(`POSCAR_freq` above), not at the raw `task: slab` CONTCAR.
+
 ## Queue presets
 
 `queue.preset` selects which SGE submit template is used:
 
-- `auto` picks 48- vs 64-core from current free nodes (`qq`). For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
-- `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin it explicitly.
+- `presetg01gam` is this branch's default, and on this branch the **only**
+  preset you should use unless the user explicitly asks otherwise. It pins the
+  job to the lightweight node `g01` (`a6000.q` queue, 16 MPI slots) and runs
+  `vasp_gam`, matching the mandatory `vasp.kpts: [1, 1, 1]` + `vasp.gamma: true`
+  mesh from `defaults.yaml`.
+- `presetg01std` — same node, but runs `vasp_std`. Only use this if the user
+  explicitly asks for a non-Gamma-only k-mesh (denser `kspacing`); never switch
+  to it "to be safe" — this branch's whole point is the fast Gamma-only path.
+- `auto` picks 48- vs 64-core from current free nodes (`qq`) — only use this if
+  the user asks to run off the shared pool instead of `g01`. For the VASP
+  executable, `auto` must choose `gam` only when the spec explicitly has both
+  `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do
+  not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task
+  type, or from a Gamma-centered multi-point mesh. If uncertain, leave
+  `vasp.gamma` unset and use `std`.
+- `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin the shared
+  pool explicitly (not this branch's default; use only on explicit request).
 
 ## Workflow
 
 1. (Optional) Learn the schema: `vasp-job schema`.
-2. Write the spec to a file, e.g. `spec.yml`: choose minimal edit mode or full
-   explicit mode, set `task` only to `bulk`, `slab`, `freq`, or `static`, and
-   point `structure.path` at the POSCAR file (or inline it with `structure.content`).
+2. Write the spec to a file, e.g. `spec.yml`: assemble `vasp.parameters` from
+   `defaults.yaml` (never from a user-supplied set), set `task` only to `bulk`,
+   `slab`, `freq`, or `static`, and point `structure.path` at the POSCAR file
+   (or inline it with `structure.content`).
 3. Dry-run: `vasp-job prepare spec.yml`. On success you get
    `{"ok": true, "prepared": true, "job_uid": "...", "remote_dir": "..."}`. Inspect
    `remote_dir` (`INCAR`, `KPOINTS`, `POTCAR`, `submit_vasp.sh`) if the user wants to

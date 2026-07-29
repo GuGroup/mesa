@@ -8,7 +8,15 @@ from .paths import require_safe_segment, require_under_trusted_roots, resolve_un
 
 
 CLIENT_QUEUE_FIELDS = {"preset", "submit"}
-QUEUE_PRESETS = {"auto", "preset48gam", "preset48std", "preset64gam", "preset64std"}
+QUEUE_PRESETS = {
+    "auto",
+    "preset48gam",
+    "preset48std",
+    "preset64gam",
+    "preset64std",
+    "presetg01gam",
+    "presetg01std",
+}
 TASK_TYPES = {"bulk", "slab", "freq", "static"}
 SPEC_FIELDS = {
     "schema_version",

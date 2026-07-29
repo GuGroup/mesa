@@ -79,7 +79,15 @@ PARTIAL_JOB_SPEC_SCHEMA: dict[str, object] = {
             "properties": {
                 "preset": {
                     "type": "string",
-                    "enum": ["auto", "preset48gam", "preset48std", "preset64gam", "preset64std"],
+                    "enum": [
+                        "auto",
+                        "preset48gam",
+                        "preset48std",
+                        "preset64gam",
+                        "preset64std",
+                        "presetg01gam",
+                        "presetg01std",
+                    ],
                 },
                 "submit": {"type": "boolean"},
             },
