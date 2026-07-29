@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Location-independent entry point for the bundled OER and NO3RR skills."""
+"""Location-independent entry point for the included OER and NO3RR workflows."""
 
 from __future__ import annotations
 
