@@ -1,11 +1,11 @@
 ---
 name: correct-dft-energy
-description: Route, execute, and audit catalyst DFT free-energy corrections for either four-step AEM OER or single-N nitrate-to-NH3 NO3RR. Use when Codex must correct endpoint energies, assemble CHE free-energy profiles, check thermodynamic-cycle closure, calculate limiting potentials or bounded rankings, or choose between the bundled OER and NO3RR correction workflows. Accepts standalone JSON or compatible MESA free-energy records and delegates to the reaction-specific skill without running electronic-structure jobs.
+description: Route, execute, and audit catalyst DFT free-energy corrections for either four-step AEM OER or single-N nitrate-to-NH3 NO3RR. Use when Codex must correct endpoint energies, assemble CHE free-energy profiles, check thermodynamic-cycle closure, calculate limiting potentials or bounded rankings, or choose between the included OER and NO3RR correction workflows. Accepts standalone JSON or compatible MESA free-energy records and delegates to the reaction-specific workflow without running electronic-structure jobs.
 ---
 
 # Correct DFT Energy
 
-Use this skill as the independent entry point for the bundled catalyst
+Use this plain repository skill as the independent entry point for the included catalyst
 free-energy correction workflows. Do not run relaxations, vibrations, VASP, or
 other electronic-structure calculations from this skill.
 

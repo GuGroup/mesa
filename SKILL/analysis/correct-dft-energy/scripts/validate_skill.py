@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Validate the independent router and combined OER/NO3RR plugin bundle."""
+"""Validate the plain correct-dft-energy skill and its reaction workflows."""
 
 from __future__ import annotations
 
-import json
 import py_compile
 import subprocess
 import sys
@@ -35,16 +34,6 @@ def main() -> int:
     ):
         if not required.is_file():
             return fail(f"missing {required.relative_to(ROOT)}")
-
-    manifest_path = ROOT / ".codex-plugin" / "plugin.json"
-    if not manifest_path.is_file():
-        return fail("missing .codex-plugin/plugin.json")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    for key in ("name", "version", "description", "skills"):
-        if not manifest.get(key):
-            return fail(f"plugin manifest missing {key}")
-    if manifest["skills"] != "./skills/":
-        return fail("plugin manifest skills path must be ./skills/")
 
     for script in (ROOT / "scripts").glob("*.py"):
         py_compile.compile(str(script), doraise=True)
@@ -85,7 +74,7 @@ def main() -> int:
         if run.returncode != 0:
             return run.returncode
 
-    print("Independent router and combined OER/NO3RR bundle validation passed.")
+    print("Plain correct-dft-energy skill validation passed.")
     return 0
 
 

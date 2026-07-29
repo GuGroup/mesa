@@ -1,6 +1,0 @@
-{
-  "name": "mesa-electrocatalysis-energy-corrections",
-  "version": "1.0.0",
-  "description": "Closure-checked OER and NO3RR DFT free-energy correction workflows for MESA.",
-  "skills": "./skills/"
-}
