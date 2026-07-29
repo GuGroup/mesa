@@ -35,7 +35,7 @@ EXAMPLE_SPEC: dict[str, Any] = {
     "xlabel": "Reaction Coordinate",
     "figsize": [5.4, 4],
     "fontsize": 10,
-    "x_number_min_max": [0.5, 4.5],
+    "x_number_min_max": [0.5, 20.0],
     "zero_label_positions": [0, 5],
 }
 
@@ -45,7 +45,7 @@ STYLE_DEFAULTS: dict[str, Any] = {
     "xlabel": "Reaction Coordinate",
     "figsize": [5.4, 4],
     "fontsize": 10,
-    "x_number_min_max": [0.5, 4.5],
+    "x_number_min_max": [0.5, 20.0],
     "zero_label_positions": [0, 5],
     "show_zero_line": False,
     "show_state_ticks": True,
