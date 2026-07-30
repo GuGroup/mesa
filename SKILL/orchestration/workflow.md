@@ -1,8 +1,9 @@
 # Orchestration Domain Workflow
 
 Use this manual for turning selected-strategy computational procedures into
-explicit recipes, planning execution from recipes, validating recipe-local
-outputs, and recording missing evidence.
+explicit recipes, planning execution from recipes, recording execution
+provenance, diagnosing and repairing recipe-local execution, and recording
+missing evidence.
 
 Orchestration does not decide scientific sufficiency and does not execute
 calculations.
@@ -11,7 +12,12 @@ calculations.
 
 - `generate-explicit-calculation-recipe`
 - `plan-recipe-execution`
-- `validate-recipe-execution`
+- `write-execution-manifest`
+- `diagnose-execution`
+- `repair-execution`
+- `write-calculation-manifest`
+- `diagnose-procedure`
+- `repair-procedure`
 - `record-missing-evidence`
 
 # Generate Explicit Calculation Recipes
@@ -79,20 +85,61 @@ status. The later executor selects tools for each unit but must use the unit's
 assigned `execution_dir`. Do not execute recipe-backed work before this plan
 exists.
 
+Codex may perform minor repairs during execution using its own judgment.
+
 If a required calculation cannot be executed under current project policy or
-available skills, do not silently downgrade it. Choose one explicit path:
+available skills, do not silently downgrade it. Record the failed E attempt,
+diagnose it, and complete E-level repair handling. Then choose one explicit
+path:
 
 - stop and ask the user;
-- use `record-missing-evidence` to create unresolved, excluded, or blocked
-  evidence records;
+- after a terminal `no_repair` or `escalate` decision, use
+  `record-missing-evidence` to create unresolved, excluded, or blocked evidence
+  records;
 - update the strategy through the manuscript/update loop after documenting the
   gap;
 - execute only the user-approved subset and label the result as bounded.
 
+# Write Execution And Calculation Manifests
+
+Use `write-execution-manifest` after each E-level execution completes or fails.
+Write an attempt manifest inside its `E###/`, `E###-R1/`, or `E###-R2/`
+directory.
+
+Use `diagnose-execution` and, when selected, `repair-execution` until E-level
+handling terminates.
+
+If a terminal E diagnosis still identifies absent required artifacts, use
+`record-missing-evidence` before C-level aggregation. Then use
+`write-calculation-manifest` to write
+`C###/execution/execution_manifest.json`. This manifest factually aggregates
+the terminal E attempts and artifacts used by that C calculation.
+
+Do not place diagnosis, evidence acceptance, caveats, exclusions, or repair
+decisions in either manifest.
+
+# Diagnose Procedure Execution
+
+After every C-level manifest for a P procedure exists, use
+`diagnose-procedure`. Write
+`P###/procedure_diagnosis.json` as a grouped-execution handoff for strategy
+diagnosis.
+
+Evaluate procedure coverage, usable outputs, and remaining execution gaps only.
+Do not judge scientific claims, strategy sufficiency, or the next strategy.
+
+When P-level execution gaps should be repaired, use
+`repair-procedure`. Store numbered repair records directly under `P###/` using
+the `-R1` and `-R2` suffixes. After each repair, regenerate affected lower-level
+manifests and diagnose the procedure again. Escalate after an unresolved
+`-R2`.
+
 # Record Missing Evidence
 
-Use `record-missing-evidence` for absent required artifacts, including but not
-limited to:
+Use `record-missing-evidence` only after the E-level manifest-diagnosis-repair
+loop terminates with a `warn`, `fail`, or `unknown` diagnosis and a
+`no_repair` or `escalate` repair decision. Use it for absent required artifacts,
+including but not limited to:
 
 - charge density;
 - Bader charge;
@@ -103,20 +150,7 @@ limited to:
 - charged electrochemical-state data;
 - any recipe-requested output that cannot be produced.
 
-The record must name the source recipe, required artifact, reason unavailable,
-impact on claims, and whether the gap is blocking or nonblocking.
-
-# Validate Recipe Execution
-
-Use `validate-recipe-execution` after recipe-backed modeling, calculation, and
-analysis outputs are produced.
-
-Validation checks that every produced calculation artifact is either:
-
-- under its plan-assigned single-consumer execution-unit directory; or
-- under the plan-assigned `shared_execution/E###/` directory and explicitly
-  linked from every consumer's recipe-local `execution_manifest.json`.
-
-Repair orphan outputs before manuscript intake. Do not treat evidence as
-manuscript-ready until validation passes or the remaining gaps are explicitly
-recorded as excluded, failed, exploratory, or accepted-with-caveat.
+The record must link the terminal diagnosis and repair decision, name the
+source recipe, required artifact, reason unavailable, impact on claims, and
+whether the gap is blocking or nonblocking. It must not create or replace an
+E- or C-level execution manifest.

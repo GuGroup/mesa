@@ -1,0 +1,4 @@
+interface:
+  display_name: "Classify Strategy Outcome"
+  short_description: "Assemble and classify strategy outcomes"
+  default_prompt: "Use $classify-strategy-outcome to assemble evidence and classify the current strategy outcome."

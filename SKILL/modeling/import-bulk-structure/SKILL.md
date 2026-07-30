@@ -48,7 +48,7 @@ Start only from recipe-authorized requirements:
      magnetic information.
    - If the recipe lacks enough information to import, register, or create the
      bulk, stop and return to recipe generation, execution planning, or
-     missing-evidence recording.
+     E-level manifest-diagnosis-repair handling.
 3. Record source metadata before any optimization:
    - source type: `materials_project`, `local_file`, `code_generated`, or
      `direct_created`;
@@ -70,7 +70,8 @@ inputs used to create the cell and label the source type as `direct_created`.
 
 Do not use direct creation to fill scientific gaps. If a recipe names only a
 composition without lattice/prototype/site information and does not authorize a
-Materials Project or local source, stop and record the missing evidence.
+Materials Project or local source, stop, record and diagnose the failed E
+attempt, and record missing evidence only after repair handling terminates.
 
 ## Materials Project Metadata
 

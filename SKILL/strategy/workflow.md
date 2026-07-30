@@ -10,6 +10,7 @@ figures, or manuscript writing.
 
 - `generate-strategies`
 - `select-next-strategy`
+- `classify-strategy-outcome`
 - `update-strategies-from-manuscript`
 
 # Generate Strategies
@@ -76,6 +77,17 @@ After selection, the selected strategy's computational procedures are the
 contract for execution. The next required step is explicit recipe generation
 with `generate-explicit-calculation-recipe`; do not jump directly into model
 building or calculations.
+
+# Classify Strategy Outcome
+
+Use `classify-strategy-outcome` after terminal P-level diagnoses and their
+referenced scientific outputs exist. Assemble one bounded input, then classify
+the current strategy as `manuscript_ready`, `extend_strategy`,
+`prerequisite`, `replace_strategy`, or `blocked`.
+
+This classification assumes E/P execution repair is already complete and
+records the next route. It does not extend a strategy, write manuscript text,
+or update the strategy queue.
 
 # Update Strategy Plan
 

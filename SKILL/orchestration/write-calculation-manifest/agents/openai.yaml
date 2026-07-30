@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Calculation Manifest"
+  short_description: "Write factual C-level calculation manifests"
+  default_prompt: "Use $write-calculation-manifest to aggregate terminal E attempts into a factual C-level manifest."

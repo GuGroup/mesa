@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repair Procedure"
+  short_description: "Repair P-level grouped execution gaps"
+  default_prompt: "Use $repair-procedure to repair grouped procedure execution without changing scientific intent."

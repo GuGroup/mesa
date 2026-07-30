@@ -19,7 +19,7 @@ that skill unless it would violate this root workflow.
 - `SKILL/strategy/workflow.md`: strategy generation, one-strategy selection,
   and strategy updates from manuscript/result artifacts.
 - `SKILL/orchestration/workflow.md`: explicit calculation recipes, execution
-  planning, recipe validation, and missing-evidence records.
+  provenance, diagnosis, repair, and missing-evidence records.
 - `SKILL/modeling/workflow.md`: slab, gas-phase, surface, and adsorbate model
   preparation from recipe artifacts.
 - `SKILL/calculation/workflow.md`: backend-specific calculation execution,
@@ -76,9 +76,13 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
   `search-papers-with-mcp`, `extract-strategy-paper`,
   `extract-general-insights-paper`.
 - `strategy/`: `generate-strategies`, `select-next-strategy`,
-  `update-strategies-from-manuscript`.
+  `classify-strategy-outcome`, `update-strategies-from-manuscript`.
 - `orchestration/`: `generate-explicit-calculation-recipe`,
-  `plan-recipe-execution`, `validate-recipe-execution`, `record-missing-evidence`.
+  `plan-recipe-execution`, `write-execution-manifest`,
+  `diagnose-execution`, `repair-execution`, `write-calculation-manifest`,
+  `diagnose-procedure`,
+  `repair-procedure`,
+  `record-missing-evidence`.
 - `modeling/`: `import-bulk-structure`, `build-slab-models`,
   `build-gas-phase-models`,
   `place-adsorbates-with-adsorbdiff`,
@@ -146,10 +150,22 @@ Repeat this loop for one selected strategy at a time.
 
 5. Execute only recipe-backed calculations and save outputs under the recipe
    calculation's `execution/` directory.
+   Codex may perform minor repairs during execution using its own judgment.
+   Record each completed or failed E execution with
+   `write-execution-manifest`.
+   Use `diagnose-execution` and `repair-execution` for E-level handling.
+   After terminal E handling, use `record-missing-evidence` for required
+   artifacts that remain unavailable.
+   After E-level diagnosis and repair terminate for a C calculation, use
+   `write-calculation-manifest`.
+   After all C manifests for a P procedure exist, use
+   `diagnose-procedure`.
+   Use `repair-procedure` for repairable grouped-execution gaps.
    Read `SKILL/calculation/workflow.md`.
 
-6. Validate evidence readiness, record missing evidence, and separate accepted,
-   caveated, exploratory, failed, and excluded artifacts.
+6. Validate evidence readiness, carry terminal missing-evidence records
+   forward, and separate accepted, caveated, exploratory, failed, and excluded
+   artifacts.
    Read `SKILL/analysis/workflow.md` and
    `SKILL/orchestration/workflow.md`.
 
@@ -170,9 +186,18 @@ project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
   execution_plan.json
   shared_execution/
     E###/
+      execution_manifest.json
   P###/
     procedure.json
     mapping.json
+    procedure_diagnosis.json
+    repair_decision.json
+    procedure_diagnosis-R1.json
+    repair_outcome-R1.json
+    repair_decision-R1.json
+    procedure_diagnosis-R2.json
+    repair_outcome-R2.json
+    repair_decision-R2.json
     calculations/
       C###/
         recipe.json
@@ -180,30 +205,50 @@ project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
           execution_manifest.json
           units/
             E###/
+              execution_manifest.json
 ```
 
 Each `P###` folder preserves a single source procedure. Each `C###` folder is
 one specific calculation or analysis recipe derived from that procedure.
 
-Each `execution_manifest.json` must record:
+Each E attempt must keep its own `execution_manifest.json` inside `E###/`,
+`E###-R1/`, or `E###-R2/`. Keep the existing
+`C###/execution/execution_manifest.json` as the recipe-level link to the exact
+artifacts used by that calculation.
 
-- source recipe path and source procedure ID;
+Each E-level execution manifest must record:
+
+- schema version and execution-unit ID;
+- source recipe path;
 - skill or project-local script used;
-- command or controller input used, when applicable;
-- input artifacts;
-- output artifacts;
-- validation status;
-- acceptance state: `accepted`, `accepted-with-caveat`, `exploratory`,
-  `failed`, or `excluded`;
-- caveats, unsupported pieces, or policy boundaries such as "VASP input only;
-  no VASP execution".
+- command or controller invocation used;
+- exact input artifacts used;
+- exact output artifacts produced;
+- factual execution status: `completed` or `failed`.
+
+Each C-level execution manifest must record its calculation ID, source recipe,
+source execution plan, terminal E execution sources, optional assembly
+invocation, exact input and output artifacts, and factual execution status.
+
+Each P-level procedure diagnosis must report C coverage, outputs available for
+strategy diagnosis, remaining execution gaps, and a grouped-execution verdict
+of `pass`, `warn`, `fail`, or `unknown`. It must not judge scientific claims.
+
+P-level repair records must stay directly under `P###/`, use `-R1` and `-R2`
+filename suffixes, preserve all scientific content, and escalate after an
+unresolved second repair.
+
+Do not duplicate `requires`, `produces`, dependencies, consumers, or recipe
+settings in either manifest. Keep diagnosis, evidence acceptance, scientific
+caveats, exclusions, and repair decisions in separate artifacts.
 
 Single-consumer execution units must use their plan-assigned
 `P###/calculations/C###/execution/units/E###/` directory. Multi-consumer units
 must use their plan-assigned `<strategy_id>_explicit_recipe/shared_execution/E###/`
-directory. Every corresponding `C###/execution/execution_manifest.json` must
-link the exact artifacts used for that recipe. Legacy sibling shared roots
-remain valid only when recipe-local manifests preserve exact provenance.
+directory. The E directory must contain its attempt manifest. Every
+corresponding `C###/execution/execution_manifest.json` must link the exact
+artifacts used for that recipe. Legacy sibling shared roots remain valid only
+when recipe-local manifests preserve exact provenance.
 
 # Decision Rules
 

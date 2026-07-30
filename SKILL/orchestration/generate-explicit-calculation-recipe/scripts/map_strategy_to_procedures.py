@@ -7,13 +7,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from generate_explicit_recipe import find_computational, load_json
+from generate_explicit_recipe import attach_next_run, find_computational, load_json
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", required=True, type=Path)
     parser.add_argument("--recipe-root", required=True, type=Path)
+    parser.add_argument("--next-run", type=Path)
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-5.6-sol"))
     return parser.parse_args()
 
@@ -51,6 +52,8 @@ def source_catalog(data):
     for key in ("experiment", "results"):
         if key in strategy:
             walk(strategy[key], f"{prefix}/{key}")
+    if isinstance(data.get("next_run"), dict):
+        walk(data["next_run"], "/next_run")
     return values
 
 
@@ -145,7 +148,7 @@ def polish(mapping, procedure_list, catalog):
 def main():
     load_env()
     args = parse_args()
-    data = load_json(args.strategy)
+    data = attach_next_run(load_json(args.strategy), args.next_run)
     procedure_list = procedures(data, args.recipe_root)
     catalog = source_catalog(data)
     mapping = polish(map_with_llm(procedure_list, catalog, args.model), procedure_list, catalog)

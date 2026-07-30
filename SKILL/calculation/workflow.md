@@ -125,22 +125,21 @@ to summary/triage files. Keep full analyzer JSON and stdout/stderr in files.
 
 # Execution Manifest
 
-Every calculation recipe that produces or uses artifacts must have:
+After each E-level execution completes or fails, use
+`write-execution-manifest`. After E-level diagnosis and repair terminate for a
+C recipe, use `write-calculation-manifest`. Every calculation recipe that
+produces or uses artifacts must have:
 
 ```text
 C###/execution/execution_manifest.json
+C###/execution/units/E###/execution_manifest.json
 ```
 
-The manifest must record:
+For multi-consumer units, place the E-level manifest at
+`<strategy_id>_explicit_recipe/shared_execution/E###/execution_manifest.json`.
+Repair attempts use sibling `E###-R1/` and `E###-R2/` directories. Keep the
+C-level manifest as the factual aggregation of terminal E attempts.
 
-- source recipe path and source procedure ID;
-- skill or project-local script used;
-- command or controller input used, when applicable;
-- input artifacts;
-- output artifacts;
-- validation status;
-- acceptance state: `accepted`, `accepted-with-caveat`, `exploratory`,
-  `failed`, or `excluded`;
-- caveats, unsupported pieces, or policy boundaries.
-
-Do not store execution status in generated `recipe.json` files.
+Follow the root workflow's factual manifest contract. Keep diagnosis,
+acceptance, scientific caveats, exclusions, and repair decisions in separate
+artifacts. Do not store execution status in generated `recipe.json` files.

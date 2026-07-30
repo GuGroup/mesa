@@ -193,9 +193,15 @@ skills:
   extract-general-insights-paper: mesa-general
   generate-strategies: mesa-general
   select-next-strategy: mesa-general
+  classify-strategy-outcome: mesa-general
   update-strategies-from-manuscript: mesa-general
   generate-explicit-calculation-recipe: mesa-general
-  validate-recipe-execution: mesa-general
+  write-execution-manifest: mesa-general
+  diagnose-execution: mesa-general
+  repair-execution: mesa-general
+  write-calculation-manifest: mesa-general
+  diagnose-procedure: mesa-general
+  repair-procedure: mesa-general
   record-missing-evidence: mesa-general
   balance-reaction-pathway: mesa-general
   evaluate-energy-diagram: mesa-general

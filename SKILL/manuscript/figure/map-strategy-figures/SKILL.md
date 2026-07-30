@@ -40,16 +40,13 @@ project/<project>/strategy_execution/<strategy_id>_figure/mapping/
 
 ## Blocking Rule
 
-Block a figure only when a matched calculation raises missing evidence through
-one of these authoritative artifacts:
+Block a figure only when a matched calculation raises authoritative
+`missing_evidence.json` with status `blocked`, `excluded`, or `unresolved`, or
+with nonempty `requirements`.
 
-- `missing_evidence_summary.json` with status `blocked`, `excluded`, or
-  `unresolved`, or with nonempty missing-evidence records;
-- `missing_evidence_records.json` with a nonempty `records` list.
-
-Do not use `acceptance_state`, `validation_status`, failed endpoints, excluded
-results, scientific caveats, or any ordered status policy to block a figure.
-Copy manifest caveats as information only.
+Do not use execution manifests to infer acceptance, scientific caveats,
+exclusion, or figure blocking. Use separate evaluation and missing-evidence
+artifacts.
 
 If no recipe entry matches an intent, retain the intent with
 `grounding.matched=false` and a nonblocking note. Match from C-task text rather

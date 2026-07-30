@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from generate_explicit_recipe import load_json
+from generate_explicit_recipe import attach_next_run, load_json
 from map_strategy_to_procedures import load_env, response_text
 
 
@@ -15,6 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", required=True, type=Path)
     parser.add_argument("--recipe-root", required=True, type=Path)
+    parser.add_argument("--next-run", type=Path)
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-5.6-sol"))
     return parser.parse_args()
 
@@ -137,7 +138,7 @@ def polish(classification, sources):
 def main():
     load_env()
     args = parse_args()
-    data = load_json(args.strategy)
+    data = attach_next_run(load_json(args.strategy), args.next_run)
     items = procedure_inputs(data, args.recipe_root)
     if (args.recipe_root / "recipe_index.json").exists() or any(
         (item["folder"] / "calculations").exists() for item in items

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Validate Recipe Execution"
-  short_description: "Validate recipe-local execution manifests"
-  default_prompt: "Use $validate-recipe-execution to verify recipe-local execution folders, manifests, shared artifacts, and orphan outputs before downstream evidence use."

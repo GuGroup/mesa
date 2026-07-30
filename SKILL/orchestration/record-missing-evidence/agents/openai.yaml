@@ -1,4 +1,4 @@
 interface:
   display_name: "Record Missing Evidence"
-  short_description: "Record unresolved evidence without proxies"
-  default_prompt: "Use $record-missing-evidence to document missing required artifacts and create explicit excluded or unresolved evidence records without proxy substitution."
+  short_description: "Record terminal evidence gaps without proxies"
+  default_prompt: "Use $record-missing-evidence after terminal E-level MDR to document required artifacts that remain unavailable without proxy substitution."

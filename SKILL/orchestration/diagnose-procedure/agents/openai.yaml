@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnose Procedure"
+  short_description: "Diagnose P-level execution handoff readiness"
+  default_prompt: "Use $diagnose-procedure to determine whether a procedure execution is ready for strategy diagnosis."

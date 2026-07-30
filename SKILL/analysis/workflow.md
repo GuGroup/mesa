@@ -23,9 +23,11 @@ Before analysis, confirm:
 
 - source calculations are linked to explicit recipes;
 - required structures, energies, vibrations, or bookkeeping artifacts exist;
-- recipe-local `execution_manifest.json` files identify acceptance state and
-  caveats;
-- missing recipe-required artifacts are recorded or ready to be recorded with
+- E-level `execution_manifest.json` files identify each actual attempt;
+- recipe-local C-level manifests link the exact artifacts used by each
+  calculation;
+- separate diagnosis or evaluation artifacts identify acceptance and caveats;
+- terminal E-level gaps in recipe-required artifacts are recorded with
   `record-missing-evidence`.
 
 # Evidence Readiness
@@ -40,8 +42,10 @@ Before manuscript intake:
 - Use `assemble-alkaline-her-descriptors` for bounded alkaline HER descriptor
   assembly, ranking, or free-energy summaries when the target and data fit the
   skill.
-- Use `record-missing-evidence` for absent required evidence.
-- Use `validate-recipe-execution` before treating evidence as manuscript-ready.
+- Use `record-missing-evidence` for absent required evidence only after the
+  corresponding E-level manifest-diagnosis-repair loop terminates.
+- Require terminal E- and P-level diagnosis/repair handling before treating
+  evidence as manuscript-ready.
 - Separate accepted, accepted-with-caveat, exploratory, failed, and excluded
   artifacts.
 
