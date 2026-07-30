@@ -85,7 +85,7 @@ Use active skill names from the current `SKILL/` tree. Do not use retired
   `propose-surface-models-from-literature`.
 - `calculation/`: `relax-uma-trajectory`,
   `calculate-uma-vibrational-frequencies`, `analyze-relaxation-results`,
-  `manage-vasp-jobs`, `balance-reaction-pathway`.
+  `manage-vasp-jobs`, `run-vasp-local-node`, `balance-reaction-pathway`.
 - `analysis/`: `evaluate-energy-diagram`, `construct-energy-diagram`,
   `assemble-alkaline-her-descriptors`, `analyze-dband-center`,
   `charge-flow-analyzer`.

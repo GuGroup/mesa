@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run VASP Local Node"
+  short_description: "Run one 40-rank VASP job in a node"
+  default_prompt: "Use $run-vasp-local-node to run prepared VASP input directories one at a time with 40 VASP ranks inside an already allocated 48-core node."

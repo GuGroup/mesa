@@ -1,6 +1,6 @@
 ---
 name: manage-vasp-jobs
-description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling, refinement-default actual calculation settings, explicit quick-screening settings, and lightweight DFT-test jobs on g01. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose test/screening/refinement settings, check job status, list recent jobs, or inspect result files on the cluster.
+description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling, refinement-default actual calculation settings, explicit quick-screening settings, and lightweight DFT-test jobs on g01. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose test/screening/refinement settings, check job status, list recent jobs, inspect result files on the cluster, or prepare VASP input folders that may later be consumed by run-vasp-local-node without qsub submission.
 ---
 
 For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
@@ -32,6 +32,22 @@ code — read `error`, fix the spec, and retry.
 
 `<spec>` is a file path, or `-` to read from stdin (`cat spec.yml | vasp-job submit -`).
 `<id>` is the `job_uid` (preferred) or the raw SGE `scheduler_id`.
+
+## Local node-runner compatibility
+
+This skill remains the SGE-per-calculation path. When the requested execution
+model is a long-lived 48-core allocation plus direct VASP execution inside that
+node, use this skill only through `vasp-job prepare` to create compatible input
+folders. Then switch to `run-vasp-local-node` for execution, local queue
+draining, and local status checks.
+
+The local runner's 40-rank reserve rule does not apply to this SGE submit path:
+`preset48std` and `preset48gam` request and use 48 SGE slots through `$NSLOTS`.
+
+Do not call `vasp-job submit` for a prepared directory that will be consumed by
+`run-vasp-local-node`. The local runner writes `.mesa_vasp_local_*` metadata and
+also writes `.vasp_submit_finished` / `.vasp_submit_exit_code` compatibility
+markers after execution.
 
 ## Calculation policy
 
@@ -398,6 +414,10 @@ queue:
   `mpi_16 16`. Use only when the user asks for 16 slots. These g01 presets are
   not selected by `auto`; set them explicitly for DFT tests. `vasp-job submit`
   enforces one active indexed g01 preset job at a time.
+
+All SGE submit templates load `vasp/6.3.2-vtst-vaspsol-beef-intel` and then run
+`mpirun -machinefile $TMPDIR/machines -n $NSLOTS vasp_std` or `vasp_gam`; the
+`std`/`gam` choice is controlled by the selected preset.
 
 ## Workflow
 

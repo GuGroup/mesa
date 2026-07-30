@@ -13,6 +13,7 @@ Calculations must be authorized by explicit recipe artifacts.
 - `calculate-uma-vibrational-frequencies`
 - `analyze-relaxation-results`
 - `manage-vasp-jobs`
+- `run-vasp-local-node`
 - `balance-reaction-pathway`
 
 # Calculation Policy
@@ -87,6 +88,16 @@ Use `manage-vasp-jobs` only when the active project profile allows VASP
 preparation, dry-run/status inspection, or execution. If the active project is
 UMA/MLIP-only and does not allow VASP artifacts, do not use `manage-vasp-jobs`
 and do not call the `vasp-job` CLI.
+
+Use `run-vasp-local-node` only when the active project profile allows VASP
+execution and the user or execution policy explicitly selects node-local VASP
+execution. This skill consumes already prepared VASP folders inside an existing
+compute-node allocation; it must not replace recipe authorization, input
+generation, or downstream result analysis. When using this path, `vasp-job
+prepare` from `manage-vasp-jobs` may generate compatible input folders, but do
+not call `vasp-job submit` for those same calculations. For a 48-core local
+allocation, run VASP with 40 MPI ranks and execute VASP folders strictly one at
+a time.
 
 When backend-specific files are prepared but not run, state that boundary in
 the recipe-local manifest. Examples include "UMA relaxation only; no VASP

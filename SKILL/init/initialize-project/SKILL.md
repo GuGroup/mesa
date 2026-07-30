@@ -59,6 +59,8 @@ Collect these decisions:
 - active backend policy: UMA/MLIP mode, VASP mode, or MLIP screening with VASP
   refinement;
 - whether VASP execution/submission is allowed, dry-run only, or forbidden;
+- if VASP execution is allowed, the VASP execution mode: `sge-qsub` or
+  `local-node-runner`; do not leave this implicit;
 - calculation artifact policy: whether VASP-compatible input artifacts may be
   prepared in non-VASP modes, whether backend cross-checks are exploratory or
   evidence-producing, and which backend is authoritative for claims;
@@ -103,6 +105,8 @@ The project profile must record:
 - concrete `calculation_policy` section containing backend,
   artifact-generation, scheduler, submission, acceptance, and cross-check
   rules.
+- if VASP is allowed, one explicit sentence naming `sge-qsub` or
+  `local-node-runner` as the execution mode.
 
 The selected project directory also owns any future `initialization/` artifacts
 for non-deterministic analyzer output, dependency handoff files, runtime plans,
@@ -117,6 +121,9 @@ Keep the calculation policy short but explicit. Examples:
   UMA/MLIP outputs as evidence.`
 - `MLIP screening with VASP refinement; use MLIP outputs as exploratory screens
   and VASP outputs as claim-supporting evidence.`
+- `VASP execution mode: sge-qsub; submit approved jobs with vasp-job.`
+- `VASP execution mode: local-node-runner; prepare inputs with vasp-job, run
+  one calculation at a time inside a 48-core allocation using 40 VASP ranks.`
 
 ## Boundaries
 
