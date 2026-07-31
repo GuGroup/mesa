@@ -84,6 +84,65 @@ profile:
       static: { ediff: 1.0e-4 }
       freq:   { ediff: 1.0e-5 }
 
+  # Local-node explicit profile. Use only for jobs that will run through
+  # run-vasp-local-node (a Gamma-only vasp_gam local runner on a 40-rank
+  # allocation), never for SGE `vasp-job submit`. This is a fixed, user-set
+  # default, not a scientifically re-derived one: purpose is agent-workflow
+  # demonstration, not benchmark-grade accuracy, so do not tighten it further
+  # on your own. If the user supplies their own YAML with these values, that
+  # YAML wins outright and this profile is not used to override it.
+  local_node:
+    vasp:
+      kpts: [1, 1, 1]      # vasp_gam is Gamma-only; never set a real mesh here
+      gamma: true
+    common:
+      gga: PE              # PBE, not RPBE
+      prec: Normal
+      encut: 350
+      ediff: 5.0e-3
+      nelm: 100
+      ismear: 1             # see system-dependent notes below
+      sigma: 0.1
+      ispin: 1               # spin off by default; see system-dependent notes
+      ivdw: 12
+      isym: 0
+      ncore: 8               # 40-rank local allocation
+      lreal: Auto
+      lcharg: false
+      lwave: false
+    task:
+      bulk:   { ibrion: 2, isif: 3, nsw: 80, ediffg: -8.0e-2, potim: 0.1, algo: Fast }
+      slab:   { ibrion: 2, isif: 0, nsw: 80, ediffg: -8.0e-2, potim: 0.1, algo: Fast }
+      static: { ibrion: -1, nsw: 0, ediff: 5.0e-3, algo: Fast }
+      freq:   { ibrion: 5, nfree: 2, potim: 0.015, nsw: 1, isif: 0, ediff: 5.0e-4, algo: Normal, isym: 0 }
+
+    # Overlay on top of local_node.common + local_node.task.static for a
+    # post-relaxation single-point electronic-structure job (e.g. d-band
+    # center, PDOS) that must stay at the SAME method/level as the relax step:
+    # do not change gga/encut/ivdw/ismear/sigma/kpts. Only the SCF-convergence
+    # keys tighten (cheap, since it is one static step) and DOS output turns on.
+    static_analysis:
+      ediff: 1.0e-6
+      nelm: 200
+      algo: Normal
+      lorbit: 11
+      lcharg: true
+
+    # Exception overlay for small systems only: bulk unit cells or gas-phase
+    # molecules with fewer than 20 atoms. Still Gamma-only/vasp_gam (kpoints
+    # unchanged) and still not benchmark-grade -- moderately tighter than the
+    # default, not maximally strict. Do not apply this overlay to slabs.
+    small_system:
+      common:
+        prec: Accurate
+        encut: 400
+        ediff: 1.0e-5
+        nelm: 150
+        algo: Normal
+        lreal: false          # real-space projection is unreliable this small
+      task:
+        bulk: { nsw: 150, ediffg: -3.0e-2 }
+
 # System-dependent — DECIDE per job, do not blindly copy `common`:
 #   ismear / sigma
 #     metal slab           -> ismear 1,  sigma 0.1   (Methfessel-Paxton)
@@ -100,6 +159,22 @@ profile:
 #     gas-phase molecules in 20 20 21 Å cells -> vasp.kpts [1,1,1] and
 #       vasp.gamma true; omit kspacing/kgamma.
 #
+# Local-node profile (profile.local_node) notes:
+#   - `static_analysis` overlays profile.local_node.common + task.static for a
+#     post-relaxation single-point job feeding a descriptor script (e.g.
+#     analyze-dband-center). It only tightens SCF/DOS-related keys; it must
+#     never change gga/encut/ivdw/kpts/ismear/sigma away from the relax job it
+#     is analyzing, so the two stay at the same level.
+#   - `small_system` applies only to bulk unit cells and gas-phase molecules
+#     with fewer than 20 atoms; do not apply it to slabs. For molecules
+#     (inlined parameters, no `task` block) apply the `common` half of this
+#     overlay directly on top of profile.local_node.common.
+#   - freq (task.freq): for a periodic solid (slab or bulk), fix every solid
+#     atom with selective dynamics (`F F F`) before the freq job and leave only
+#     the adsorbate/molecule of interest free; this is a POSCAR/structure step,
+#     not an INCAR key. Keep encut/gga/ivdw/kpts identical to the relax job the
+#     freq job follows -- only ibrion/nfree/potim/nsw/algo/ediff change, per
+#     task.freq above.
 # Gas-phase molecule relax/static/freq policy:
 #   - build structures with build-gas-phase-models first.
 #   - gas relaxation has no dedicated CLI task enum yet; omit `task` and write

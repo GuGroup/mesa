@@ -1,6 +1,6 @@
 ---
 name: run-vasp-local-node
-description: Run prepared VASP input directories directly inside an already allocated compute node, especially a long-lived 48-core SGE allocation used as a local VASP runner with 40 VASP MPI ranks and strictly serial one-calculation-at-a-time execution. Use when Codex needs to execute VASP without per-calculation qsub submission, drain a local queue of prepared VASP folders, check local-runner status, or bridge vasp-job prepare output to direct node-local VASP execution while preserving existing SGE vasp-job behavior.
+description: Run already-prepared VASP input directories directly inside an existing compute-node allocation, as a non-SGE execution path that does not use per-calculation `qsub`. Use when Codex needs to execute VASP without per-calculation qsub submission, drain a local queue of prepared VASP folders, or check local-runner status. Concrete core/rank counts and VASP calculation parameters live in this skill's body and in `manage-vasp-jobs`/`defaults.yaml`, not in this description.
 ---
 
 For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying
@@ -33,6 +33,16 @@ remaining cores for Codex, shell, filesystem, and OS overhead.
   test or provides `MESA_ALLOW_LOCAL_VASP=1`.
 - Do not choose scientific VASP settings here. The runner only executes already
   prepared inputs.
+- Do not invent or hardcode local execution settings (core/rank counts,
+  launcher command, node allocation) or VASP calculation parameters into this
+  skill's frontmatter `description`, chat responses, or ad hoc scripts. Source
+  them from `manage-vasp-jobs`/`defaults.yaml` profiles or the active project
+  profile, and keep parameter documentation in one place (`manage-vasp-jobs`).
+- If the user supplies their own parameter/config YAML (a job spec, a common
+  file, or an INCAR-derived parameter set), treat every value in it as
+  authoritative. Do not silently tighten, loosen, or otherwise deviate from any
+  field it sets; only fill in fields it leaves unset, using the profiles in
+  `manage-vasp-jobs/defaults.yaml`.
 - Record recipe-local `execution_manifest.json` entries with
   `skill: run-vasp-local-node`, the command used, input directory, local runner
   metadata, output logs, and acceptance boundary.

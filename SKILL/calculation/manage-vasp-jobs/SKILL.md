@@ -1,6 +1,6 @@
 ---
 name: manage-vasp-jobs
-description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling, refinement-default actual calculation settings, explicit quick-screening settings, and lightweight DFT-test jobs on g01. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose test/screening/refinement settings, check job status, list recent jobs, inspect result files on the cluster, or prepare VASP input folders that may later be consumed by run-vasp-local-node without qsub submission.
+description: Prepare, submit, and track cost-aware VASP calculations on the SGE HPC login node using the `vasp-job` CLI, including conservative parameter handling and refinement-default actual calculation settings. Use when the user wants to dry-run or run a VASP relaxation/SCF job, queue a job with qsub, choose test/screening/refinement settings, check job status, list recent jobs, or inspect result files on the cluster.
 ---
 
 For MESA end-to-end use, read `SKILL/calculation/workflow.md` before applying this skill.
@@ -49,6 +49,42 @@ Do not call `vasp-job submit` for a prepared directory that will be consumed by
 also writes `.vasp_submit_finished` / `.vasp_submit_exit_code` compatibility
 markers after execution.
 
+### Local-node calculation defaults
+
+`profile.local_node` in [`defaults.yaml`](defaults.yaml) is a fixed, user-set
+default for the local-node path (spin off, `vasp_gam`/Gamma-only KPOINTS
+`1 1 1`, ENCUT 350, PBE, EDIFF 5e-3, EDIFFG -0.08, POTIM 0.1, IVDW 12, NELM
+100, NSW 80, PREC Normal, ALGO Fast, LREAL Auto, NCORE 8 on the 40-rank
+allocation). The purpose of this project is demonstrating an agent-driven DFT
+workflow, not benchmark-grade accuracy — do not re-derive, tighten, or loosen
+these values on your own judgment. Use them as-is except for the two
+documented overlays below, and except when the user supplies their own
+parameter YAML (which always wins outright, per Calculation policy item 8).
+
+- **Single-point analysis overlay** (`profile.local_node.static_analysis`):
+  use for a post-relaxation static job that feeds a descriptor script (e.g.
+  `analyze-dband-center`, other PDOS-based analysis). Overlay it on
+  `profile.local_node.common` + `task.static`. It only tightens
+  SCF-convergence keys (`ediff`, `nelm`, `algo`) and adds DOS output
+  (`lorbit: 11`, `lcharg: true`) — it must never change `gga`/`encut`/`ivdw`/
+  `kpts`/`ismear`/`sigma` away from the relaxation it is analyzing, so both
+  stay at the same level.
+- **Small-system overlay** (`profile.local_node.small_system`): use only for a
+  bulk unit cell or a gas-phase molecule with fewer than 20 atoms — never for
+  slabs. It is moderately tighter (ENCUT 400, PREC Accurate, EDIFF 1e-5,
+  EDIFFG -0.03, ALGO Normal, `lreal: false`), still not maximally strict, and
+  keeps Gamma-only KPOINTS since the executable (`vasp_gam`) cannot sample a
+  real mesh. For molecules (which use inlined parameters, no `task` block;
+  see Gas-phase molecule calculations below) apply only the `common` half of
+  this overlay.
+- **Frequency jobs on a solid** (`task.freq`): before submitting, fix every
+  atom belonging to the solid (slab or bulk substrate) with selective
+  dynamics (`F F F` in the POSCAR) and leave free only the adsorbate/molecule
+  whose vibrations are being computed. This is a structure-preparation step,
+  not an INCAR key. Keep `gga`/`encut`/`ivdw`/`kpts` identical to the relax
+  job the frequency job follows; only `ibrion`/`nfree`/`potim`/`nsw`/`algo`/
+  `ediff` change, per `task.freq` in `defaults.yaml`.
+
 ## Calculation policy
 
 Actual VASP calculations default to **refinement-oriented settings**, not light
@@ -74,6 +110,15 @@ gates:
 7. For gas-phase molecules, use `build-gas-phase-models` first to create the
    isolated `20 20 21` Å orthorhombic POSCAR. Do not put gas structure generation in
    `build-slab-models`.
+8. If the user supplies their own parameter/config YAML (a job spec, a
+   `--common`/`extends` file, or an INCAR-derived parameter set), treat every
+   value it sets as authoritative and never deviate from it — do not tighten,
+   loosen, or "correct" a user-supplied value toward `defaults.yaml`. Only fill
+   in fields the user's file leaves unset, using the profiles below. This is
+   `defaults.yaml`'s job spec — do not restate specific parameter values
+   (encut, core/rank counts, k-point settings, etc.) in this skill's
+   frontmatter `description`, in `run-vasp-local-node`, or in `workflow.md`;
+   keep the numbers in one place (`defaults.yaml`) and reference it by name.
 
 If a user asks to "run VASP" on many structures, first create/spec dry-runs and
 ask which few structures should be submitted. Do not silently submit a large
@@ -133,6 +178,20 @@ screening mode:
   `vasp.kpts: [1, 1, 1]`, set `vasp.gamma: true`, omit `kspacing`/`kgamma`, apply
   system-specific overrides, and set `queue.preset: presetg018gam` unless the
   calculation is explicitly non-Gamma-only.
+- **Local-node explicit mode**: Use only when the prepared folder is meant for
+  `run-vasp-local-node` (Gamma-only `vasp_gam` on a 40-rank local allocation),
+  never for `vasp-job submit`. Read `profile.local_node.common` and
+  `profile.local_node.task.<task>` from `defaults.yaml`; overlay
+  `profile.local_node.static_analysis` only for a post-relaxation single-point
+  job at the same level as its relax (e.g. d-band center, PDOS); overlay
+  `profile.local_node.small_system` only for bulk/molecule systems with fewer
+  than 20 atoms; apply system-specific overrides; and write the final merged
+  values explicitly into `vasp.parameters`. Always set `vasp.kpts: [1, 1, 1]`
+  and `vasp.gamma: true`, and omit `kspacing`/`kgamma`. These are fixed
+  user-set defaults for agent-workflow demonstration, not a target for
+  independent re-tuning — do not tighten or loosen them beyond the documented
+  overlays. If the user supplies their own parameter YAML, it overrides this
+  profile entirely (see Calculation policy).
 
 ### Reuse common parameters (`extends` / `--common`)
 

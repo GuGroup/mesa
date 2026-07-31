@@ -95,9 +95,9 @@ execution. This skill consumes already prepared VASP folders inside an existing
 compute-node allocation; it must not replace recipe authorization, input
 generation, or downstream result analysis. When using this path, `vasp-job
 prepare` from `manage-vasp-jobs` may generate compatible input folders, but do
-not call `vasp-job submit` for those same calculations. For a 48-core local
-allocation, run VASP with 40 MPI ranks and execute VASP folders strictly one at
-a time.
+not call `vasp-job submit` for those same calculations. Read
+`run-vasp-local-node/SKILL.md` for the core/rank counts and serial-execution
+rule; do not restate or re-derive them here.
 
 When backend-specific files are prepared but not run, state that boundary in
 the recipe-local manifest. Examples include "UMA relaxation only; no VASP
