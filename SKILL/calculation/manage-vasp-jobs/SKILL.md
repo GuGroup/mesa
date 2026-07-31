@@ -135,8 +135,8 @@ screening mode is being used explicitly.
 
 ### DFT test policy
 
-When the user explicitly asks for a DFT test, lightweight test run, g01 test, or
-minimum VASP sanity run, use **DFT test explicit mode** instead of refinement or
+When the user explicitly asks for a DFT test, lightweight test run, or minimum
+VASP sanity run, use **DFT test explicit mode** instead of refinement or
 screening mode:
 
 - Use only `profile.dft_test` from [`defaults.yaml`](defaults.yaml), or the
@@ -148,14 +148,7 @@ screening mode:
 - Set explicit Gamma-only sampling with `vasp.kpts: [1, 1, 1]` and
   `vasp.gamma: true`; omit `vasp.parameters.kspacing` and
   `vasp.parameters.kgamma`.
-- Use `queue.preset: presetg018gam` for Gamma-only test specs when g01 already
-  has noticeable load. Use `presetg01gam` only when the user asks for 16 slots.
-  Use `presetg018std` / `presetg01std` only if the spec is not Gamma-only.
-- g01 submissions are sequential: the `presetg01*` templates request
-  `a6000.q`, `hostname=g01`, and either 8 or 16 MPI slots, and `vasp-job submit` refuses a
-  second indexed g01 preset job while another g01 preset job is still queued or
-  running. Submit the next g01 job only after `vasp-job status <job_uid>` reports
-  `finished` or `failed`.
+- Use `queue.preset: auto` unless the user asks for a specific preset.
 - Report DFT-test jobs as lightweight sanity/test calculations, not final
   adsorption/surface energy evidence.
 
@@ -180,12 +173,12 @@ screening mode:
   top-level `common` and `task.<task>`, overlay `profile.screening.common` and
   `profile.screening.task.<task>`, apply system-specific overrides, and write
   the final merged values explicitly into `vasp.parameters`.
-- **DFT test explicit mode**: Use only when the user asks for DFT test or g01
+- **DFT test explicit mode**: Use only when the user asks for DFT test or
   lightweight test behavior. Read `profile.dft_test.common` and
   `profile.dft_test.task.<task>` from `defaults.yaml`, set
   `vasp.kpts: [1, 1, 1]`, set `vasp.gamma: true`, omit `kspacing`/`kgamma`, apply
-  system-specific overrides, and set `queue.preset: presetg018gam` unless the
-  calculation is explicitly non-Gamma-only.
+  system-specific overrides, and set `queue.preset: auto` unless the user asks
+  for a specific preset.
 - **Local-node explicit mode**: Use only when the prepared folder is meant for
   `run-vasp-local-node` (Gamma-only `vasp_gam` on a 40-rank local allocation),
   never for `vasp-job submit`. Read `profile.local_node.common` and
@@ -247,7 +240,7 @@ queue: { preset: auto }
 The preserved input record (`input_specs/*.yml`) stores the fully merged spec,
 so a reused job remains self-contained and reproducible.
 
-Example for a lightweight DFT-test `slab` job on g01:
+Example for a lightweight DFT-test `slab` job:
 
 ```yaml
 extends: common_dft_test.yml
@@ -266,7 +259,7 @@ vasp:
     ediffg: -8.0e-2
     potim: 0.1
 queue:
-  preset: presetg018gam
+  preset: auto
 ```
 
 Example for a default refined `slab` job (top-level common + task.slab, smearing
@@ -480,12 +473,6 @@ queue:
 
 - `auto` picks 48- vs 64-core from current free/remaining nodes (`qq`). If no node is currently free, `auto` defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. For the VASP executable, `auto` must choose `gam` only when the spec explicitly has both `vasp.kpts: [1, 1, 1]` and `vasp.gamma: true` for a Gamma-only calculation. Do not infer `gam` from `vasp.parameters.kgamma: true`, from KSPACING, from task type, or from a Gamma-centered multi-point mesh. If uncertain, leave `vasp.gamma` unset and use `std`.
 - `preset64std`, `preset64gam`, `preset48std`, `preset48gam` — pin it explicitly.
-- `presetg018std`, `presetg018gam` — pin to SGE `a6000.q`, `hostname=g01`, and
-  `mpi_8 8`. Prefer these for quick DFT tests when g01 has existing load.
-- `presetg01std`, `presetg01gam` — pin to SGE `a6000.q`, `hostname=g01`, and
-  `mpi_16 16`. Use only when the user asks for 16 slots. These g01 presets are
-  not selected by `auto`; set them explicitly for DFT tests. `vasp-job submit`
-  enforces one active indexed g01 preset job at a time.
 
 All SGE submit templates load `vasp/6.3.2-vtst-vaspsol-beef-intel` and then run
 `mpirun -machinefile $TMPDIR/machines -n $NSLOTS vasp_std` or `vasp_gam`; the
@@ -498,7 +485,7 @@ All SGE submit templates load `vasp/6.3.2-vtst-vaspsol-beef-intel` and then run
    adsorption site/intermediate, atom count, fixed atoms, and structure
    validation. Do not use VASP as the first filter over a large generated set.
 3. Write the spec to a file, e.g. `spec.yml`: choose minimal edit, DFT test
-   explicit for requested g01/lightweight tests, refinement explicit by default
+   explicit for requested lightweight tests, refinement explicit by default
    for actual calculations, or screening explicit only when the user asked for
    quick screening/comparison. Set `task` only to `bulk`, `slab`, `freq`, or
    `static`, and point `structure.path` at the POSCAR file (or inline it with
@@ -507,9 +494,7 @@ All SGE submit templates load `vasp/6.3.2-vtst-vaspsol-beef-intel` and then run
    `{"ok": true, "prepared": true, "job_uid": "...", "remote_dir": "..."}`. Inspect
    `remote_dir` (`INCAR`, `KPOINTS`, `POTCAR`, `submit_vasp.sh`) if the user wants to
    review before submitting.
-5. Submit only after the user has selected the small candidate set. For g01
-   DFT tests, submit one spec at a time and wait for the previous g01 job to
-   finish or fail before submitting the next:
+5. Submit only after the user has selected the small candidate set:
    `vasp-job submit spec.yml` →
    `{"ok": true, "job_uid": "...", "scheduler_id": "123456", "remote_dir": "..."}`.
    Keep the `job_uid` — it is the handle for everything after this.
@@ -581,7 +566,6 @@ overrides.
 | `structure.path not found` | Check the POSCAR path relative to the spec file directory. |
 | `vasp.parameters must be a mapping` | `parameters` is a mapping of lowercase keys. |
 | `job_name must contain only ...` | Use letters, numbers, `.`, `_`, `-` only. |
-| `Unknown queue.preset` / `No free 48/64 nodes` | Use a valid preset, retry `auto` later when nodes free up, or reinstall/update `vasp-job` if `presetg01std`/`presetg01gam` is missing from `vasp-job schema`. |
-| `g01 sequential policy blocked submission` | A `presetg01*` job is still queued/running. Wait for `vasp-job status <job_uid>` to report `finished` or `failed`, then submit the next g01 test job. |
+| `Unknown queue.preset` / `No free 48/64 nodes` | Use a valid preset, or retry `auto` later when nodes free up. |
 | `vasp-ase did not generate required file` | Server-side POTCAR/`vasp_pp_path` issue — report it to the user. |
 | `Unknown job_uid` | The id is wrong or the job index is on another root — check `vasp-job list`; use `vasp-job list --verbose` if you need roots or directories. |

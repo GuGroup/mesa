@@ -1,4 +1,4 @@
 interface:
   display_name: "Manage VASP Jobs"
-  short_description: "Prepare VASP jobs on SGE, including g01 DFT tests"
-  default_prompt: "Use $manage-vasp-jobs to prepare a VASP dry-run from an input folder containing POSCAR, using DFT-test g01 defaults only when requested, preserving provided parameters otherwise, and avoiding submission unless explicitly approved."
+  short_description: "Prepare VASP jobs on SGE, including lightweight DFT tests"
+  default_prompt: "Use $manage-vasp-jobs to prepare a VASP dry-run from an input folder containing POSCAR, using DFT-test defaults only when requested, preserving provided parameters otherwise, and avoiding submission unless explicitly approved."
