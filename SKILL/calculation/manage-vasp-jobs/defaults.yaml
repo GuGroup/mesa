@@ -147,10 +147,15 @@ profile:
 #     metal slab           -> ismear 1,  sigma 0.1   (Methfessel-Paxton)
 #     gas-phase molecule / -> ismear 0,  sigma 0.05  (Gaussian)
 #       insulator
-#   ispin / magmom
-#     non-magnetic         -> ispin 1   (drop magmom)
-#     magnetic (Fe/Co/Ni/  -> ispin 2 + magmom (per-atom initial moments;
-#       Mn/Cr/...)              REQUIRED when ispin 2)
+#   ispin / magmom (slab/bulk calculations only; see the gas-phase exception
+#   below for molecules) — decide ONCE per project, not per structure:
+#     Check whether any structure in the project contains a magnetic element
+#     (Fe/Co/Ni/Mn/Cr/...). If so, use ispin 2 + magmom (per-atom initial
+#     moments; REQUIRED when ispin 2) for every slab/bulk calculation in that
+#     project. Otherwise use ispin 1 (drop magmom) for all of them. Record the
+#     decision (e.g. in project_profile.md or a project-local common_*.yml)
+#     and reuse it — do not flip ispin structure-by-structure within one
+#     project; comparing energies across inconsistent ispin values is invalid.
 #   k-points
 #     both actual calculation and screening use kspacing 0.30 (screening does not
 #     coarsen k-points). Use an explicit vasp.kpts only when a fixed mesh is

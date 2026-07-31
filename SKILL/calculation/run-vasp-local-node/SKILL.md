@@ -12,6 +12,14 @@ Use this skill only after VASP inputs already exist. It does not generate
 `POSCAR`, `INCAR`, `KPOINTS`, or `POTCAR`; use `manage-vasp-jobs` with
 `vasp-job prepare` or an equivalent approved input-generation path first.
 
+`vasp-job prepare` writes to a server-managed `remote_dir`, not the MESA
+`project/<project_name>/` tree. Before running any command below, copy the
+prepared input files into the calculation's assigned execution directory
+(`P###/calculations/C###/execution/units/E###/`, per
+`SKILL/calculation/workflow.md`) and run every `run`/`mark-ready`/`watch`/
+`status` command against that project-local copy — not the raw `remote_dir`
+and not an ad hoc path outside the project.
+
 This skill is the non-SGE execution layer. It assumes the user has already
 entered or reserved a compute node, commonly by submitting one long-lived
 48-core allocation job, and then runs VASP directly inside that allocation.

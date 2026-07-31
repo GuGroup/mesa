@@ -49,6 +49,15 @@ Do not call `vasp-job submit` for a prepared directory that will be consumed by
 also writes `.vasp_submit_finished` / `.vasp_submit_exit_code` compatibility
 markers after execution.
 
+`vasp-job prepare`'s `remote_dir` is a server-managed path (`project.root` is
+not settable, see Parameter rules), not the MESA `project/<project_name>/`
+directory. Before running `run-vasp-local-node`, copy the prepared input files
+from `remote_dir` into the calculation's assigned execution directory (the
+`P###/calculations/C###/execution/units/E###/` path from
+`SKILL/calculation/workflow.md`), and point every local-runner command at that
+project-local copy. Do not leave the job directory `run-vasp-local-node`
+actually executes in outside the project tree.
+
 ### Local-node calculation defaults
 
 `profile.local_node` in [`defaults.yaml`](defaults.yaml) is a fixed, user-set
@@ -323,9 +332,15 @@ Parameter rules:
   `profile.dft_test.common` + `profile.dft_test.task.<task>`, set the top-level
   `vasp.kpts`/`vasp.gamma` from `profile.dft_test.vasp`, and record that the job
   is lightweight test evidence only.
-- Decide the system-dependent ones per job: `ismear`/`sigma` (metal slab vs
-  gas-phase molecule/insulator) and `ispin`/`magmom`. If `ispin: 2`, include
-  `magmom` (per-atom initial moments).
+- Decide `ismear`/`sigma` per job (metal slab vs gas-phase molecule/insulator
+  differ by physical state). Decide `ispin`/`magmom` once per project instead
+  of per job: check whether any structure in the project has a magnetic
+  element (Fe/Co/Ni/Mn/Cr/...), then use that same `ispin` value (2 + `magmom`
+  per-atom initial moments, or 1 with no `magmom`) for every slab/bulk
+  calculation in the project — do not decide it structure-by-structure, since
+  mixed `ispin` values break energy comparability across the project. This
+  project-wide rule does not apply to the gas-phase molecule `spin_reference`
+  exception below.
 - `task` is optional but, when present, must be one of `bulk`, `slab`, `freq`, or
   `static`. It is recorded in metadata and helps choose the defaults overlay in
   screening/refinement explicit modes; the CLI itself does not merge task
