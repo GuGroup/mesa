@@ -1,4 +1,0 @@
-interface:
-  display_name: "VASP Job"
-  short_description: "Run VASP jobs on SGE"
-  default_prompt: "Use $vasp-job to prepare a VASP slab relaxation from an input folder containing POSCAR, preserve any provided VASP parameters unless I ask for defaults, and dry-run it first."
