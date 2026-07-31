@@ -47,7 +47,7 @@ one exception — it never spawns VASP, so it is always safe to run from the
 login node to validate inputs.
 
 Set `MESA_ALLOW_LOCAL_VASP=1` inline for that one command only
-(`MESA_ALLOW_LOCAL_VASP=1 python ... run ...`), never in a shell rc file or a
+(`MESA_ALLOW_LOCAL_VASP=1 python3 ... run ...`), never in a shell rc file or a
 persistent session — an env var left set in a login shell silences this guard
 for every command in that shell, not just the one the user approved.
 
@@ -92,7 +92,7 @@ for every command in that shell, not just the one the user approved.
 The reusable runner is:
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py
 ```
 
 It prints JSON for foreground commands and writes local metadata into each job
@@ -144,7 +144,7 @@ From the login node, mark each prepared directory as ready once its inputs
 are in place under the project execution directory:
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   mark-ready /path/to/prepared_vasp_dir
 ```
 
@@ -160,14 +160,14 @@ Check status (login node, reads job-directory metadata, no allocation
 needed):
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   status /path/to/prepared_vasp_dir
 ```
 
 List local queue candidates (login node):
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   list /path/to/local_queue_root
 ```
 
@@ -182,7 +182,7 @@ single directory instead of `watch` on a queue root), not the
 reserve-then-mark-ready flow above:
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
   --min-cores 40 \
   --max-cores 40 \
@@ -194,7 +194,7 @@ binary, pass `--executable gam` instead. Use a custom site launcher when the
 cluster requires it:
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
   --min-cores 40 \
   --max-cores 40 \
@@ -210,7 +210,7 @@ expanded before execution.
 Before an actual run, use:
 
 ```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir --dry-run --min-cores 1
 ```
 

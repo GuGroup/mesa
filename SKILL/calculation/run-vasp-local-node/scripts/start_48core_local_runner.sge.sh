@@ -35,7 +35,7 @@ if [[ -n "${TMPDIR:-}" && -f "${TMPDIR}/machines" ]]; then
   cat "${TMPDIR}/machines"
 fi
 
-python "${RUNNER}" watch "${QUEUE_DIR}" \
+python3 "${RUNNER}" watch "${QUEUE_DIR}" \
   --min-cores "${MIN_CORES}" \
   --max-cores "${MAX_CORES}" \
   --executable "${EXECUTABLE}" \
