@@ -46,6 +46,11 @@ smoke test. There is no CLI flag that disables this check. `--dry-run` is the
 one exception — it never spawns VASP, so it is always safe to run from the
 login node to validate inputs.
 
+Set `MESA_ALLOW_LOCAL_VASP=1` inline for that one command only
+(`MESA_ALLOW_LOCAL_VASP=1 python ... run ...`), never in a shell rc file or a
+persistent session — an env var left set in a login shell silences this guard
+for every command in that shell, not just the one the user approved.
+
 # Boundaries
 
 - Preserve `manage-vasp-jobs` for SGE-per-calculation `qsub` submission,

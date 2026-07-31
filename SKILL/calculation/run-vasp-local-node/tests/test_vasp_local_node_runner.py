@@ -174,6 +174,47 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
             self.assertIn("REFUSING TO RUN", payload["error"])
             self.assertFalse((job / "CONTCAR").exists())
 
+    def test_watch_without_allocation_is_blocked(self):
+        # Same guard, exercised through `watch` (the path the SGE wrapper and
+        # the mark-ready flow actually use) rather than a bare `run` call.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            job = root / "job"
+            write_prepared_job(job)
+            subprocess.run(["python3", str(SCRIPT), "mark-ready", str(job)], check=True, capture_output=True, text=True)
+            env = {
+                k: v
+                for k, v in os.environ.items()
+                if k not in ("NSLOTS", "SLURM_JOB_ID", "PE_HOSTFILE", "MESA_ALLOW_LOCAL_VASP")
+            }
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(SCRIPT),
+                    "watch",
+                    str(root),
+                    "--once",
+                    "--min-cores",
+                    "1",
+                    "--cores",
+                    "1",
+                    "--launcher",
+                    "none",
+                    "--vasp-command",
+                    "python3 -c 'from pathlib import Path; Path(\"ran.txt\").write_text(\"yes\")'",
+                    "--no-serial-allocation-lock",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            payload = json.loads(completed.stdout)
+
+            self.assertEqual(completed.returncode, 1)
+            self.assertEqual(payload["failures"], 1)
+            self.assertFalse((job / "ran.txt").exists())
+
     def test_watch_once_runs_ready_job(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
