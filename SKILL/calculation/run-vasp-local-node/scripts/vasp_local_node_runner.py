@@ -17,7 +17,7 @@ from typing import Any
 
 
 RUNNER_NAME = "vasp_local_node_runner"
-DEFAULT_MAX_VASP_CORES = 40
+DEFAULT_MAX_VASP_CORES = 48
 STATE_FILE = ".mesa_vasp_local_state.json"
 LOCK_FILE = ".mesa_vasp_local.lock"
 READY_FILE = ".mesa_vasp_local_ready"
@@ -810,9 +810,9 @@ def watch_jobs(queue_dir: Path, args: argparse.Namespace) -> tuple[dict[str, Any
 
 
 def add_run_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--cores", type=int, help="Requested MPI rank count. Defaults to NSLOTS, SLURM_NTASKS, MESA_VASP_CORES, then 40; capped by --max-cores.")
-    parser.add_argument("--max-cores", type=int, default=default_max_cores(), help="Maximum VASP MPI ranks. Default 40 to reserve cores on a 48-core allocation for Codex/OS.")
-    parser.add_argument("--min-cores", type=int, default=40, help="Minimum resolved core count required for actual execution.")
+    parser.add_argument("--cores", type=int, help="Requested MPI rank count. Defaults to NSLOTS, SLURM_NTASKS, MESA_VASP_CORES, then 48; capped by --max-cores.")
+    parser.add_argument("--max-cores", type=int, default=default_max_cores(), help="Maximum VASP MPI ranks. Default 48 (the full reservation): Codex/the agent runs on the login node, not on this node, so nothing else needs cores held back.")
+    parser.add_argument("--min-cores", type=int, default=48, help="Minimum resolved core count required for actual execution.")
     parser.add_argument(
         "--require-allocation",
         action="store_true",

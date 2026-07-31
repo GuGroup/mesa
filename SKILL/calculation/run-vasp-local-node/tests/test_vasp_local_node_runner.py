@@ -70,7 +70,10 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
         self.assertEqual(payload["command"], ["echo", "2", "vasp_std"])
         self.assertEqual(state["state"], "dry_run")
 
-    def test_nsLots_48_defaults_to_40_vasp_ranks(self):
+    def test_nslots_48_uses_full_48_vasp_ranks(self):
+        # Codex/the agent runs on the login node, not on the reserved
+        # compute node, so a 48-core allocation gives all 48 ranks to VASP
+        # by default -- nothing is held back for Codex/OS overhead.
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp) / "job"
             write_prepared_job(job)
@@ -83,7 +86,7 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
                     str(job),
                     "--dry-run",
                     "--min-cores",
-                    "40",
+                    "1",
                     "--launcher",
                     "none",
                     "--vasp-command",
@@ -96,10 +99,43 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
             )
             payload = json.loads(completed.stdout)
 
-        self.assertEqual(payload["command"], ["echo", "40"])
-        self.assertTrue(payload["core_policy"]["capped"])
+        self.assertEqual(payload["command"], ["echo", "48"])
+        self.assertFalse(payload["core_policy"]["capped"])
         self.assertEqual(payload["core_policy"]["raw_cores"], 48)
-        self.assertEqual(payload["core_policy"]["resolved_vasp_cores"], 40)
+        self.assertEqual(payload["core_policy"]["resolved_vasp_cores"], 48)
+
+    def test_nslots_64_capped_to_default_48_vasp_ranks(self):
+        # The default --max-cores cap (48) still applies when a larger
+        # allocation is detected, e.g. a preset64std-style 64-slot job.
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp) / "job"
+            write_prepared_job(job)
+            env = {**os.environ, "NSLOTS": "64"}
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(SCRIPT),
+                    "run",
+                    str(job),
+                    "--dry-run",
+                    "--min-cores",
+                    "1",
+                    "--launcher",
+                    "none",
+                    "--vasp-command",
+                    "echo {cores}",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            payload = json.loads(completed.stdout)
+
+        self.assertEqual(payload["command"], ["echo", "48"])
+        self.assertTrue(payload["core_policy"]["capped"])
+        self.assertEqual(payload["core_policy"]["raw_cores"], 64)
+        self.assertEqual(payload["core_policy"]["resolved_vasp_cores"], 48)
 
     def test_run_with_fake_command_writes_finished_markers(self):
         with tempfile.TemporaryDirectory() as tmp:

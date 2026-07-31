@@ -32,8 +32,11 @@ filesystem I/O against that same queue directory over the shared filesystem,
 run from the login node. Only the actual `mpirun`/VASP process launched by
 `run`/`watch` executes on the reserved node, and that already happens
 automatically inside the job SGE placed there — nothing else needs to run on
-the node itself. For this local-runner path, use 40 VASP MPI ranks by default
-and reserve the remaining cores for Codex, shell, filesystem, and OS overhead.
+the node itself. Because of that — Codex/the agent runs on the login node, not
+on the reserved node — nothing else is competing for cores there, so this
+local-runner path uses all 48 VASP MPI ranks of the reservation by default;
+there is no need to hold cores back for Codex/OS overhead the way there would
+be if Codex itself ran inside the allocation.
 
 **Never run `run` or `watch` directly on the login node.** Actually launching
 VASP outside a real allocation is a shared-resource incident, not a minor
@@ -55,8 +58,11 @@ for every command in that shell, not just the one the user approved.
 
 - Preserve `manage-vasp-jobs` for SGE-per-calculation `qsub` submission,
   `vasp-job status`, and existing queue presets.
-- The 40-rank cap applies only to this local-node runner. Do not apply it to
-  normal `manage-vasp-jobs` SGE submissions; `preset48*` SGE jobs use 48 slots.
+- The default 48-rank cap (`--max-cores`/`MESA_VASP_MAX_CORES`) is this
+  runner's own resolution logic. Do not apply it to normal `manage-vasp-jobs`
+  SGE submissions — those presets (`preset48*`, `preset64*`) request and use
+  their full slot count directly through `$NSLOTS`, with no separate capping
+  step.
 - Use this skill when the calculation should not call `vasp-job submit` and
   should instead run inside the current node allocation.
 - Run exactly one VASP calculation at a time. Do not start multiple `run` or
@@ -151,7 +157,7 @@ python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py 
 The `watch` job reserved above discovers directories containing
 `.mesa_vasp_local_ready` under the same queue root, runs them one at a time,
 skips completed jobs, and sleeps when no ready job exists. This is
-intentionally serial: one prepared VASP folder consumes the 40-rank VASP
+intentionally serial: one prepared VASP folder consumes the 48-rank VASP
 runner, then the next folder starts only after the previous one exits. Keep
 `mark-ready`-ing new directories under the same queue root for as long as the
 reservation is alive; you do not need to resubmit or re-enter anything.
@@ -184,8 +190,8 @@ reserve-then-mark-ready flow above:
 ```bash
 python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
-  --min-cores 40 \
-  --max-cores 40 \
+  --min-cores 48 \
+  --max-cores 48 \
   --executable std
 ```
 
@@ -196,8 +202,8 @@ cluster requires it:
 ```bash
 python3 SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
-  --min-cores 40 \
-  --max-cores 40 \
+  --min-cores 48 \
+  --max-cores 48 \
   --vasp-command 'mpirun -machinefile {machinefile} -n {cores} {executable}'
 ```
 

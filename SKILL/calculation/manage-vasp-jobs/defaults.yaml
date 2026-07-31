@@ -85,7 +85,7 @@ profile:
       freq:   { ediff: 1.0e-5 }
 
   # Local-node explicit profile. Use only for jobs that will run through
-  # run-vasp-local-node (a Gamma-only vasp_gam local runner on a 40-rank
+  # run-vasp-local-node (a Gamma-only vasp_gam local runner on a 48-rank
   # allocation), never for SGE `vasp-job submit`. This is a fixed, user-set
   # default -- do not tighten or loosen it on your own. If the user supplies
   # their own YAML with these values, that YAML wins outright and this
@@ -105,7 +105,7 @@ profile:
       ispin: 1               # spin off by default; see system-dependent notes
       ivdw: 12
       isym: 0
-      ncore: 8               # 40-rank local allocation
+      ncore: 8               # 48-rank local allocation
       lreal: Auto
       lcharg: false
       lwave: false

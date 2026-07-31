@@ -41,9 +41,6 @@ node, use this skill only through `vasp-job prepare` to create compatible input
 folders. Then switch to `run-vasp-local-node` for execution, local queue
 draining, and local status checks.
 
-The local runner's 40-rank reserve rule does not apply to this SGE submit path:
-`preset48std` and `preset48gam` request and use 48 SGE slots through `$NSLOTS`.
-
 Do not call `vasp-job submit` for a prepared directory that will be consumed by
 `run-vasp-local-node`. The local runner writes `.mesa_vasp_local_*` metadata and
 also writes `.vasp_submit_finished` / `.vasp_submit_exit_code` compatibility
@@ -63,7 +60,7 @@ actually executes in outside the project tree.
 `profile.local_node` in [`defaults.yaml`](defaults.yaml) is a fixed, user-set
 default for the local-node path (spin off, `vasp_gam`/Gamma-only KPOINTS
 `1 1 1`, ENCUT 350, PBE, EDIFF 5e-3, EDIFFG -0.08, POTIM 0.1, IVDW 12, NELM
-100, NSW 80, PREC Normal, ALGO Fast, LREAL Auto, NCORE 8 on the 40-rank
+100, NSW 80, PREC Normal, ALGO Fast, LREAL Auto, NCORE 8 on the 48-rank
 allocation). Do not re-derive, tighten, or loosen these values on your own
 judgment. Use them as-is except for the two documented overlays below, and
 except when the user supplies their own parameter YAML (which always wins
@@ -180,7 +177,7 @@ screening mode:
   system-specific overrides, and set `queue.preset: auto` unless the user asks
   for a specific preset.
 - **Local-node explicit mode**: Use only when the prepared folder is meant for
-  `run-vasp-local-node` (Gamma-only `vasp_gam` on a 40-rank local allocation),
+  `run-vasp-local-node` (Gamma-only `vasp_gam` on a 48-rank local allocation),
   never for `vasp-job submit`. Read `profile.local_node.common` and
   `profile.local_node.task.<task>` from `defaults.yaml`; overlay
   `profile.local_node.static_analysis` only for a post-relaxation single-point
