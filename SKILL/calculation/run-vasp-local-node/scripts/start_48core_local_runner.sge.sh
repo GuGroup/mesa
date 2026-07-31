@@ -38,6 +38,5 @@ fi
 python "${RUNNER}" watch "${QUEUE_DIR}" \
   --min-cores "${MIN_CORES}" \
   --max-cores "${MAX_CORES}" \
-  --require-allocation \
   --executable "${EXECUTABLE}" \
   ${MESA_VASP_LOCAL_EXTRA_ARGS:-}

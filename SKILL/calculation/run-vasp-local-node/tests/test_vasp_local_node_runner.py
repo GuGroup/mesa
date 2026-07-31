@@ -124,6 +124,7 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
                 check=True,
                 capture_output=True,
                 text=True,
+                env={**os.environ, "MESA_ALLOW_LOCAL_VASP": "1"},
             )
             payload = json.loads(completed.stdout)
 
@@ -131,6 +132,47 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
             self.assertEqual((job / ".mesa_vasp_local_exit_code").read_text(encoding="utf-8").strip(), "0")
             self.assertEqual((job / ".vasp_submit_exit_code").read_text(encoding="utf-8").strip(), "0")
             self.assertTrue((job / "CONTCAR").exists())
+
+    def test_run_without_allocation_is_blocked(self):
+        # Regression test for the login-node execution guard: without
+        # NSLOTS/SLURM_JOB_ID/a machinefile and without the explicit
+        # MESA_ALLOW_LOCAL_VASP=1 opt-out, `run` must refuse to launch VASP
+        # even if no --require-allocation-style flag is passed.
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp) / "job"
+            write_prepared_job(job)
+            env = {
+                k: v
+                for k, v in os.environ.items()
+                if k not in ("NSLOTS", "SLURM_JOB_ID", "PE_HOSTFILE", "MESA_ALLOW_LOCAL_VASP")
+            }
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(SCRIPT),
+                    "run",
+                    str(job),
+                    "--min-cores",
+                    "1",
+                    "--cores",
+                    "1",
+                    "--launcher",
+                    "none",
+                    "--vasp-command",
+                    "echo should_not_run",
+                    "--no-serial-allocation-lock",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            payload = json.loads(completed.stdout)
+
+            self.assertEqual(completed.returncode, 2)
+            self.assertEqual(payload["state"], "blocked")
+            self.assertIn("REFUSING TO RUN", payload["error"])
+            self.assertFalse((job / "CONTCAR").exists())
 
     def test_watch_once_runs_ready_job(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -158,6 +200,7 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
                 check=True,
                 capture_output=True,
                 text=True,
+                env={**os.environ, "MESA_ALLOW_LOCAL_VASP": "1"},
             )
             payload = json.loads(completed.stdout)
 
@@ -202,6 +245,7 @@ class VaspLocalNodeRunnerTests(unittest.TestCase):
                 check=False,
                 capture_output=True,
                 text=True,
+                env={**os.environ, "MESA_ALLOW_LOCAL_VASP": "1"},
             )
             payload = json.loads(completed.stdout)
 

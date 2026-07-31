@@ -365,8 +365,16 @@ def validate_run_environment(
     job_dir: Path,
     cores: int,
     min_cores: int,
-    require_allocation: bool,
+    dry_run: bool,
 ) -> dict[str, Any] | None:
+    # Allocation detection is NOT gated behind a CLI flag on purpose: running
+    # VASP directly on a login node is a serious shared-resource incident, not
+    # a mistake that should be one forgotten flag away. The only way to launch
+    # without NSLOTS/SLURM_JOB_ID/a machinefile is the explicit
+    # MESA_ALLOW_LOCAL_VASP=1 environment variable (see allocation_detected).
+    # dry_run is exempt: it never spawns VASP, only validates inputs and
+    # records the command that *would* run, so it stays safe to use from the
+    # login node without an allocation.
     checks = input_status(job_dir)
     if not checks["ok"]:
         return {
@@ -382,11 +390,18 @@ def validate_run_environment(
             "error": f"resolved cores {cores} is below required minimum {min_cores}",
             "allocation": allocation_context(cores),
         }
-    if require_allocation and not allocation_detected():
+    if not dry_run and not allocation_detected():
         return {
             "ok": False,
             "state": "blocked",
-            "error": "no allocation environment detected; set NSLOTS/SLURM_JOB_ID or MESA_ALLOW_LOCAL_VASP=1",
+            "error": (
+                "REFUSING TO RUN: no compute-node allocation detected "
+                "(NSLOTS/SLURM_JOB_ID/machinefile all absent). Running VASP "
+                "directly on the login node is not allowed. Reserve a node "
+                "first (see SKILL.md 'Reserve a Node'), or set "
+                "MESA_ALLOW_LOCAL_VASP=1 only for an explicit, user-approved "
+                "local smoke test."
+            ),
             "allocation": allocation_context(cores),
         }
     return None
@@ -445,7 +460,7 @@ def run_job(job_dir: Path, args: argparse.Namespace) -> tuple[dict[str, Any], in
         job_dir=job_dir,
         cores=cores,
         min_cores=args.min_cores,
-        require_allocation=args.require_allocation,
+        dry_run=args.dry_run,
     )
     if validation_error:
         state = {**base_state(job_dir, cores, policy), **validation_error, "checked_at": now_iso()}
@@ -798,7 +813,16 @@ def add_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cores", type=int, help="Requested MPI rank count. Defaults to NSLOTS, SLURM_NTASKS, MESA_VASP_CORES, then 40; capped by --max-cores.")
     parser.add_argument("--max-cores", type=int, default=default_max_cores(), help="Maximum VASP MPI ranks. Default 40 to reserve cores on a 48-core allocation for Codex/OS.")
     parser.add_argument("--min-cores", type=int, default=40, help="Minimum resolved core count required for actual execution.")
-    parser.add_argument("--require-allocation", action="store_true", help="Require NSLOTS/SLURM allocation markers or MESA_ALLOW_LOCAL_VASP=1.")
+    parser.add_argument(
+        "--require-allocation",
+        action="store_true",
+        default=True,
+        help=(
+            "Deprecated no-op kept for backward compatibility: an allocation "
+            "(NSLOTS/SLURM_JOB_ID/machinefile, or MESA_ALLOW_LOCAL_VASP=1) is "
+            "now always required and cannot be disabled from the CLI."
+        ),
+    )
     parser.add_argument("--executable", choices=["std", "gam", "ncl"], default="std", help="VASP executable family to run.")
     parser.add_argument("--launcher", choices=["auto", "mpirun-machinefile", "mpirun", "srun", "none"], default=os.environ.get("MESA_VASP_LAUNCHER", "auto"))
     parser.add_argument("--vasp-command", help="Full command template. Supports {cores}, {executable}, {job_dir}, {machinefile}.")

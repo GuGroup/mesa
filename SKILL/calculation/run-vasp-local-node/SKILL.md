@@ -35,6 +35,17 @@ automatically inside the job SGE placed there — nothing else needs to run on
 the node itself. For this local-runner path, use 40 VASP MPI ranks by default
 and reserve the remaining cores for Codex, shell, filesystem, and OS overhead.
 
+**Never run `run` or `watch` directly on the login node.** Actually launching
+VASP outside a real allocation is a shared-resource incident, not a minor
+mistake — it can degrade or take down the login node for every user on the
+cluster. This is enforced by the runner itself, not just by this instruction:
+`run`/`watch` unconditionally refuse to launch VASP (`state: blocked`, exit
+code 2) unless `NSLOTS`, `SLURM_JOB_ID`, or a machinefile is present, or the
+user has explicitly exported `MESA_ALLOW_LOCAL_VASP=1` for an approved local
+smoke test. There is no CLI flag that disables this check. `--dry-run` is the
+one exception — it never spawns VASP, so it is always safe to run from the
+login node to validate inputs.
+
 # Boundaries
 
 - Preserve `manage-vasp-jobs` for SGE-per-calculation `qsub` submission,
@@ -49,10 +60,12 @@ and reserve the remaining cores for Codex, shell, filesystem, and OS overhead.
 - `mark-ready`, `status`, `list`, and the one-time `qsub` submission of the
   allocation wrapper all run from the login node — that is the normal case,
   not an exception. Only the actual VASP execution (`run`/`watch` launching
-  `mpirun`) must happen inside a real allocation; do not launch `run`/`watch`
-  directly from the login node without `--require-allocation` detecting a real
-  allocation (`NSLOTS`/`SLURM_JOB_ID`) or, for an explicit local smoke test,
-  `MESA_ALLOW_LOCAL_VASP=1`.
+  `mpirun`) must happen inside a real allocation. Never invoke `run`/`watch`
+  (without `--dry-run`) from the login node; the runner refuses unconditionally
+  when no allocation (`NSLOTS`/`SLURM_JOB_ID`/machinefile) is detected and
+  `MESA_ALLOW_LOCAL_VASP=1` is not set — do not work around this by setting
+  that variable to get past a blocked run unless the user has explicitly asked
+  for a local smoke test.
 - Do not choose scientific VASP settings here. The runner only executes already
   prepared inputs.
 - Do not invent or hardcode local execution settings (core/rank counts,
@@ -155,20 +168,19 @@ python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
 
 # Single Directory (advanced)
 
-`run` launches VASP directly and requires an actual allocation
-(`--require-allocation` checks `NSLOTS`/`SLURM_JOB_ID`), so it cannot be typed
-interactively from the login node. Use it only when you need one-off,
-non-queue execution — e.g. inside a dedicated one-off `qsub` wrapper script
-(mirroring `start_48core_local_runner.sge.sh` but calling `run` on a single
-directory instead of `watch` on a queue root), not the reserve-then-mark-ready
-flow above:
+`run` launches VASP directly and, like `watch`, unconditionally refuses
+without a detected allocation (`NSLOTS`/`SLURM_JOB_ID`/machinefile) — so it
+cannot be typed interactively from the login node. Use it only when you need
+one-off, non-queue execution — e.g. inside a dedicated one-off `qsub` wrapper
+script (mirroring `start_48core_local_runner.sge.sh` but calling `run` on a
+single directory instead of `watch` on a queue root), not the
+reserve-then-mark-ready flow above:
 
 ```bash
 python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
   --min-cores 40 \
   --max-cores 40 \
-  --require-allocation \
   --executable std
 ```
 
@@ -181,7 +193,6 @@ python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
   run /path/to/prepared_vasp_dir \
   --min-cores 40 \
   --max-cores 40 \
-  --require-allocation \
   --vasp-command 'mpirun -machinefile {machinefile} -n {cores} {executable}'
 ```
 
