@@ -55,11 +55,10 @@ markers after execution.
 default for the local-node path (spin off, `vasp_gam`/Gamma-only KPOINTS
 `1 1 1`, ENCUT 350, PBE, EDIFF 5e-3, EDIFFG -0.08, POTIM 0.1, IVDW 12, NELM
 100, NSW 80, PREC Normal, ALGO Fast, LREAL Auto, NCORE 8 on the 40-rank
-allocation). The purpose of this project is demonstrating an agent-driven DFT
-workflow, not benchmark-grade accuracy — do not re-derive, tighten, or loosen
-these values on your own judgment. Use them as-is except for the two
-documented overlays below, and except when the user supplies their own
-parameter YAML (which always wins outright, per Calculation policy item 8).
+allocation). Do not re-derive, tighten, or loosen these values on your own
+judgment. Use them as-is except for the two documented overlays below, and
+except when the user supplies their own parameter YAML (which always wins
+outright, per Calculation policy item 8).
 
 - **Single-point analysis overlay** (`profile.local_node.static_analysis`):
   use for a post-relaxation static job that feeds a descriptor script (e.g.
@@ -188,8 +187,7 @@ screening mode:
   than 20 atoms; apply system-specific overrides; and write the final merged
   values explicitly into `vasp.parameters`. Always set `vasp.kpts: [1, 1, 1]`
   and `vasp.gamma: true`, and omit `kspacing`/`kgamma`. These are fixed
-  user-set defaults for agent-workflow demonstration, not a target for
-  independent re-tuning — do not tighten or loosen them beyond the documented
+  user-set defaults — do not tighten or loosen them beyond the documented
   overlays. If the user supplies their own parameter YAML, it overrides this
   profile entirely (see Calculation policy).
 

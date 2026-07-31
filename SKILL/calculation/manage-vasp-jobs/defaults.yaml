@@ -87,10 +87,9 @@ profile:
   # Local-node explicit profile. Use only for jobs that will run through
   # run-vasp-local-node (a Gamma-only vasp_gam local runner on a 40-rank
   # allocation), never for SGE `vasp-job submit`. This is a fixed, user-set
-  # default, not a scientifically re-derived one: purpose is agent-workflow
-  # demonstration, not benchmark-grade accuracy, so do not tighten it further
-  # on your own. If the user supplies their own YAML with these values, that
-  # YAML wins outright and this profile is not used to override it.
+  # default -- do not tighten or loosen it on your own. If the user supplies
+  # their own YAML with these values, that YAML wins outright and this
+  # profile is not used to override it.
   local_node:
     vasp:
       kpts: [1, 1, 1]      # vasp_gam is Gamma-only; never set a real mesh here
@@ -130,8 +129,8 @@ profile:
 
     # Exception overlay for small systems only: bulk unit cells or gas-phase
     # molecules with fewer than 20 atoms. Still Gamma-only/vasp_gam (kpoints
-    # unchanged) and still not benchmark-grade -- moderately tighter than the
-    # default, not maximally strict. Do not apply this overlay to slabs.
+    # unchanged); moderately tighter than the default, not maximally strict.
+    # Do not apply this overlay to slabs.
     small_system:
       common:
         prec: Accurate
