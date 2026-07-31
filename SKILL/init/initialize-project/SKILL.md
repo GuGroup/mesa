@@ -41,9 +41,12 @@ language.
 
 When the user invokes `initialize-project`, asks to initialize a MESA project,
 or wants to start/switch a MESA research project, check for an active
-`project/<project_name>/project_profile.md`. If no active project profile
-exists, interview for only the decisions that cannot be inferred from the
-repository or supplied artifacts.
+`project/<project_name>/project_profile.md`. Interview only when no valid
+profile exists yet or the user explicitly asks to create, switch, or update
+one.
+
+If `DEPENDENCY/.env` is missing, tell the user before finishing the profile
+and point to `initialize-mesa` for API-key setup; do not silently continue.
 
 Collect these decisions:
 
@@ -66,14 +69,8 @@ decisions.
 Keep the interview to exactly these three items. Do not ask about or infer
 anything beyond project identity, calculation policy, and user notes.
 
-Skip the interview only when one of these is true:
-
-- exactly one active project profile already exists, satisfies the Profile
-  Contract below, and the user did not ask to create, switch, or update
-  projects;
-- the user explicitly asked to defer project setup;
-- the user asked to repair repository setup before deciding the research
-  project.
+Skip the interview when the user explicitly defers project setup or asks to
+repair repository setup first.
 
 If the user has not provided a research prompt, paper, proposal, manuscript,
 or experimental data yet, ask for it. Do not report project
