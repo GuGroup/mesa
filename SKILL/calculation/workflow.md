@@ -20,15 +20,11 @@ Calculations must be authorized by explicit recipe artifacts.
 
 The active `project/<project_name>/project_profile.md` is the source of truth
 for calculation backend policy. Do not restate or override the active backend
-here. Before running calculation skills, read the project profile and apply its
-backend, submission, scheduler, artifact-generation, and acceptance rules.
+here. Before running calculation skills, read the project profile's backend and
+submission policy.
 
-Do not prepare VASP-compatible files by default. Prepare them only when the
-active policy allows VASP-related artifacts and a recipe, interoperability
-need, or user instruction specifically calls for them. In a UMA/MLIP-only
-project, use UMA skills for evidence-producing calculations and do not create
-VASP job folders unless the project policy explicitly permits input-only
-interoperability artifacts.
+Prepare VASP-compatible files only when the project profile's backend is
+`VASP`; otherwise use UMA skills and do not create VASP job folders.
 
 # Entry Requirements
 

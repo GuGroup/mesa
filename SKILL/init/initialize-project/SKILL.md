@@ -1,6 +1,6 @@
 ---
 name: initialize-project
-description: Interview for and create a MESA project profile after repository setup. Use when Codex or a user needs to start or switch a MESA research project, choose project_name, record source materials such as prompts/PDFs/proposals/manuscripts/numeric data, define the scientific objective, choose evidence level and calculation backend policy, set scheduler/submission/API-key expectations, or write/update a project profile. Treat start-research as an optional explicit next step, not an automatic continuation.
+description: Interview for and create a MESA project profile after repository setup. Use when Codex or a user needs to start or switch a MESA research project, choose project_name, record source materials such as prompts/PDFs/proposals/manuscripts/numeric data, choose the calculation backend and submission policy, record project-specific user instructions, or write/update a project profile. Treat start-research as an optional explicit next step, not an automatic continuation.
 ---
 
 For MESA project setup use, read `workflow.md` before applying this skill.
@@ -41,9 +41,12 @@ language.
 
 When the user invokes `initialize-project`, asks to initialize a MESA project,
 or wants to start/switch a MESA research project, check for an active
-`project/<project_name>/project_profile.md`. If no active project profile
-exists, interview for only the decisions that cannot be inferred from the
-repository or supplied artifacts.
+`project/<project_name>/project_profile.md`. Interview only when no valid
+profile exists yet or the user explicitly asks to create, switch, or update
+one.
+
+If `DEPENDENCY/.env` is missing, tell the user before finishing the profile
+and point to `initialize-mesa` for API-key setup; do not silently continue.
 
 Collect these decisions:
 
@@ -52,41 +55,25 @@ Collect these decisions:
   experimental-only papers, numeric tables, collaborator proposal, existing
   manuscript, reviewer comments, or instructions to repair gaps or weaknesses
   in prior work;
-- scientific claim or research objective, material family, catalyst domain,
-  and target reaction, inferred from the source material when possible;
-- evidence level: quick screening, UMA/MLIP test, DFT refinement, or
-  manuscript-proof package;
-- active backend policy: UMA/MLIP mode, VASP mode, or MLIP screening with VASP
-  refinement;
-- whether VASP execution/submission is allowed, dry-run only, or forbidden;
-- if VASP execution is allowed, the VASP execution mode: `sge-qsub` or
-  `local-node-runner`; do not leave this implicit;
-- calculation artifact policy: whether VASP-compatible input artifacts may be
-  prepared in non-VASP modes, whether backend cross-checks are exploratory or
-  evidence-producing, and which backend is authoritative for claims;
-- scheduler policy: local-only, qsub allowed, qsub forbidden, or
-  user-approval-required;
-- required runtimes: paper search, modeling, UMA, AdsorbDiff, VASP tooling,
-  manuscript/figure export;
-- API-key expectations and whether missing keys should block the run;
-- language policy: user interaction and QA may be multilingual, but all saved
-  project research artifacts must be English-only.
+- calculation backend: `UMA`/MLIP or `VASP`;
+- when the backend is `VASP`, the submission mode: SGE/qsub submission, or a
+  locally held compute node that runs jobs directly (`local-node-runner`);
+- any project-specific instructions or constraints the user states directly
+  (for example desired scope, preferred comparisons, explicit exclusions);
+  record these briefly and omit the field entirely when the user gave none.
 
 Use `request_user_input` when that tool is available in the active surface.
 Otherwise ask concise plain-text questions. Do not fabricate missing project
 decisions.
 
-Skip the interview only when one of these is true:
+Keep the interview to exactly these three items. Do not ask about or infer
+anything beyond project identity, calculation policy, and user notes.
 
-- exactly one active project profile already exists, satisfies the Profile
-  Contract below, and the user did not ask to create, switch, or update
-  projects;
-- the user explicitly asked to defer project setup;
-- the user asked to repair repository setup before deciding the research
-  project.
+Skip the interview when the user explicitly defers project setup or asks to
+repair repository setup first.
 
 If the user has not provided a research prompt, paper, proposal, manuscript,
-experimental data, or objective yet, ask for it. Do not report project
+or experimental data yet, ask for it. Do not report project
 initialization as complete until either
 `project/<project_name>/project_profile.md` exists or the user has explicitly
 declined/deferred project setup.
@@ -97,16 +84,10 @@ The project profile must record:
 
 - project name and canonical output directory;
 - source artifact paths or identifiers, or the plain research prompt;
-- user's research objective;
-- material family, catalyst domain, and target reaction when known;
-- evidence level;
-- required runtimes;
-- English-only saved-artifact policy;
-- concrete `calculation_policy` section containing backend,
-  artifact-generation, scheduler, submission, acceptance, and cross-check
-  rules.
-- if VASP is allowed, one explicit sentence naming `sge-qsub` or
-  `local-node-runner` as the execution mode.
+- any project-specific user instructions, stated briefly (omit this field when
+  the user gave none);
+- a concrete `calculation_policy` section containing only the backend
+  (`UMA` or `VASP`) and, when the backend is `VASP`, the submission mode.
 
 The selected project directory also owns any future `initialization/` artifacts
 for non-deterministic analyzer output, dependency handoff files, runtime plans,
@@ -115,15 +96,9 @@ been selected.
 
 Keep the calculation policy short but explicit. Examples:
 
-- `MLIP-only evidence workflow; use UMA/MLIP for calculations and do not create
-  or submit VASP jobs.`
-- `VASP-only evidence workflow; use VASP for calculations and do not use
-  UMA/MLIP outputs as evidence.`
-- `MLIP screening with VASP refinement; use MLIP outputs as exploratory screens
-  and VASP outputs as claim-supporting evidence.`
-- `VASP execution mode: sge-qsub; submit approved jobs with vasp-job.`
-- `VASP execution mode: local-node-runner; prepare inputs with vasp-job, run
-  one calculation at a time inside a 48-core allocation using 40 VASP ranks.`
+- `UMA/MLIP backend; do not create or submit VASP jobs.`
+- `VASP backend; submission mode: sge-submission.`
+- `VASP backend; submission mode: local-node-runner.`
 
 ## Boundaries
 
@@ -131,8 +106,7 @@ Keep the calculation policy short but explicit. Examples:
   backend policy, ask.
 - Do not treat repository setup as project setup. Use `initialize-mesa` for
   dependency checks, MCP config, skill symlink sync, and environment repair.
-- Do not start the research loop or invoke `start-research` automatically. Treat
-  `start-research` as an optional explicit next step after the profile is
-  complete.
+- Keep the project profile minimal: project identity/source references,
+  calculation policy, and user notes only.
 - Do not append a MESA scientific skill-call log entry for this setup-only
   skill unless it is invoked as part of a scientific workflow run.
