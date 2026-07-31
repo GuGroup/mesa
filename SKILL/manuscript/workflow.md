@@ -95,8 +95,7 @@ supported by the planned workflow and retains every normalized intent. It
 associates intents with explicit recipe roles and artifacts but does not analyze
 scientific results or use execution acceptance states to refuse a figure. A
 figure is blocked only when a matched calculation raises authoritative
-`missing_evidence_summary.json` or nonempty
-`missing_evidence_records.json`. Unmatched intents remain recorded with a
+`missing_evidence.json`. Unmatched intents remain recorded with a
 nonblocking note. The mapper must not infer unsupported experiments,
 unsupported descriptors, or project-specific figure concepts absent from the
 strategy procedures.

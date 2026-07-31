@@ -4,97 +4,75 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 from pathlib import Path
 from typing import Any
 
 
 ALLOWED_STATUS = {"excluded", "blocked", "unresolved"}
+TERMINAL_REPAIR_DECISIONS = {"no_repair", "escalate"}
 
 
 def main() -> int:
     args = parse_args()
     spec = json.loads(args.input.expanduser().read_text(encoding="utf-8"))
-    validate_spec(spec)
     root = args.project_root.expanduser().resolve() if args.project_root else Path.cwd().resolve()
-    outdir = args.outdir.expanduser().resolve()
-    outdir.mkdir(parents=True, exist_ok=True)
+    diagnosis_path, repair_decision_path = validate_spec(spec, root)
+    output = args.output.expanduser().resolve()
+    if output.name != "missing_evidence.json":
+        raise SystemExit("output filename must be missing_evidence.json")
+    if output.parent != diagnosis_path.parent:
+        raise SystemExit(
+            "missing_evidence.json must be beside the terminal diagnosis and repair decision"
+        )
 
-    records = flatten_records(spec)
-    summary = {
+    record = {
         "schema_version": 1,
         "strategy_id": spec.get("strategy_id"),
         "procedure_id": spec.get("procedure_id"),
+        "execution_unit_id": spec["execution_unit_id"],
+        "source_recipe": spec["source_recipe"],
+        "source_diagnosis": rel(diagnosis_path, root),
+        "source_repair_decision": rel(repair_decision_path, root),
         "status": spec["status"],
         "reason": spec["reason"],
         "not_substituted_with_proxy": True,
         "required_future_artifacts": spec.get("required_future_artifacts", []),
-        "record_count": len(records),
-        "records": records,
+        "requirements": spec["requirements"],
     }
 
-    summary_json = outdir / "missing_evidence_summary.json"
-    summary_md = outdir / "missing_evidence_summary.md"
-    records_json = outdir / "missing_evidence_records.json"
-    records_csv = outdir / "missing_evidence_records.csv"
-    manifest_json = outdir / "execution_manifest.json"
-
-    write_json(summary_json, summary)
-    summary_md.write_text(render_markdown(summary), encoding="utf-8")
-    write_json(records_json, {"schema_version": 1, "records": records})
-    write_csv(records_csv, records)
-    write_json(manifest_json, {
-        "schema_version": 1,
-        "source_recipe": spec["source_recipe"],
-        "source_procedure_id": spec["procedure_id"],
-        "skill_or_script_used": "record-missing-evidence",
-        "command": [
-            "python",
-            "scripts/record_missing_evidence.py",
-            "--input",
-            rel(args.input.expanduser().resolve(), root),
-            "--outdir",
-            rel(outdir, root),
-        ],
-        "input_artifacts": [rel(args.input.expanduser().resolve(), root)],
-        "output_artifacts": [
-            rel(summary_json, root),
-            rel(summary_md, root),
-            rel(records_json, root),
-            rel(records_csv, root),
-        ],
-        "validation_status": "unsupported",
-        "acceptance_state": spec["status"],
-        "caveats": [spec["reason"], "No proxy evidence was substituted."],
-    })
+    write_json(output, record)
 
     print(json.dumps({
         "status": spec["status"],
-        "record_count": len(records),
-        "outputs": rel(outdir, root),
+        "requirement_count": len(spec["requirements"]),
+        "output": rel(output, root),
     }, indent=2))
     return 0
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Write explicit missing-evidence records for unsupported recipe requirements.",
+        description="Write one canonical missing-evidence JSON after terminal E handling.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--outdir", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--project-root", type=Path, default=None)
     return parser.parse_args()
 
 
-def validate_spec(spec: dict[str, Any]) -> None:
+def validate_spec(spec: dict[str, Any], root: Path) -> tuple[Path, Path]:
+    if not isinstance(spec, dict):
+        raise SystemExit("input must be a JSON object")
     if spec.get("status") not in ALLOWED_STATUS:
         raise SystemExit(f"status must be one of {sorted(ALLOWED_STATUS)}")
     if not spec.get("reason"):
         raise SystemExit("reason is required")
     if not spec.get("procedure_id"):
         raise SystemExit("procedure_id is required")
+    if not spec.get("execution_unit_id"):
+        raise SystemExit("execution_unit_id is required")
     if not spec.get("source_recipe"):
         raise SystemExit("source_recipe is required")
     if spec.get("not_substituted_with_proxy") is not True:
@@ -103,83 +81,79 @@ def validate_spec(spec: dict[str, Any]) -> None:
     if not isinstance(requirements, list) or not requirements:
         raise SystemExit("requirements must be a non-empty list")
     for requirement in requirements:
+        if not isinstance(requirement, dict):
+            raise SystemExit("each requirement must be an object")
         if requirement.get("status") not in ALLOWED_STATUS:
             raise SystemExit("each requirement status must be excluded, blocked, or unresolved")
         if not requirement.get("missing_artifacts"):
             raise SystemExit("each requirement must list missing_artifacts")
 
+    diagnosis_path = required_artifact_path(spec, "source_diagnosis", root)
+    repair_decision_path = required_artifact_path(spec, "source_repair_decision", root)
+    diagnosis = read_json_object(diagnosis_path, "source_diagnosis")
+    repair_decision = read_json_object(repair_decision_path, "source_repair_decision")
+    execution_unit_id = spec["execution_unit_id"]
 
-def flatten_records(spec: dict[str, Any]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for requirement in spec["requirements"]:
-        targets = requirement.get("targets") or [None]
-        for target in targets:
-            rows.append({
-                "strategy_id": spec.get("strategy_id"),
-                "procedure_id": spec.get("procedure_id"),
-                "calculation_id": requirement.get("calculation_id"),
-                "label": requirement.get("label"),
-                "target": target,
-                "status": requirement["status"],
-                "missing_artifacts": "; ".join(str(x) for x in requirement.get("missing_artifacts", [])),
-                "required_future_artifacts": "; ".join(str(x) for x in spec.get("required_future_artifacts", [])),
-                "not_substituted_with_proxy": True,
-                "reason": requirement.get("reason") or spec["reason"],
-            })
-    return rows
-
-
-def render_markdown(summary: dict[str, Any]) -> str:
-    lines = [
-        "# Missing Evidence Summary",
-        "",
-        f"Strategy: `{summary.get('strategy_id')}`",
-        f"Procedure: `{summary.get('procedure_id')}`",
-        f"Status: `{summary['status']}`",
-        "",
-        summary["reason"],
-        "",
-        "No proxy evidence was substituted.",
-        "",
-        "Required future artifacts:",
-    ]
-    future = summary.get("required_future_artifacts") or []
-    if future:
-        lines.extend(f"- {item}" for item in future)
-    else:
-        lines.append("- Not specified")
-    lines.extend(["", "Records:", ""])
-    for record in summary["records"]:
-        target = f" / {record['target']}" if record.get("target") else ""
-        lines.append(
-            f"- `{record.get('calculation_id')}{target}`: `{record['status']}`; "
-            f"missing `{record['missing_artifacts']}`"
+    if diagnosis_path.parent != repair_decision_path.parent:
+        raise SystemExit("source_diagnosis and source_repair_decision must be in the same E attempt")
+    if diagnosis.get("execution_unit_id") != execution_unit_id:
+        raise SystemExit("source_diagnosis execution_unit_id does not match the spec")
+    if diagnosis.get("diagnosis_status") not in {"complete", "insufficient_evidence"}:
+        raise SystemExit(
+            "source_diagnosis diagnosis_status must be complete or insufficient_evidence"
         )
-    lines.append("")
-    return "\n".join(lines)
+    if diagnosis.get("verdict") == "pass":
+        raise SystemExit("source_diagnosis verdict pass cannot support a missing-evidence record")
+    if diagnosis.get("verdict") not in {"warn", "fail", "unknown"}:
+        raise SystemExit("source_diagnosis verdict must be warn, fail, or unknown")
+
+    if repair_decision.get("execution_unit_id") != execution_unit_id:
+        raise SystemExit("source_repair_decision execution_unit_id does not match the spec")
+    if repair_decision.get("decision") not in TERMINAL_REPAIR_DECISIONS:
+        raise SystemExit(
+            "source_repair_decision must be terminal: no_repair or escalate"
+        )
+    linked_diagnosis = repair_decision.get("source_diagnosis")
+    if not linked_diagnosis:
+        raise SystemExit("source_repair_decision must identify source_diagnosis")
+    if not reference_matches(linked_diagnosis, diagnosis_path, root, repair_decision_path.parent):
+        raise SystemExit("source_repair_decision does not reference source_diagnosis")
+
+    return diagnosis_path, repair_decision_path
+
+
+def required_artifact_path(spec: dict[str, Any], key: str, root: Path) -> Path:
+    value = spec.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(f"{key} is required")
+    path = Path(value).expanduser()
+    path = path if path.is_absolute() else root / path
+    path = path.resolve()
+    if not path.is_file():
+        raise SystemExit(f"{key} does not exist: {path}")
+    return path
+
+
+def read_json_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"cannot read {label}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit(f"{label} must contain a JSON object")
+    return payload
+
+
+def reference_matches(value: Any, expected: Path, root: Path, local_dir: Path) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    path = Path(value).expanduser()
+    candidates = [path] if path.is_absolute() else [root / path, local_dir / path]
+    return any(candidate.resolve() == expected.resolve() for candidate in candidates)
 
 
 def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
-def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
-    fields = [
-        "strategy_id",
-        "procedure_id",
-        "calculation_id",
-        "label",
-        "target",
-        "status",
-        "missing_artifacts",
-        "required_future_artifacts",
-        "not_substituted_with_proxy",
-        "reason",
-    ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def rel(path: Path, root: Path) -> str:

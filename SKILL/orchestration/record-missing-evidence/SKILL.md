@@ -1,6 +1,6 @@
 ---
 name: record-missing-evidence
-description: Record missing required scientific artifacts as explicit unresolved, excluded, or blocked evidence records without proxy substitution. Use when a workflow recipe requests charge density, Bader charge, PDOS/DOS, wavefunction/projector files, kinetic barriers, solvent data, or any other artifact that is absent, and Codex needs to create auditable JSON/CSV/Markdown summaries before updating results or manuscripts.
+description: Record terminally missing scientific artifacts as unresolved, excluded, or blocked evidence without proxy substitution. Use only after the E-level manifest-diagnosis-repair loop ends with a non-pass diagnosis and a no_repair or escalate decision.
 ---
 
 For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying this skill.
@@ -9,9 +9,10 @@ For MESA end-to-end use, read `SKILL/orchestration/workflow.md` before applying 
 
 ## Scope
 
-Use this skill when a required procedure or calculation cannot be completed
-because the necessary artifact does not exist. The goal is to make the evidence
-gap explicit, not to work around it with a weak proxy.
+Use this skill after E-level execution has been manifested, diagnosed, and
+repair handling has terminated, but a required artifact still does not exist.
+The goal is to make the final evidence gap explicit, not to diagnose execution
+or work around the gap with a weak proxy.
 
 Typical cases:
 
@@ -25,12 +26,17 @@ Typical cases:
 
 ## Quick Start
 
-Create a missing-evidence spec, then run:
+Require the terminal E attempt's:
+
+- `execution_diagnosis.json` with verdict `warn`, `fail`, or `unknown`;
+- `repair_decision.json` with decision `no_repair` or `escalate`.
+
+Reference both artifacts in a temporary missing-evidence spec, then run:
 
 ```bash
 python3 SKILL/orchestration/record-missing-evidence/scripts/record_missing_evidence.py \
-  --input project/<project_name>/missing_evidence_spec.json \
-  --outdir project/<project_name>/strategy_execution/S1_explicit_recipe/P006_example/calculations/C001_example/execution \
+  --input /tmp/missing_evidence_spec.json \
+  --output project/<project_name>/strategy_execution/S1_explicit_recipe/P006_example/calculations/C001_example/execution/units/E009-R2/missing_evidence.json \
   --project-root .
 ```
 
@@ -43,20 +49,25 @@ For the input schema, read `references/input-schema.md`.
 - Set `not_substituted_with_proxy` to `true`.
 - List the exact missing artifacts and the future artifacts needed to resolve
   the gap.
+- Record evidence only after the E-level manifest-diagnosis-repair loop
+  terminates.
+- Write the records in the terminal E attempt directory beside the diagnosis
+  and repair decision.
+- Keep the input spec temporary; do not preserve it as a second execution
+  artifact.
 - Carry the unresolved record into result artifacts and manuscripts.
+- Never create, replace, or update `execution_manifest.json`; manifests remain
+  the responsibility of `write-execution-manifest`.
 - Do not create geometry-only, energy-only, or text-only substitutes for charge,
   DOS, barrier, or solvation evidence.
 
 ## Outputs
 
-The helper script writes:
+The helper script writes exactly one artifact:
 
 | Artifact | Purpose |
 | --- | --- |
-| `missing_evidence_summary.json` | Machine-readable top-level unresolved/excluded evidence summary. |
-| `missing_evidence_summary.md` | Human-readable summary for result artifacts or manuscripts. |
-| `missing_evidence_records.csv` / `.json` | Flat table of missing requirements by calculation/procedure/target. |
-| `execution_manifest.json` | Minimal manifest documenting command, inputs, outputs, status, and caveats. |
+| `missing_evidence.json` | Canonical machine-readable terminal evidence-gap record, including provenance and requirements. |
 
 ## Claim Policy
 

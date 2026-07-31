@@ -57,8 +57,9 @@ Resolve the source bulk in this order:
 3. create the bulk unit cell directly when no import/register source exists and
    the recipe specifies enough composition, lattice, prototype, Wyckoff/site, or
    structure-generation instructions;
-4. stop and return to recipe generation or missing-evidence recording when the
-   recipe lacks enough information to import, register, or create the bulk.
+4. stop when the recipe lacks enough information to import, register, or create
+   the bulk; record and diagnose the failed E attempt before any terminal
+   missing-evidence record.
 
 Bulk optimization and clean slab optimization belong to the calculation domain
 and inherit the active backend policy from
@@ -78,9 +79,10 @@ path, not the only valid future path.
 
 If the recipe or execution plan does not authorize a required predecessor, or if
 its accepted artifact and provenance are missing, stop before the dependent slab
-build or adsorbate placement. Return to explicit recipe generation, execution
-planning, or missing-evidence recording. Do not edit generated recipe status
-files.
+build or adsorbate placement. Return to explicit recipe generation or execution
+planning when appropriate; otherwise record and diagnose the failed E attempt
+before any terminal missing-evidence record. Do not edit generated recipe
+status files.
 
 # Model Types
 
@@ -119,7 +121,8 @@ project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
 Multi-consumer units use the plan-assigned
 `<strategy_id>_explicit_recipe/shared_execution/E###/` directory. Each
 consumer's recipe-local `execution_manifest.json` must link the exact subset
-used.
+used. Each E attempt directory must also contain its own
+`execution_manifest.json`.
 
 # Model Metadata
 

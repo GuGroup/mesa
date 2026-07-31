@@ -17,7 +17,7 @@ from typing import Any
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 VALID_LEVELS = {"must_have", "useful", "supplementary"}
-MISSING_NAMES = ("missing_evidence_summary.json", "missing_evidence_records.json")
+MISSING_NAMES = ("missing_evidence.json",)
 MISSING_STATES = {"blocked", "excluded", "unresolved"}
 STRUCTURE_EXTS = {".vasp", ".cif", ".xyz", ".extxyz", ".traj", ".poscar", ".contcar"}
 EXT_PRIORITY = {".png": 0, ".svg": 1, ".pdf": 2, ".json": 3, ".csv": 4, ".md": 5}
@@ -324,27 +324,37 @@ def raised_missing_evidence(entry: dict[str, Any]) -> list[dict[str, Any]]:
         payload = read_json_or_python(path)
         if not isinstance(payload, dict):
             continue
-        records = payload.get("records") if isinstance(payload.get("records"), list) else []
+        requirements = (
+            payload.get("requirements")
+            if isinstance(payload.get("requirements"), list)
+            else []
+        )
         state = str(payload.get("status", "")).lower()
-        raised = state in MISSING_STATES or bool(records) or int(payload.get("record_count") or 0) > 0
+        raised = state in MISSING_STATES or bool(requirements)
         if not raised:
             continue
-        reasons = unique([str(payload.get("reason", ""))] + [str(record.get("reason", "")) for record in records if isinstance(record, dict)])
+        reasons = unique(
+            [str(payload.get("reason", ""))]
+            + [
+                str(requirement.get("reason", ""))
+                for requirement in requirements
+                if isinstance(requirement, dict)
+            ]
+        )
         missing = unique([
-            str(record.get("missing_artifacts", ""))
-            for record in records
-            if isinstance(record, dict) and record.get("missing_artifacts")
+            str(artifact)
+            for requirement in requirements
+            if isinstance(requirement, dict)
+            for artifact in as_list(requirement.get("missing_artifacts"))
         ])
         record = {
             "calculation": entry["calculation_ref"],
             "source": str(path),
             "reason": next((reason for reason in reasons if reason), "Required evidence is missing."),
             "missing_artifacts": missing,
-            "record_count": int(payload.get("record_count") or len(records)),
+            "record_count": len(requirements),
         }
-        previous = by_folder.get(path.parent)
-        if previous is None or path.name == "missing_evidence_summary.json":
-            by_folder[path.parent] = record
+        by_folder[path.parent] = record
     return list(by_folder.values())
 
 
@@ -419,7 +429,7 @@ def build_mapping(strategy: dict[str, Any], index: dict[str, Any], recipe_root: 
                 "quantities": quantities(route, matched),
                 "basis": unique([f"{entry['procedure_id']}: {' '.join(entry['procedure_text'].split())[:280]}" for entry in matched])[:3],
             },
-            "caveats": unique([str(item) for entry in matched for item in as_list(entry["manifest"].get("caveats"))])[:8],
+            "caveats": [],
             "missing_evidence": missing,
             "blockers": blockers,
             "notes": notes,
