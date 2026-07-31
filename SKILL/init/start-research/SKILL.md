@@ -58,7 +58,7 @@ Before executing research steps:
    If the goal tools are unavailable, report that no Codex goal will be managed
    in this surface and continue only if the requested workflow does not depend on
    goal-managed autonomous continuation.
-5. Run the relevant readiness checks for the profile's required runtimes:
+5. Run baseline readiness checks:
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --skills
@@ -73,9 +73,14 @@ asks for setup changes.
 ## Optional Goal Objective Template
 
 When the user explicitly requests goal setup and `create_goal` is available, do
-not invent a broad prompt. Use one concrete objective derived from
-`project_profile.md`. The goal should satisfy the user's research objective by
-producing a manuscript DOCX:
+not invent a broad prompt. `project_profile.md` records project identity, the
+source package, and the calculation policy only; it does not record the
+scientific objective, material family, catalyst domain, or target reaction.
+Build one concrete objective from the profile's source package plus the
+objective, material family, catalyst domain, and target reaction established
+during Source Package Handling below, asking the user directly for any of
+these that are still unresolved. The goal should satisfy the user's research
+objective by producing a manuscript DOCX:
 
 ```text
 Complete the MESA research workflow for project/<project_name> and write a
@@ -88,17 +93,17 @@ project/<project_name>, assemble the accepted evidence into a manuscript, and
 produce the final DOCX under project/<project_name>/manuscript/.
 ```
 
-If any template field is missing, do not create the goal. Ask for only the
-missing project-profile decision or return to `initialize-project`.
+If any template field is missing, do not create the goal. Ask the user
+directly for the missing scientific field (objective, material family,
+catalyst domain, target reaction, evidence level); return to
+`initialize-project` only when the missing field is project identity or the
+calculation policy itself.
 
 Keep `<calculation_policy_sentence>` short but explicit. Examples:
 
-- `MLIP-only evidence workflow; use UMA/MLIP for calculations and do not create
-  or submit VASP jobs.`
-- `VASP-only evidence workflow; use VASP for calculations and do not use UMA/MLIP
-  outputs as evidence.`
-- `MLIP screening with VASP refinement; use MLIP outputs as exploratory screens
-  and VASP outputs as claim-supporting evidence.`
+- `UMA/MLIP backend; do not create or submit VASP jobs.`
+- `VASP backend; submission mode: sge-submission.`
+- `VASP backend; submission mode: local-node-runner.`
 
 ## Source Package Handling
 

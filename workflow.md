@@ -124,11 +124,10 @@ backend, project name, test mode, or scheduler policy. The active
 `project/<project_name>/project_profile.md` is the single source of truth for
 project-specific calculation policy.
 
-Before any calculation-domain step, read the active project profile and apply
-its backend, artifact-generation, scheduler, submission, acceptance, and
-cross-check rules. If the profile is missing or ambiguous, stop and return to
-`initialize-project` or `start-research` instead of assuming UMA, VASP, or a test
-policy.
+Before any calculation-domain step, read the active project profile's backend
+and submission policy. If the profile is missing or ambiguous, stop and return
+to `initialize-project` or `start-research` instead of assuming UMA, VASP, or a
+test policy.
 
 # Per-Strategy Execution Loop
 
