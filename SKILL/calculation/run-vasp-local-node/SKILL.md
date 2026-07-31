@@ -20,11 +20,20 @@ prepared input files into the calculation's assigned execution directory
 `status` command against that project-local copy — not the raw `remote_dir`
 and not an ad hoc path outside the project.
 
-This skill is the non-SGE execution layer. It assumes the user has already
-entered or reserved a compute node, commonly by submitting one long-lived
-48-core allocation job, and then runs VASP directly inside that allocation.
-For this local-runner path, use 40 VASP MPI ranks by default and reserve the
-remaining cores for Codex, shell, filesystem, and OS overhead.
+This skill is the non-SGE execution layer, and every command in it is typed
+from the login node — never assume or instruct an interactive `qsub -I`
+session or a direct `ssh` into a compute node; neither is required. A compute
+node is reserved exactly once, non-interactively, by `qsub`-submitting the
+long-lived allocation wrapper below (see "Reserve a node"); that submitted
+job runs `watch` and stays alive on the node it was scheduled to, polling a
+queue directory. From then on, everything you do — `vasp-job prepare`,
+copying inputs into place, `mark-ready`, `status`, `list` — is plain
+filesystem I/O against that same queue directory over the shared filesystem,
+run from the login node. Only the actual `mpirun`/VASP process launched by
+`run`/`watch` executes on the reserved node, and that already happens
+automatically inside the job SGE placed there — nothing else needs to run on
+the node itself. For this local-runner path, use 40 VASP MPI ranks by default
+and reserve the remaining cores for Codex, shell, filesystem, and OS overhead.
 
 # Boundaries
 
@@ -37,8 +46,13 @@ remaining cores for Codex, shell, filesystem, and OS overhead.
 - Run exactly one VASP calculation at a time. Do not start multiple `run` or
   `watch` processes and do not parallelize independent VASP folders inside one
   allocation.
-- Do not run this from a login node unless the user explicitly confirms a local
-  test or provides `MESA_ALLOW_LOCAL_VASP=1`.
+- `mark-ready`, `status`, `list`, and the one-time `qsub` submission of the
+  allocation wrapper all run from the login node — that is the normal case,
+  not an exception. Only the actual VASP execution (`run`/`watch` launching
+  `mpirun`) must happen inside a real allocation; do not launch `run`/`watch`
+  directly from the login node without `--require-allocation` detecting a real
+  allocation (`NSLOTS`/`SLURM_JOB_ID`) or, for an explicit local smoke test,
+  `MESA_ALLOW_LOCAL_VASP=1`.
 - Do not choose scientific VASP settings here. The runner only executes already
   prepared inputs.
 - Do not invent or hardcode local execution settings (core/rank counts,
@@ -86,9 +100,68 @@ The runner defaults to `vasp_std` for `--executable std` and `vasp_gam` for
 `vasp/6.3.2-vtst-vaspsol-beef-intel` by default before invoking the runner;
 set `MESA_VASP_MODULE` only when the site module differs.
 
-# Single Directory
+# Reserve a Node
 
-Run one prepared directory from inside an allocated 48-core node:
+This is the standard entry point, and it is a single `qsub` batch submission
+from the login node — not an interactive session:
+
+```bash
+qsub -v MESA_VASP_LOCAL_QUEUE_DIR=/path/to/local_queue_root \
+  SKILL/calculation/run-vasp-local-node/scripts/start_48core_local_runner.sge.sh
+```
+
+SGE schedules this job onto one 48-core node and, once there, it runs `watch`
+on `MESA_VASP_LOCAL_QUEUE_DIR` and stays alive — it does not exit after one
+calculation. That one node is now reserved for as long as this job keeps
+running. Everything after this point (below) happens from the login node
+against `MESA_VASP_LOCAL_QUEUE_DIR` over the shared filesystem; nothing else
+needs to run on the node. Edit a copy of the script if the cluster queue,
+parallel environment, module, or VASP command differs. Cancel the reservation
+with the cluster's normal job-cancel command (e.g. `qdel <job_id>`) when no
+more calculations are expected.
+
+# Local Queue
+
+From the login node, mark each prepared directory as ready once its inputs
+are in place under the project execution directory:
+
+```bash
+python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+  mark-ready /path/to/prepared_vasp_dir
+```
+
+The `watch` job reserved above discovers directories containing
+`.mesa_vasp_local_ready` under the same queue root, runs them one at a time,
+skips completed jobs, and sleeps when no ready job exists. This is
+intentionally serial: one prepared VASP folder consumes the 40-rank VASP
+runner, then the next folder starts only after the previous one exits. Keep
+`mark-ready`-ing new directories under the same queue root for as long as the
+reservation is alive; you do not need to resubmit or re-enter anything.
+
+Check status (login node, reads job-directory metadata, no allocation
+needed):
+
+```bash
+python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+  status /path/to/prepared_vasp_dir
+```
+
+List local queue candidates (login node):
+
+```bash
+python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
+  list /path/to/local_queue_root
+```
+
+# Single Directory (advanced)
+
+`run` launches VASP directly and requires an actual allocation
+(`--require-allocation` checks `NSLOTS`/`SLURM_JOB_ID`), so it cannot be typed
+interactively from the login node. Use it only when you need one-off,
+non-queue execution — e.g. inside a dedicated one-off `qsub` wrapper script
+(mirroring `start_48core_local_runner.sge.sh` but calling `run` on a single
+directory instead of `watch` on a queue root), not the reserve-then-mark-ready
+flow above:
 
 ```bash
 python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
@@ -100,18 +173,8 @@ python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
 ```
 
 For Gamma-only jobs where the prepared inputs intentionally use the Gamma VASP
-binary:
-
-```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
-  run /path/to/prepared_vasp_dir \
-  --min-cores 40 \
-  --max-cores 40 \
-  --require-allocation \
-  --executable gam
-```
-
-Use a custom site launcher when the cluster requires it:
+binary, pass `--executable gam` instead. Use a custom site launcher when the
+cluster requires it:
 
 ```bash
 python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
@@ -125,61 +188,6 @@ python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
 Placeholders supported by `--vasp-command` are `{cores}`, `{executable}`,
 `{job_dir}`, and `{machinefile}`. Environment variables in the template are
 expanded before execution.
-
-# Local Queue
-
-For a long-lived allocation, mark prepared directories as ready:
-
-```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
-  mark-ready /path/to/prepared_vasp_dir
-```
-
-Then drain all ready directories under a queue root:
-
-```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
-  watch /path/to/local_queue_root \
-  --min-cores 40 \
-  --max-cores 40 \
-  --require-allocation \
-  --executable std
-```
-
-`watch` discovers directories containing `.mesa_vasp_local_ready`, runs them
-one at a time, skips completed jobs, and sleeps when no ready job exists. This
-is intentionally serial: one prepared VASP folder consumes the 40-rank VASP
-runner, then the next folder starts only after the previous command exits. Use
-`--once` for a finite pass.
-
-Check status:
-
-```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
-  status /path/to/prepared_vasp_dir
-```
-
-List local queue candidates:
-
-```bash
-python SKILL/calculation/run-vasp-local-node/scripts/vasp_local_node_runner.py \
-  list /path/to/local_queue_root
-```
-
-# Optional SGE Allocation Wrapper
-
-The helper below is an allocation wrapper, not a per-calculation submitter:
-
-```bash
-qsub -v MESA_VASP_LOCAL_QUEUE_DIR=/path/to/local_queue_root \
-  SKILL/calculation/run-vasp-local-node/scripts/start_48core_local_runner.sge.sh
-```
-
-It requests one 48-core SGE allocation and runs `watch` inside that allocation.
-Inside that 48-core allocation, the runner uses only 40 VASP MPI ranks and runs
-one calculation at a time. Edit a copy if the cluster queue, parallel
-environment, module, or VASP command differs. Keep the actual VASP directories
-prepared before marking them ready.
 
 # Validation
 
