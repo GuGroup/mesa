@@ -45,16 +45,6 @@ scientific research loop. Use `start-research` only as an optional explicit
 startup gate for guided/autonomous execution; Codex goal setup and full-access
 session checks are helpful automation controls, not mandatory defaults.
 
-# Skill authoring hygiene
-
-A `SKILL.md` frontmatter `description:` is for routing/discovery only. When
-editing or adding a `SKILL.md`, never encode concrete execution settings
-(core/rank counts, node/host names, launcher commands) or calculation
-parameters (ENCUT, EDIFF, k-points, etc.) into `description:`. Keep those
-values in the skill body and in one canonical parameter file (e.g.
-`manage-vasp-jobs/defaults.yaml` for VASP), referenced by name from other
-skills/workflow files instead of restated.
-
 # Skill-first operating rules
 
 You are operating inside a skills repository.
