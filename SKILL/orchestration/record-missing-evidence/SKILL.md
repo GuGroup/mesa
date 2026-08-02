@@ -56,8 +56,8 @@ For the input schema, read `references/input-schema.md`.
 - Keep the input spec temporary; do not preserve it as a second execution
   artifact.
 - Carry the unresolved record into result artifacts and manuscripts.
-- Never create, replace, or update `execution_manifest.json`; manifests remain
-  the responsibility of `write-execution-manifest`.
+- Never create, replace, or update `execution_manifest.json`; E-level manifests
+  remain the responsibility of `manage-execution-unit`.
 - Do not create geometry-only, energy-only, or text-only substitutes for charge,
   DOS, barrier, or solvation evidence.
 

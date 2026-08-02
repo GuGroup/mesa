@@ -5,19 +5,17 @@ explicit recipes, planning execution from recipes, recording execution
 provenance, diagnosing and repairing recipe-local execution, and recording
 missing evidence.
 
-Orchestration does not decide scientific sufficiency and does not execute
-calculations.
+Orchestration does not define scientific calculations or decide scientific
+sufficiency. Domain skills execute the plan-assigned work.
 
 # Skills
 
 - `generate-explicit-calculation-recipe`
 - `plan-recipe-execution`
-- `write-execution-manifest`
-- `diagnose-execution`
-- `repair-execution`
-- `write-calculation-manifest`
-- `diagnose-procedure`
-- `repair-procedure`
+- `delegate-strategy-execution`
+- `manage-execution-unit`
+- `manage-calculation`
+- `manage-procedure`
 - `record-missing-evidence`
 
 # Generate Explicit Calculation Recipes
@@ -85,6 +83,22 @@ status. The later executor selects tools for each unit but must use the unit's
 assigned `execution_dir`. Do not execute recipe-backed work before this plan
 exists.
 
+# Delegate Planned Strategy Execution
+
+After `execution_plan.json` exists, use `delegate-strategy-execution`. The
+parent spawns one fresh sub-agent for the active strategy-execution attempt,
+passes only the project, profile, strategy, recipe-root, plan, and explicit
+execution-constraint paths, and does not perform the delegated work itself.
+
+The worker follows the execution graph, loads domain workflows only for the
+active E unit, and applies `manage-execution-unit`, `record-missing-evidence`,
+`manage-calculation`, and `manage-procedure`. Existing recipe-local artifacts
+are the checkpoint; do not create a wrapper state file.
+
+The worker stops before S-level scientific evaluation. The parent owns user
+interaction, returned-path validation, sequential continuation after
+`resume_required`, and all strategy-outcome decisions.
+
 Codex may perform minor repairs during execution using its own judgment.
 
 If a required calculation cannot be executed under current project policy or
@@ -100,39 +114,35 @@ path:
   gap;
 - execute only the user-approved subset and label the result as bounded.
 
-# Write Execution And Calculation Manifests
+# Manage Execution Units And Calculations
 
-Use `write-execution-manifest` after each E-level execution completes or fails.
-Write an attempt manifest inside its `E###/`, `E###-R1/`, or `E###-R2/`
-directory.
-
-Use `diagnose-execution` and, when selected, `repair-execution` until E-level
-handling terminates.
+Use `manage-execution-unit` after each E-level execution completes or fails.
+It writes the factual attempt manifest, diagnoses that attempt, and performs up
+to two selected execution-only repairs inside `E###/`, `E###-R1/`, and
+`E###-R2/` until E-level handling terminates.
 
 If a terminal E diagnosis still identifies absent required artifacts, use
 `record-missing-evidence` before C-level aggregation. Then use
-`write-calculation-manifest` to write
+`manage-calculation` to write
 `C###/execution/execution_manifest.json`. This manifest factually aggregates
 the terminal E attempts and artifacts used by that C calculation.
 
 Do not place diagnosis, evidence acceptance, caveats, exclusions, or repair
 decisions in either manifest.
 
-# Diagnose Procedure Execution
+# Manage Procedure Execution
 
-After every C-level manifest for a P procedure exists, use
-`diagnose-procedure`. Write
-`P###/procedure_diagnosis.json` as a grouped-execution handoff for strategy
-diagnosis.
+After every C-level manifest for a P procedure exists, use `manage-procedure`.
+It writes `P###/procedure_diagnosis.json` as a grouped-execution handoff for
+strategy diagnosis.
 
 Evaluate procedure coverage, usable outputs, and remaining execution gaps only.
 Do not judge scientific claims, strategy sufficiency, or the next strategy.
 
-When P-level execution gaps should be repaired, use
-`repair-procedure`. Store numbered repair records directly under `P###/` using
-the `-R1` and `-R2` suffixes. After each repair, regenerate affected lower-level
-manifests and diagnose the procedure again. Escalate after an unresolved
-`-R2`.
+When P-level execution gaps should be repaired, the same skill stores numbered
+repair records directly under `P###/` using the `-R1` and `-R2` suffixes. After
+each repair, regenerate affected lower-level manifests and diagnose the
+procedure again. Escalate after an unresolved `-R2`.
 
 # Record Missing Evidence
 

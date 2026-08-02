@@ -1,17 +1,19 @@
 ---
-name: write-calculation-manifest
+name: manage-calculation
 description: >-
-  Write a factual C-level execution_manifest.json that aggregates the terminal
-  E attempts used by one recipe-backed calculation. Use after E-level
-  diagnosis and repair have terminated for a C recipe, when Codex must link
-  execution sources, exact artifacts, optional assembly provenance, and
-  factual output status without diagnosis or repair.
+  Manage one recipe-backed C calculation by writing its factual
+  execution_manifest.json from terminal E attempts. Use after E-level diagnosis
+  and repair terminate for the C recipe and before P-level management, when
+  Codex must link execution sources, exact artifacts, optional assembly
+  provenance, and output status without adding C-level diagnosis or repair.
 ---
+
+# Manage Calculation
 
 For MESA end-to-end work, read `workflow.md` and
 `SKILL/orchestration/workflow.md` first.
 
-# Write Calculation Manifest
+## Required Inputs
 
 Require:
 
@@ -25,6 +27,8 @@ Require:
 
 Follow the E repair chain without reinterpreting its diagnosis. Do not guess a
 terminal attempt when the records are ambiguous.
+
+## Factual Manifest
 
 Write:
 
@@ -49,6 +53,8 @@ Record only:
 Keep `execution_sources` as a list even when the C recipe uses one E unit. List
 exact paths. Use `completed` only when the recorded C outputs were produced;
 otherwise use `failed`.
+
+## Boundary
 
 Do not copy E settings, commands, findings, or repair reasoning into the C
 manifest. Do not diagnose, repair, accept, exclude, or judge scientific
