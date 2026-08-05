@@ -67,7 +67,7 @@ submit_templates:
 Notes:
 
 - `vasp_pp_path` is mapped to `VASP_PP_PATH` only while `vasp-ase` writes inputs.
-- `queue_status_command` should print node names in the `n31` style used by the auto preset selector. It may print bare node names or include remaining/free-slot hints such as `n31 remaining=0`.
+- `queue_status_command` should print node names in the `n31` style used by the auto preset selector. A bare node row means available; a detailed row is available only when it includes an explicit remaining/free-slot hint such as `n31 remaining=8`. Ordinary `qq` job rows are treated as occupied, and their final slot count is not interpreted as free capacity.
 - `queue.preset: auto` chooses 64-core or 48-core from node availability. If no node is currently free, it defaults to a 48-core preset so SGE can queue the job instead of aborting before `qsub`. It chooses the Gamma-only VASP executable only for explicit `vasp.kpts: [1, 1, 1]` plus `vasp.gamma: true`; ordinary `kspacing` jobs use `vasp_std`.
 - `presetg018std` / `presetg018gam` pin the job to node `g01` (`a6000.q` queue, 8 MPI slots), and `presetg01std` / `presetg01gam` use 16 MPI slots. Use 8-slot presets for lightweight tests when g01 already has load; these are never chosen by `auto` — set them explicitly in `queue.preset`.
 - g01 presets are sequentially guarded by `vasp-job submit`: before `qsub`, the CLI locks the configured project root and refuses submission when another indexed `presetg01std` or `presetg01gam` job is still queued/running. Submit the next g01 job only after `vasp-job status <job_uid>` reports `finished` or `failed`.

@@ -14,9 +14,6 @@ def remaining_capacity_hint(text: str) -> int | None:
     labelled_counts = [int(value) for value in CAPACITY_HINT_RE.findall(text)]
     if labelled_counts:
         return max(labelled_counts)
-    plain_counts = [int(value) for value in re.findall(r"\b\d+\b", text)]
-    if plain_counts:
-        return plain_counts[-1]
     return None
 
 
@@ -33,7 +30,15 @@ def parse_available_qq_nodes(output: str, config: dict[str, Any]) -> dict[int, l
         if not match:
             continue
         node_number = int(match.group(1))
-        capacity = remaining_capacity_hint(match.group(2))
+        node_details = match.group(2).strip()
+        capacity = remaining_capacity_hint(node_details)
+        # The real qq table lists occupied nodes as job rows whose final
+        # unlabelled number is the slot count (for example, 64), not free
+        # capacity.  Treat non-empty, unlabelled rows as occupied rather than
+        # guessing from arbitrary numbers.  A free node is either a bare node
+        # row or has an explicit free/remaining-style capacity hint.
+        if node_details and capacity is None:
+            continue
         if capacity is not None and capacity <= 0:
             continue
         node_name = f"n{node_number:02d}"
