@@ -18,7 +18,7 @@ Do not generate a strategy until all of the following conditions are satisfied:
    - `domain_papers`
    - `legacy_papers`
 
-2. Verify that each directory contains one or more PDF files:
+2. Verify that each directory contains one or more PDF files and its extractions:
    - `literature/strategy_papers`
    - `literature/domain_papers`
    - `literature/legacy_papers`
@@ -61,7 +61,7 @@ The generator must:
   benchmark constraints, material identity, or measured targets to explain
   computationally.
 - Use paper extraction as the source of mechanisms, design principles, computational methods, descriptors, and inherited references.
-- Generate only computational chemistry strategies, such as DFT slab/adsorbate modeling, adsorption/free-energy analysis, transition-state searches, HEA site sampling, AIMD/solvation/potential corrections, microkinetics, descriptor screening, stability/reconstruction calculations, and computational uncertainty checks.
+- Generate only computational chemistry strategies, such as free-energy analysis.
 - Do not generate synthesis, characterization, electrochemical testing, isotope labeling, cell design, product quantification, or other wet-lab strategies.
 - Produce multiple strategies, each shaped like a `paper_decomposition` branch:
 
