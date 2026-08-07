@@ -25,10 +25,27 @@ STOP_HEADING_RE = re.compile(
     r"^\s*(supporting information|supplementary materials?|appendix|acknowledg(?:e)?ments?)\s*$",
     re.IGNORECASE,
 )
+CITATION_KEY_RE = re.compile(r"[A-Za-z][A-Za-z0-9._:+-]{0,127}\Z", re.ASCII)
 
 
 class PdfExtractionDependencyError(RuntimeError):
     """Raised when the required PDF text extraction executable is unavailable."""
+
+
+class InvalidCitationKeyError(ValueError):
+    def __init__(self, citation_key: str, context: str) -> None:
+        self.citation_key = citation_key
+        self.context = context
+        super().__init__(f"Invalid citation key in {context}: {citation_key[:80]!r}")
+
+
+def validate_citation_key(value: Any, context: str) -> str:
+    if not isinstance(value, str):
+        raise InvalidCitationKeyError(str(value), context)
+    key = value
+    if CITATION_KEY_RE.fullmatch(key) is None:
+        raise InvalidCitationKeyError(key, context)
+    return key
 
 
 def norm_space(text: str) -> str:
@@ -509,8 +526,11 @@ def bib_escape(text: str | None) -> str:
 
 def write_bib(path: Path, primary: list[dict[str, Any]], refs: list[dict[str, Any]]) -> None:
     lines: list[str] = []
-    for rec in primary + refs:
-        key = rec["citation_key"]
+    records = [
+        (rec, validate_citation_key(rec.get("citation_key"), "BibTeX export"))
+        for rec in primary + refs
+    ]
+    for rec, key in records:
         entry_type = "article" if rec.get("doi") or rec.get("year") else "misc"
         title = rec.get("title") or rec.get("raw_reference", "Untitled source")[:180]
         lines.append(f"@{entry_type}{{{key},")
@@ -556,7 +576,7 @@ def load_canonical_method_references(path: Path | None) -> tuple[list[dict[str, 
         if not isinstance(raw, dict) or not raw.get("citation_key"):
             warnings.append(f"Skipped canonical method reference {index}: missing citation_key.")
             continue
-        key = str(raw["citation_key"])
+        key = validate_citation_key(raw["citation_key"], f"canonical registry record {index}")
         records.append({
             "reference_id": f"M{index:04d}",
             "source_id": f"M{index:04d}",
@@ -855,7 +875,10 @@ def main(argv: list[str] | None = None) -> int:
     outdir = args.outdir or project / "references"
     outdir.mkdir(parents=True, exist_ok=True)
 
-    payload = build_sources(project, pdf_roots, search_report, args.canonical_method_references)
+    try:
+        payload = build_sources(project, pdf_roots, search_report, args.canonical_method_references)
+    except InvalidCitationKeyError as exc:
+        raise SystemExit(str(exc)) from exc
     (outdir / "citation_sources.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     write_bib(
         outdir / "library.bib",

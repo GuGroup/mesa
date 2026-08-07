@@ -244,6 +244,7 @@ def compact_reference_policy(policy: dict[str, Any] | None) -> dict[str, Any]:
         "pressure_Pa": policy.get("pressure_Pa"),
         "pressure_bar": policy.get("pressure_bar"),
         "gas_standard_state": policy.get("gas_standard_state"),
+        "gas_activity": policy.get("gas_activity"),
         "water_activity": policy.get("water_activity"),
         "water_standard_state": policy.get("water_standard_state"),
         "framework": policy.get("framework"),
@@ -254,6 +255,7 @@ def compact_reference_policy(policy: dict[str, Any] | None) -> dict[str, Any]:
         "water_reference": policy.get("water_reference"),
         "oh_minus_and_electron_policy": policy.get("oh_minus_and_electron_policy"),
         "surface_thermal_policy": policy.get("surface_thermal_policy"),
+        "equations": policy.get("equations"),
     }
 
 
@@ -405,7 +407,11 @@ def compact_thermodynamic_formalism(
                 "pressure_Pa": policy.get("pressure_Pa") or gas.get("pressure_Pa"),
                 "pressure_bar": policy.get("pressure_bar") or gas.get("pressure_bar"),
                 "standard_state": policy.get("gas_standard_state") or gas.get("standard_state"),
-                "activity": policy.get("gas_activity") or gas.get("activity"),
+                "activity": (
+                    policy.get("gas_activity")
+                    if _present(policy.get("gas_activity"))
+                    else gas.get("activity")
+                ),
                 "formula": gas.get("formula"),
             }.items()
             if _present(value)

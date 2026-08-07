@@ -189,6 +189,78 @@ class BackendPolicyTests(unittest.TestCase):
         # Then no enabled Gibbs-correction formalism is introduced.
         self.assertNotIn("gibbs_correction", minimal["thermodynamic_formalism"])
 
+    def test_reference_policy_preserves_explicit_gas_activity_and_equations(self) -> None:
+        # Given explicit gas activity and an electrochemical equation in the source policy.
+        equations = [{
+            "label": "Project reference",
+            "latex": "X = Y",
+            "explanation": "The project-defined reference relation.",
+        }]
+        computational = {"methods": ["CHE free-energy analysis"]}
+        policy = COLLECTOR.resolve_backend_policy(computational, override="uma_mlip")
+
+        # When Methods evidence is compacted and written deterministically.
+        minimal = COLLECTOR.build_minimal_evidence(
+            strategy_id="S1",
+            computational=computational,
+            model_manifest=None,
+            gas_metadata={"activity": 1},
+            reference_policy={
+                "framework": "CHE",
+                "gas_activity": 0,
+                "equations": equations,
+            },
+            vib_summary=None,
+            relax_summary=None,
+            relaxation_registry=None,
+            free_energy_bookkeeping=None,
+            backend_policy=policy,
+        )
+        sections = WRITER.deterministic_sections(minimal)
+        electrochemical = next(
+            section
+            for section in sections
+            if section["section_id"] == "electrochemical_free_energy_formalism"
+        )
+
+        # Then the explicit values survive without replacement by a canned equation.
+        self.assertEqual(minimal["thermodynamic_formalism"]["gas_phase"]["activity"], 0)
+        self.assertEqual(minimal["thermodynamic_formalism"]["electrochemical"]["equations"], equations)
+        equation_blocks = [
+            block for block in electrochemical["content_blocks"] if block["type"] == "equation"
+        ]
+        self.assertEqual(equation_blocks, [{"type": "equation", **equations[0]}])
+
+    def test_deterministic_writer_does_not_invent_che_equations(self) -> None:
+        # Given a CHE framework with no explicit equation in the evidence.
+        computational = {"methods": ["CHE free-energy analysis"]}
+        policy = COLLECTOR.resolve_backend_policy(computational, override="uma_mlip")
+        minimal = COLLECTOR.build_minimal_evidence(
+            strategy_id="S1",
+            computational=computational,
+            model_manifest=None,
+            gas_metadata=None,
+            reference_policy={"framework": "CHE"},
+            vib_summary=None,
+            relax_summary=None,
+            relaxation_registry=None,
+            free_energy_bookkeeping=None,
+            backend_policy=policy,
+        )
+
+        # When deterministic smoke-test prose is generated.
+        sections = WRITER.deterministic_sections(minimal)
+        electrochemical = next(
+            section
+            for section in sections
+            if section["section_id"] == "electrochemical_free_energy_formalism"
+        )
+
+        # Then no unsupported equation is synthesized.
+        self.assertFalse(
+            any(block["type"] == "equation" for block in electrochemical["content_blocks"])
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

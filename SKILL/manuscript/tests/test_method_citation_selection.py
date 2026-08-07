@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -227,6 +229,43 @@ class CanonicalIdentityTests(unittest.TestCase):
         # Then the canonical record owns the DOI and citation key deterministically.
         self.assertEqual(merged_second, [])
         self.assertEqual(merged_canonical, canonical)
+
+    def test_invalid_canonical_key_is_rejected_at_registry_load(self) -> None:
+        # Given a registry key that would inject a second BibTeX entry.
+        with tempfile.TemporaryDirectory() as tempdir:
+            registry = Path(tempdir) / "canonical.json"
+            registry.write_text(
+                json.dumps({"references": [{"citation_key": "SafeKey,\n@misc{Injected"}]}),
+                encoding="utf-8",
+            )
+
+            # When the canonical registry is loaded, the key is rejected at the boundary.
+            with self.assertRaises(EXTRACTOR.InvalidCitationKeyError):
+                EXTRACTOR.load_canonical_method_references(registry)
+
+    def test_invalid_key_is_rejected_before_bibtex_is_written(self) -> None:
+        # Given an invalid key passed directly to the final BibTeX writer.
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "library.bib"
+            records = [{"citation_key": "1Invalid", "title": "Unsafe entry"}]
+
+            # When BibTeX output is requested, no partial file is created.
+            with self.assertRaises(EXTRACTOR.InvalidCitationKeyError):
+                EXTRACTOR.write_bib(output, records, [])
+            self.assertFalse(output.exists())
+
+    def test_valid_canonical_key_remains_compatible(self) -> None:
+        # Given a canonical key using the supported ASCII grammar.
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "library.bib"
+
+            # When the entry is exported, its key is unchanged.
+            EXTRACTOR.write_bib(
+                output,
+                [{"citation_key": "Kresse1996", "title": "VASP"}],
+                [],
+            )
+            self.assertIn("@misc{Kresse1996,", output.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

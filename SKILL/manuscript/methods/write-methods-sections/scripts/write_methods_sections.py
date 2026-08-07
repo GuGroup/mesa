@@ -20,6 +20,7 @@ from shared.numeric_precision import format_numeric_precision, overprecise_decim
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 SCHEMA_VERSION = 3
+MAX_FORMALISM_GUIDE_BYTES = 64 * 1024
 REQUIRED_SECTIONS = [
     "model_construction",
     "geometry_optimization",
@@ -58,6 +59,7 @@ Strict rules:
 14. Do not repeat the same equation in both a paragraph and an equation block. Paragraphs should introduce or interpret equations, while equation blocks hold the mathematical or chemical expression.
 15. In public text and equations, write non-integer numbers with at most two decimal places; keep integers as integers.
 16. The backend_policy in the digest is authoritative. In UMA-only mode, do not mention or cite DFT, VASP, PBE, PAW, plane-wave, Monkhorst-Pack, or DFT-D3 settings, even if stale fields appear elsewhere in the input context.
+17. Emit an equation block only when that equation is explicitly supplied in the digest. Formalism-guide examples are not project evidence and must not be copied or reconstructed.
 
 Return JSON only.
 
@@ -233,6 +235,51 @@ def default_outdir(digest: Path) -> Path:
 
 def default_formalism_guide() -> Path:
     return Path(__file__).resolve().parents[1] / "references" / "methods_formalism_guide.md"
+
+
+class FormalismGuideError(ValueError):
+    pass
+
+
+def load_formalism_guide(raw_path: str) -> str:
+    allowed_root = default_formalism_guide().parent.resolve(strict=True)
+    requested = Path(raw_path) if raw_path else default_formalism_guide()
+    if not requested.is_absolute():
+        requested = Path.cwd() / requested
+    candidate = Path(os.path.abspath(str(requested)))
+    try:
+        relative = candidate.relative_to(allowed_root)
+    except ValueError as exc:
+        raise FormalismGuideError(
+            f"Formalism guide must be inside the bundled references directory: {allowed_root}"
+        ) from exc
+    current = allowed_root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise FormalismGuideError(f"Formalism guide cannot use symlinks: {candidate}")
+    if not candidate.exists() or not candidate.is_file():
+        raise FormalismGuideError(f"Formalism guide must be an existing regular file: {candidate}")
+    resolved = candidate.resolve(strict=True)
+    try:
+        resolved.relative_to(allowed_root)
+    except ValueError as exc:
+        raise FormalismGuideError(
+            f"Formalism guide resolves outside the bundled references directory: {candidate}"
+        ) from exc
+    if resolved.stat().st_size > MAX_FORMALISM_GUIDE_BYTES:
+        raise FormalismGuideError(
+            f"Formalism guide exceeds {MAX_FORMALISM_GUIDE_BYTES} bytes: {candidate}"
+        )
+    data = resolved.read_bytes()
+    if len(data) > MAX_FORMALISM_GUIDE_BYTES:
+        raise FormalismGuideError(
+            f"Formalism guide exceeds {MAX_FORMALISM_GUIDE_BYTES} bytes: {candidate}"
+        )
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise FormalismGuideError(f"Formalism guide must be valid UTF-8: {candidate}") from exc
 
 
 def build_prompt(digest: dict[str, Any], formalism_guide: str = "") -> str:
@@ -484,7 +531,9 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
             content_blocks = [
                 {"type": "paragraph", "text": text},
             ]
-            supplied_equations = formalism.get("equations") or (policy.get("equations", []) if isinstance(policy, dict) else [])
+            supplied_equations = formalism.get("equations") or (
+                (policy.get("equations") or []) if isinstance(policy, dict) else []
+            )
             for equation in supplied_equations:
                 if not isinstance(equation, dict):
                     continue
@@ -497,24 +546,6 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
                         "label": str(equation.get("label") or "Reference equation"),
                         "latex": latex,
                         "explanation": str(equation.get("explanation") or ""),
-                    }
-                )
-            if str(formalism.get("framework", "")).upper() == "CHE" and not any(block.get("type") == "equation" for block in content_blocks):
-                content_blocks.append(
-                    {
-                        "type": "equation",
-                        "label": "Computational hydrogen electrode",
-                        "latex": "\\mu_{\\mathrm{H^+}+e^-}(U,\\mathrm{pH}) = \\frac{1}{2}\\mu_{\\mathrm{H_2}} - eU - k_{\\mathrm{B}}T\\ln(10)\\,\\mathrm{pH}",
-                        "explanation": "The proton-electron chemical potential was referenced using the computational hydrogen electrode convention.",
-                    }
-                )
-            if supplied_equations and not any(block.get("type") == "equation" for block in content_blocks):
-                content_blocks.append(
-                    {
-                        "type": "equation",
-                        "label": "Thermodynamic free-energy relation",
-                        "latex": "\\Delta G = \\Delta E + \\Delta E_{\\mathrm{ZPE}} - T\\Delta S",
-                        "explanation": "Reaction free energies were assembled from electronic energy differences and available thermochemical corrections.",
                     }
                 )
         sections.append({"section_id": section_id, "title": title, "content_blocks": content_blocks})
@@ -602,8 +633,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     digest_path = Path(args.digest)
     digest = read_json(digest_path)
     outdir = Path(args.outdir) if args.outdir else default_outdir(digest_path)
-    guide_path = Path(args.formalism_guide) if args.formalism_guide else default_formalism_guide()
-    guide_text = guide_path.read_text(encoding="utf-8") if guide_path.exists() else ""
+    guide_text = load_formalism_guide(args.formalism_guide)
     prompt = build_prompt(digest, guide_text)
     write_text(outdir / "llm_prompt.txt", prompt)
 
@@ -639,13 +669,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outdir", default="", help="Output directory. Defaults to sibling text/ directory.")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help=f"OpenAI model. Defaults to OPENAI_MODEL or {DEFAULT_MODEL}.")
     parser.add_argument("--no-llm", action="store_true", help="Write deterministic smoke-test output without calling OpenAI.")
-    parser.add_argument("--formalism-guide", default="", help="Optional Methods formalism guide. Defaults to the bundled guide.")
+    parser.add_argument(
+        "--formalism-guide",
+        default="",
+        help="Optional guide inside the bundled references directory. Defaults to the bundled guide.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    payload = run(args)
+    try:
+        payload = run(args)
+    except FormalismGuideError as exc:
+        raise SystemExit(str(exc)) from exc
     outdir = Path(args.outdir) if args.outdir else default_outdir(Path(payload["source_digest"]))
     print(f"Wrote {outdir / 'methods_section_text.json'}")
     print(f"Wrote {outdir / 'methods_section_text.md'}")
