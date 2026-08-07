@@ -20,6 +20,7 @@ from shared.numeric_precision import format_numeric_precision, overprecise_decim
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
 SCHEMA_VERSION = 3
+MAX_FORMALISM_GUIDE_BYTES = 64 * 1024
 REQUIRED_SECTIONS = [
     "model_construction",
     "geometry_optimization",
@@ -57,6 +58,8 @@ Strict rules:
 13. Treat chemical equations, electrochemical identities, and reaction-state sequences supplied in the digest as equation blocks, not as inline prose.
 14. Do not repeat the same equation in both a paragraph and an equation block. Paragraphs should introduce or interpret equations, while equation blocks hold the mathematical or chemical expression.
 15. In public text and equations, write non-integer numbers with at most two decimal places; keep integers as integers.
+16. The backend_policy in the digest is authoritative. In UMA-only mode, do not mention or cite DFT, VASP, PBE, PAW, plane-wave, Monkhorst-Pack, or DFT-D3 settings, even if stale fields appear elsewhere in the input context.
+17. Emit an equation block only when that equation is explicitly supplied in the digest. Formalism-guide examples are not project evidence and must not be copied or reconstructed.
 
 Return JSON only.
 
@@ -124,6 +127,8 @@ FORBIDDEN_PATTERNS = [
     r"/home/",
     r"\b[A-Za-z0-9_.-]+\.json\b",
     r"\b[A-Za-z0-9_.-]+\.py\b",
+    r"\[[A-Z][A-Z0-9_ -]+\]",
+    r"\{\{[^}]+\}\}",
 ]
 
 INLINE_EQUATION_PATTERNS = [
@@ -228,8 +233,63 @@ def default_outdir(digest: Path) -> Path:
     return digest.parent / "text"
 
 
-def build_prompt(digest: dict[str, Any]) -> str:
-    return f"{METHODS_PROMPT}\n\nMethods writer digest:\n{json.dumps(digest, indent=2)}\n"
+def default_formalism_guide() -> Path:
+    return Path(__file__).resolve().parents[1] / "references" / "methods_formalism_guide.md"
+
+
+class FormalismGuideError(ValueError):
+    pass
+
+
+def load_formalism_guide(raw_path: str) -> str:
+    allowed_root = default_formalism_guide().parent.resolve(strict=True)
+    requested = Path(raw_path) if raw_path else default_formalism_guide()
+    if not requested.is_absolute():
+        requested = Path.cwd() / requested
+    candidate = Path(os.path.abspath(str(requested)))
+    try:
+        relative = candidate.relative_to(allowed_root)
+    except ValueError as exc:
+        raise FormalismGuideError(
+            f"Formalism guide must be inside the bundled references directory: {allowed_root}"
+        ) from exc
+    current = allowed_root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise FormalismGuideError(f"Formalism guide cannot use symlinks: {candidate}")
+    if not candidate.exists() or not candidate.is_file():
+        raise FormalismGuideError(f"Formalism guide must be an existing regular file: {candidate}")
+    resolved = candidate.resolve(strict=True)
+    try:
+        resolved.relative_to(allowed_root)
+    except ValueError as exc:
+        raise FormalismGuideError(
+            f"Formalism guide resolves outside the bundled references directory: {candidate}"
+        ) from exc
+    if resolved.stat().st_size > MAX_FORMALISM_GUIDE_BYTES:
+        raise FormalismGuideError(
+            f"Formalism guide exceeds {MAX_FORMALISM_GUIDE_BYTES} bytes: {candidate}"
+        )
+    data = resolved.read_bytes()
+    if len(data) > MAX_FORMALISM_GUIDE_BYTES:
+        raise FormalismGuideError(
+            f"Formalism guide exceeds {MAX_FORMALISM_GUIDE_BYTES} bytes: {candidate}"
+        )
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise FormalismGuideError(f"Formalism guide must be valid UTF-8: {candidate}") from exc
+
+
+def build_prompt(digest: dict[str, Any], formalism_guide: str = "") -> str:
+    guide = formalism_guide.strip() or "No additional formalism guide was supplied."
+    return (
+        f"{METHODS_PROMPT}\n\n"
+        "Conditional Methods formalism guide (reference only; evidence digest wins):\n"
+        f"{guide}\n\n"
+        f"Methods writer digest:\n{json.dumps(digest, indent=2)}\n"
+    )
 
 
 def build_payload(model: str, prompt: str) -> dict[str, Any]:
@@ -244,6 +304,23 @@ def forbidden_hits(text: str) -> list[str]:
     for pattern in FORBIDDEN_PATTERNS:
         if re.search(pattern, text, flags=re.IGNORECASE):
             hits.append(pattern)
+    return hits
+
+
+def backend_forbidden_hits(text: str, backend_policy: dict[str, Any] | None) -> list[str]:
+    policy = backend_policy if isinstance(backend_policy, dict) else {}
+    terms = policy.get("forbidden_public_terms", [])
+    if not isinstance(terms, list):
+        return []
+    normalized = text.lower()
+    hits = []
+    for term in terms:
+        phrase = str(term).strip()
+        if not phrase:
+            continue
+        pattern = rf"\b{re.escape(phrase.lower())}\b" if re.fullmatch(r"[A-Za-z0-9]+", phrase) else re.escape(phrase.lower())
+        if re.search(pattern, normalized):
+            hits.append(phrase)
     return hits
 
 
@@ -339,6 +416,8 @@ def normalize_sections(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
+    backend_policy = digest.get("backend_policy", {})
+    dft_allowed = bool(backend_policy.get("allows_dft", True)) if isinstance(backend_policy, dict) else True
     sections = []
     for item in digest.get("sections", []):
         section_id = item.get("section_id")
@@ -351,46 +430,86 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
             motifs = ", ".join(project_details.get("motif_labels", []))
             states = ", ".join(project_details.get("states", []))
             gas = project_details.get("gas_model_example", {})
-            text = (
-                f"Computational models were constructed for the catalyst motifs represented by {motifs}. "
-                f"Adsorbate states included {states}. Gas-phase reference models used isolated molecules; "
-                f"the representative gas model has formula {gas.get('formula')} in a cell with lengths "
-                f"{gas.get('cell_lengths')} and periodic boundary settings {gas.get('pbc')}."
-            )
+            model_parts = ["Computational models were constructed"]
+            if motifs:
+                model_parts.append(f"for the catalyst motifs represented by {motifs}")
+            if states:
+                model_parts.append(f"with adsorbate states including {states}")
+            if gas.get("formula") is not None:
+                gas_text = f"Gas-phase reference models used isolated molecules with formula {gas['formula']}"
+                if gas.get("cell_lengths") is not None:
+                    gas_text += f" in a cell with lengths {gas['cell_lengths']}"
+                if gas.get("pbc") is not None:
+                    gas_text += f" and periodic boundary settings {gas['pbc']}"
+                model_parts.append(gas_text)
+            text = " ".join(part.rstrip(".") for part in model_parts) + "."
             content_blocks: list[dict[str, str]] = [{"type": "paragraph", "text": text}]
         elif section_id == "geometry_optimization":
-            code = strategy_inputs.get("code", "")
-            conv = strategy_inputs.get("convergence_criteria", "")
+            code = strategy_inputs.get("code", "") if dft_allowed else ""
+            conv = strategy_inputs.get("convergence_criteria", "") if dft_allowed else ""
             summary = project_details.get("relaxation_summary", {})
-            text = (
-                f"Geometry optimizations were carried out using {code}. {conv} "
-                f"The relaxation set contained {summary.get('task_count')} tasks, with "
-                f"{summary.get('converged_count')} converged records."
-            )
+            optimization = project_details.get("optimization", {})
+            parts = ["Geometry optimizations were carried out"]
+            if code:
+                parts.append(f"using {code}")
+            if optimization.get("calculator"):
+                parts.append(f"with {optimization['calculator']}")
+            if optimization.get("optimizer"):
+                parts.append(f"using the {optimization['optimizer']} optimizer")
+            if optimization.get("fmax_eV_per_A"):
+                parts.append(f"until the maximum force was below {optimization['fmax_eV_per_A']} eV Å−1")
+            if optimization.get("max_steps"):
+                parts.append(f"with a maximum of {optimization['max_steps']} steps")
+            if conv:
+                parts.append(f"under the stated convergence criterion ({conv})")
+            text = " ".join(part.rstrip(".") for part in parts) + "."
+            if summary.get("task_count") is not None:
+                text += (
+                    f" The relaxation set contained {summary.get('task_count')} tasks"
+                    + (
+                        f", with {summary.get('converged_count')} converged records"
+                        if summary.get("converged_count") is not None
+                        else ""
+                    )
+                    + "."
+                )
             content_blocks = [{"type": "paragraph", "text": text}]
         elif section_id == "vibrational_free_energy_corrections":
             vib = project_details.get("vibration_summary", {})
             policy = project_details.get("surface_thermal_policy", {})
+            formalism = project_details.get("thermodynamic_formalism", {})
             policy_text = policy.get("model", "a local harmonic treatment was used") if isinstance(policy, dict) else str(policy)
-            text = (
-                "Free-energy corrections followed the thermochemical correction policy for zero-point and entropic terms where available. "
-                f"Vibrational calculations produced {vib.get('frequency_result_count')} frequency results."
-            )
+            text = "Free-energy corrections followed the supplied thermochemical correction policy for zero-point and entropic terms where available."
+            if vib.get("frequency_result_count") is not None:
+                text += f" Vibrational calculations produced {vib.get('frequency_result_count')} frequency results."
+            if formalism.get("gas_phase", {}).get("pressure_Pa") is not None:
+                text += f" Gas-phase chemical potentials used a pressure of {formalism['gas_phase']['pressure_Pa']} Pa."
+            elif formalism.get("gas_phase", {}).get("pressure_bar") is not None:
+                text += f" Gas-phase chemical potentials used a pressure of {formalism['gas_phase']['pressure_bar']} bar."
+            if formalism.get("liquid_water", {}).get("activity") is not None:
+                text += f" The liquid-water activity was set to {formalism['liquid_water']['activity']}."
             content_blocks = [
                 {"type": "paragraph", "text": text},
-                {
-                    "type": "equation",
-                    "label": "Thermochemical free energy",
-                    "latex": "G = E + E_{\\mathrm{ZPE}} - TS",
-                    "explanation": "The free energy was obtained from the electronic energy with zero-point and entropic corrections where available.",
-                },
-                {
-                    "type": "paragraph",
-                    "text": f"For surface structures, {policy_text}.",
-                },
             ]
+            if formalism.get("gibbs_correction"):
+                content_blocks.append(
+                    {
+                        "type": "equation",
+                        "label": "Thermochemical free energy",
+                        "latex": "\\Delta G = \\Delta E + \\Delta E_{\\mathrm{ZPE}} + \\Delta H_{\\mathrm{thermal}} - T\\Delta S",
+                        "explanation": "The free energy was assembled from electronic energy differences and the supplied zero-point, thermal, and entropic corrections.",
+                    }
+                )
+            if policy:
+                content_blocks.append(
+                    {
+                        "type": "paragraph",
+                        "text": f"For surface structures, {policy_text}.",
+                    }
+                )
         else:
             policy = project_details.get("reference_policy", {})
+            formalism = project_details.get("thermodynamic_formalism", {}).get("electrochemical", {})
             hydrogen = policy.get("hydrogen_reference", {})
             water = policy.get("water_reference", {})
             hydrogen_text = hydrogen.get("H_chemical_potential", "the hydrogen reference convention") if isinstance(hydrogen, dict) else "the hydrogen reference convention"
@@ -399,15 +518,23 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
                 if isinstance(water, dict) and water.get("liquid_correction_ev") is not None
                 else "the water reference convention"
             )
-            text = (
-                f"Electrochemical free energies were evaluated at pH {policy.get('pH')} and "
-                f"U = {policy.get('potential_V_RHE')} V_RHE. The hydrogen reference was {hydrogen_text}, "
-                f"and the water reference included {water_text}."
-            )
+            conditions = []
+            if formalism.get("framework"):
+                conditions.append(f"using the {formalism['framework']} framework")
+            if policy.get("pH") is not None:
+                conditions.append(f"at pH {policy['pH']}")
+            if policy.get("potential_V_RHE") is not None:
+                conditions.append(f"at U = {policy['potential_V_RHE']} V_RHE")
+            text = "Electrochemical free energies were evaluated " + (" ".join(conditions) if conditions else "using the supplied reference convention") + "."
+            if isinstance(policy, dict) and (hydrogen or water):
+                text += f" The hydrogen reference was {hydrogen_text}, and the water reference included {water_text}."
             content_blocks = [
                 {"type": "paragraph", "text": text},
             ]
-            for equation in policy.get("equations", []) if isinstance(policy, dict) else []:
+            supplied_equations = formalism.get("equations") or (
+                (policy.get("equations") or []) if isinstance(policy, dict) else []
+            )
+            for equation in supplied_equations:
                 if not isinstance(equation, dict):
                     continue
                 latex = str(equation.get("latex") or equation.get("equation") or "").strip()
@@ -421,20 +548,14 @@ def deterministic_sections(digest: dict[str, Any]) -> list[dict[str, Any]]:
                         "explanation": str(equation.get("explanation") or ""),
                     }
                 )
-            if not any(block.get("type") == "equation" for block in content_blocks):
-                content_blocks.append(
-                    {
-                        "type": "equation",
-                        "label": "Thermodynamic free-energy relation",
-                        "latex": "\\Delta G = \\Delta E + \\Delta E_{\\mathrm{ZPE}} - T\\Delta S",
-                        "explanation": "Reaction free energies were assembled from electronic energy differences and available thermochemical corrections.",
-                    }
-                )
         sections.append({"section_id": section_id, "title": title, "content_blocks": content_blocks})
     return normalize_sections({"sections": sections})
 
 
-def validate_output(sections: list[dict[str, Any]]) -> dict[str, Any]:
+def validate_output(
+    sections: list[dict[str, Any]],
+    backend_policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     section_reports = []
     ok = True
     for section in sections:
@@ -454,13 +575,15 @@ def validate_output(sections: list[dict[str, Any]]) -> dict[str, Any]:
                 parts.extend([block.get("label", ""), block.get("latex", ""), block.get("explanation", "")])
         public_text = "\n".join(parts)
         hits = forbidden_hits(public_text)
+        backend_hits = backend_forbidden_hits(public_text, backend_policy)
         overprecise = overprecise_decimal_literals(public_text)
-        if hits or inline_hits or overprecise:
+        if hits or backend_hits or inline_hits or overprecise:
             ok = False
         section_reports.append(
             {
                 "section_id": section["section_id"],
                 "forbidden_patterns": hits,
+                "backend_forbidden_terms": backend_hits,
                 "inline_equation_patterns": inline_hits,
                 "overprecise_decimal_literals": overprecise,
             }
@@ -469,12 +592,14 @@ def validate_output(sections: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def assemble_output(source_digest: Path, digest: dict[str, Any], sections: list[dict[str, Any]], missing_details: list[str], source: str) -> dict[str, Any]:
-    validation = validate_output(sections)
+    backend_policy = digest.get("backend_policy", {})
+    validation = validate_output(sections, backend_policy)
     return {
         "schema_version": SCHEMA_VERSION,
         "strategy_id": digest.get("strategy_id", ""),
         "source_digest": str(source_digest),
         "section_source": source,
+        "backend_policy": backend_policy,
         "sections": sections,
         "missing_details": missing_details,
         "validation": validation,
@@ -508,7 +633,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     digest_path = Path(args.digest)
     digest = read_json(digest_path)
     outdir = Path(args.outdir) if args.outdir else default_outdir(digest_path)
-    prompt = build_prompt(digest)
+    guide_text = load_formalism_guide(args.formalism_guide)
+    prompt = build_prompt(digest, guide_text)
     write_text(outdir / "llm_prompt.txt", prompt)
 
     if args.no_llm:
@@ -543,12 +669,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outdir", default="", help="Output directory. Defaults to sibling text/ directory.")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help=f"OpenAI model. Defaults to OPENAI_MODEL or {DEFAULT_MODEL}.")
     parser.add_argument("--no-llm", action="store_true", help="Write deterministic smoke-test output without calling OpenAI.")
+    parser.add_argument(
+        "--formalism-guide",
+        default="",
+        help="Optional guide inside the bundled references directory. Defaults to the bundled guide.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    payload = run(args)
+    try:
+        payload = run(args)
+    except FormalismGuideError as exc:
+        raise SystemExit(str(exc)) from exc
     outdir = Path(args.outdir) if args.outdir else default_outdir(Path(payload["source_digest"]))
     print(f"Wrote {outdir / 'methods_section_text.json'}")
     print(f"Wrote {outdir / 'methods_section_text.md'}")

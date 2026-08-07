@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "description": "Canonical method references available to manuscript citation selection. Use only when the corresponding method is present in evidence.",
+  "references": [
+    {
+      "citation_key": "Perdew1996",
+      "title": "Generalized Gradient Approximation Made Simple",
+      "authors": ["John P. Perdew", "Kieron Burke", "Matthias Ernzerhof"],
+      "year": "1996",
+      "doi": "10.1103/PhysRevLett.77.3865",
+      "raw_reference": "Perdew, J. P.; Burke, K.; Ernzerhof, M. Generalized Gradient Approximation Made Simple. Phys. Rev. Lett. 1996, 77, 3865.",
+      "method_tags": ["PBE", "GGA", "exchange-correlation functional"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when the reported calculations actually use the PBE exchange-correlation functional."
+    },
+    {
+      "citation_key": "Hammer1999",
+      "title": "Improved adsorption energetics within density-functional theory using revised Perdew-Burke-Ernzerhof functionals",
+      "authors": ["Bjørk Hammer", "Lars B. Hansen", "Jens K. Nørskov"],
+      "year": "1999",
+      "doi": "10.1103/PhysRevB.59.7413",
+      "raw_reference": "Hammer, B.; Hansen, L. B.; Nørskov, J. K. Improved adsorption energetics within density-functional theory using revised Perdew-Burke-Ernzerhof functionals. Phys. Rev. B 1999, 59, 7413.",
+      "method_tags": ["RPBE", "revised PBE", "adsorption"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when the reported calculations actually use RPBE or a revised PBE functional for adsorption energetics."
+    },
+    {
+      "citation_key": "Kresse1996",
+      "title": "Efficient Iterative Schemes for Ab Initio Total-Energy Calculations Using a Plane-Wave Basis Set",
+      "authors": ["G. Kresse", "J. Furthmüller"],
+      "year": "1996",
+      "doi": "10.1103/PhysRevB.54.11169",
+      "raw_reference": "Kresse, G.; Furthmüller, J. Efficient Iterative Schemes for Ab Initio Total-Energy Calculations Using a Plane-Wave Basis Set. Phys. Rev. B 1996, 54, 11169.",
+      "method_tags": ["VASP", "Vienna Ab initio Simulation Package", "plane-wave DFT"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when VASP is the electronic-structure code actually used; a generic plane-wave basis or cutoff alone is insufficient."
+    },
+    {
+      "citation_key": "Blochl1994",
+      "title": "Projector Augmented-Wave Method",
+      "authors": ["Peter E. Blöchl"],
+      "year": "1994",
+      "doi": "10.1103/PhysRevB.50.17953",
+      "raw_reference": "Blöchl, P. E. Projector Augmented-Wave Method. Phys. Rev. B 1994, 50, 17953.",
+      "method_tags": ["PAW", "projector augmented-wave method"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when the reported calculations actually use the PAW method."
+    },
+    {
+      "citation_key": "Grimme2010",
+      "title": "A Consistent and Accurate Ab Initio Parametrization of Density Functional Dispersion Correction (DFT-D) for the 94 Elements H-Pu",
+      "authors": ["Stefan Grimme", "J. Antony", "Stefan Ehrlich", "Helge Krieg"],
+      "year": "2010",
+      "doi": "10.1063/1.3382344",
+      "raw_reference": "Grimme, S.; Antony, J.; Ehrlich, S.; Krieg, H. A Consistent and Accurate Ab Initio Parametrization of Density Functional Dispersion Correction (DFT-D) for the 94 Elements H-Pu. J. Chem. Phys. 2010, 132, 154104.",
+      "method_tags": ["DFT-D3", "D3 dispersion correction"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when the reported calculations actually apply the DFT-D3 dispersion correction."
+    },
+    {
+      "citation_key": "Monkhorst1976",
+      "title": "Special Points for Brillouin-Zone Integrations",
+      "authors": ["Hendrik J. Monkhorst", "James D. Pack"],
+      "year": "1976",
+      "doi": "10.1103/PhysRevB.13.5188",
+      "raw_reference": "Monkhorst, H. J.; Pack, J. D. Special Points for Brillouin-Zone Integrations. Phys. Rev. B 1976, 13, 5188.",
+      "method_tags": ["Monkhorst-Pack", "k-point mesh"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when Brillouin-zone sampling actually uses a Monkhorst-Pack mesh; generic k-point wording is insufficient."
+    },
+    {
+      "citation_key": "Norskov2004",
+      "title": "Origin of the Overpotential for Oxygen Reduction at a Fuel-Cell Cathode",
+      "authors": ["Jens K. Nørskov", "Jan Rossmeisl", "A. Logadottir", "L. Lindqvist", "J. R. Kitchin", "T. Bligaard", "H. Jónsson"],
+      "year": "2004",
+      "doi": "10.1021/jp047349j",
+      "raw_reference": "Nørskov, J. K.; Rossmeisl, J.; Logadottir, A.; Lindqvist, L.; Kitchin, J. R.; Bligaard, T.; Jónsson, H. Origin of the Overpotential for Oxygen Reduction at a Fuel Cell Cathode. J. Phys. Chem. B 2004, 108, 17886.",
+      "method_tags": ["CHE", "computational hydrogen electrode"],
+      "backend_family": "general",
+      "citation_guidance": "Use when electrochemical free energies actually use the computational hydrogen electrode framework."
+    },
+    {
+      "citation_key": "Lym2020",
+      "title": "A Python Multiscale Thermochemistry Toolbox (pMuTT) for thermochemical and kinetic parameter estimation",
+      "authors": ["J. Lym", "G. R. Wittreich", "D. G. Vlachos"],
+      "year": "2020",
+      "doi": "10.1016/j.cpc.2019.106864",
+      "raw_reference": "Lym, J.; Wittreich, G. R.; Vlachos, D. G. A Python Multiscale Thermochemistry Toolbox (pMuTT) for Thermochemical and Kinetic Parameter Estimation. Comput. Phys. Commun. 2020, 247, 106864.",
+      "method_tags": ["pMuTT", "Python Multiscale Thermochemistry Toolbox"],
+      "backend_family": "general",
+      "citation_guidance": "Use when pMuTT is actually used for thermochemical or kinetic parameter estimation."
+    },
+    {
+      "citation_key": "ASE2017",
+      "title": "The Atomic Simulation Environment—A Python Library for Working with Atoms",
+      "authors": ["Ask Hjorth Larsen", "Jens Jørgen Mortensen", "Jakob Blomqvist", "Ivano E. Castelli", "Rune Christensen", "Marcin Dułak"],
+      "year": "2017",
+      "doi": "10.1088/1361-648X/aa680e",
+      "raw_reference": "Larsen, A. H. et al. The Atomic Simulation Environment—A Python Library for Working with Atoms. J. Phys.: Condens. Matter 2017, 29, 273002.",
+      "method_tags": ["ASE", "Atomic Simulation Environment"],
+      "backend_family": "general",
+      "citation_guidance": "Use when ASE is actually used to construct, run, or analyze atomistic calculations."
+    },
+    {
+      "citation_key": "Bitzek2006",
+      "title": "Structural Relaxation Made Simple",
+      "authors": ["Erik Bitzek", "Pekka Koskinen", "Franz Gähler", "Michael Moseler", "Peter Gumbsch"],
+      "year": "2006",
+      "doi": "10.1103/PhysRevLett.97.170201",
+      "raw_reference": "Bitzek, E.; Koskinen, P.; Gähler, F.; Moseler, M.; Gumbsch, P. Structural Relaxation Made Simple. Phys. Rev. Lett. 2006, 97, 170201.",
+      "method_tags": ["FIRE", "Fast Inertial Relaxation Engine"],
+      "backend_family": "general",
+      "citation_guidance": "Use when the FIRE optimizer is actually used for structural relaxation."
+    },
+    {
+      "citation_key": "UMA2025",
+      "title": "UMA: A Family of Universal Models for Atoms",
+      "authors": ["Brandon M. Wood", "Misko Dzamba", "Xiang Fu", "Meng Gao", "Muhammed Shuaibi", "Luis Barroso-Luque"],
+      "year": "2025",
+      "doi": null,
+      "url": "https://arxiv.org/abs/2506.23971",
+      "raw_reference": "Wood, B. M. et al. UMA: A Family of Universal Models for Atoms. arXiv:2506.23971 (2025).",
+      "method_tags": ["UMA", "FAIRChem", "machine-learned interatomic potential"],
+      "backend_family": "uma_mlip",
+      "citation_guidance": "Use when an UMA model is actually used as the interatomic potential or calculator."
+    }
+  ]
+}
