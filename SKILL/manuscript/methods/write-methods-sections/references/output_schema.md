@@ -5,6 +5,7 @@
 - `schema_version`
 - `strategy_id`
 - `source_digest`
+- `backend_policy`
 - `sections`
 - `missing_details`
 - `validation`
@@ -53,3 +54,7 @@ Allowed section ids:
 `missing_details` should be a list of concise factual details that could improve
 the Methods section in a future run. It must not be used to add unsupported
 claims to the current text.
+
+`backend_policy` is copied from the evidence digest and records the active
+calculator branch and forbidden public method terms. It is consumed by output
+validation and must be preserved for citation selection.

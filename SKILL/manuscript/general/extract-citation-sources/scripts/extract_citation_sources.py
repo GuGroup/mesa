@@ -27,6 +27,10 @@ STOP_HEADING_RE = re.compile(
 )
 
 
+class PdfExtractionDependencyError(RuntimeError):
+    """Raised when the required PDF text extraction executable is unavailable."""
+
+
 def norm_space(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
@@ -63,7 +67,9 @@ def extract_text_with_pdftotext(pdf: Path, mode: str = "layout") -> tuple[str, l
     warnings: list[str] = []
     exe = shutil.which("pdftotext")
     if not exe:
-        raise RuntimeError("pdftotext was not found; install poppler-utils or provide extracted text another way.")
+        raise PdfExtractionDependencyError(
+            "pdftotext was not found; install poppler-utils or provide extracted text another way."
+        )
     mode_arg = "-layout" if mode == "layout" else "-raw"
     try:
         proc = subprocess.run(
@@ -515,15 +521,99 @@ def write_bib(path: Path, primary: list[dict[str, Any]], refs: list[dict[str, An
             lines.append(f"  year = {{{bib_escape(str(rec['year'])[:4])}}},")
         if rec.get("doi"):
             lines.append(f"  doi = {{{bib_escape(rec['doi'])}}},")
+        if rec.get("url"):
+            lines.append(f"  url = {{{bib_escape(rec['url'])}}},")
         if rec.get("raw_reference"):
             lines.append(f"  note = {{{bib_escape(rec['raw_reference'][:500])}}},")
         lines.append("}\n")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def default_canonical_registry() -> Path:
+    return Path(__file__).resolve().parents[1] / "references" / "canonical_method_references.json"
+
+
+class CitationIdentityError(ValueError):
+    """Raised when one citation key identifies different references."""
+
+    def __init__(self, citation_key: str) -> None:
+        self.citation_key = citation_key
+        super().__init__(
+            f"Citation key {citation_key} identifies different canonical and extracted references."
+        )
+
+
+def load_canonical_method_references(path: Path | None) -> tuple[list[dict[str, Any]], list[str]]:
+    if path is None or not path.exists():
+        return [], []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    raw_records = data.get("references", []) if isinstance(data, dict) else []
+    records: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    if not isinstance(raw_records, list):
+        return [], [f"Canonical method reference registry has no references list: {path}"]
+    for index, raw in enumerate(raw_records, start=1):
+        if not isinstance(raw, dict) or not raw.get("citation_key"):
+            warnings.append(f"Skipped canonical method reference {index}: missing citation_key.")
+            continue
+        key = str(raw["citation_key"])
+        records.append({
+            "reference_id": f"M{index:04d}",
+            "source_id": f"M{index:04d}",
+            "citation_key": key,
+            "title": raw.get("title"),
+            "authors": raw.get("authors", []),
+            "year": raw.get("year"),
+            "doi": raw.get("doi"),
+            "url": raw.get("url"),
+            "raw_reference": raw.get("raw_reference"),
+            "collection": "canonical_method_references",
+            "source_role": "canonical_method_reference",
+            "method_tags": raw.get("method_tags", []),
+            "backend_family": raw.get("backend_family", "general"),
+            "citation_guidance": raw.get("citation_guidance", ""),
+            "citation_contexts": [],
+            "source_reference_numbers": [],
+            "supports": raw.get("method_tags", []),
+            "warnings": [],
+        })
+    return records, warnings
+
+
+def merge_canonical_references(
+    second_neighbors: list[dict[str, Any]],
+    canonical: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Preserve canonical identity and reject ambiguous key collisions."""
+    canonical_dois = {
+        clean_doi(str(record.get("doi") or ""))
+        for record in canonical
+        if clean_doi(str(record.get("doi") or ""))
+    }
+    canonical_by_key = {
+        str(record.get("citation_key")): record
+        for record in canonical
+        if record.get("citation_key")
+    }
+    retained: list[dict[str, Any]] = []
+    for record in second_neighbors:
+        doi = clean_doi(str(record.get("doi") or ""))
+        if doi and doi in canonical_dois:
+            continue
+        key = str(record.get("citation_key") or "")
+        canonical_record = canonical_by_key.get(key)
+        if canonical_record is not None:
+            canonical_doi = clean_doi(str(canonical_record.get("doi") or ""))
+            if doi != canonical_doi:
+                raise CitationIdentityError(key)
+        retained.append(record)
+    return retained, canonical
+
+
 def write_summary(path: Path, payload: dict[str, Any]) -> None:
     primary = payload["primary_papers"]
     refs = payload["second_neighbor_references"]
+    canonical = payload.get("canonical_method_references", [])
     warnings = payload["warnings"]
     context_count = sum(len(r.get("citation_contexts", [])) for r in refs)
     lines = [
@@ -533,6 +623,7 @@ def write_summary(path: Path, payload: dict[str, Any]) -> None:
         "",
         f"- Primary project PDFs: {len(primary)}",
         f"- Second-neighbor references: {len(refs)}",
+        f"- Canonical method references: {len(canonical)}",
         f"- Second-neighbor citation contexts: {context_count}",
         f"- Additive search: `{payload['extraction_policy']['additive_search']}`",
         "",
@@ -571,11 +662,24 @@ def discover_pdfs(roots: list[Path]) -> list[Path]:
     return out
 
 
-def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | None) -> dict[str, Any]:
+def build_sources(
+    project: Path,
+    pdf_roots: list[Path],
+    search_report: Path | None,
+    canonical_path: Path | None = None,
+) -> dict[str, Any]:
     search_records = parse_search_report(search_report)
     pdfs = discover_pdfs(pdf_roots)
-    primary_used_keys: set[str] = set()
-    warnings: list[str] = []
+    canonical, canonical_warnings = load_canonical_method_references(
+        canonical_path or default_canonical_registry()
+    )
+    reserved_keys = {
+        str(record["citation_key"])
+        for record in canonical
+        if record.get("citation_key")
+    }
+    primary_used_keys = set(reserved_keys)
+    warnings: list[str] = list(canonical_warnings)
     primary: list[dict[str, Any]] = []
     ref_map: dict[str, dict[str, Any]] = {}
     work_items: list[dict[str, Any]] = []
@@ -636,7 +740,7 @@ def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | No
             "context_index": context_index,
         })
 
-    used_keys: set[str] = {p["citation_key"] for p in primary}
+    used_keys = reserved_keys | {p["citation_key"] for p in primary}
     for item in work_items:
         paper_id = item["paper_id"]
         citation_key = item["citation_key"]
@@ -696,8 +800,6 @@ def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | No
 
     second_refs = list(ref_map.values())
     second_refs.sort(key=lambda r: (r.get("year") or "9999", r.get("citation_key") or ""))
-    for i, rec in enumerate(second_refs, start=1):
-        rec["reference_id"] = f"R{i:04d}"
 
     if not pdfs:
         warnings.append("No local PDFs found in configured roots.")
@@ -705,8 +807,12 @@ def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | No
         for w in p["warnings"]:
             warnings.append(f"{p['paper_id']} {w}: {p['pdf_path']}")
 
+    second_refs, canonical = merge_canonical_references(second_refs, canonical)
+    for i, rec in enumerate(second_refs, start=1):
+        rec["reference_id"] = f"R{i:04d}"
+
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "project": project.name,
         "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "extraction_policy": {
@@ -717,6 +823,7 @@ def build_sources(project: Path, pdf_roots: list[Path], search_report: Path | No
         },
         "primary_papers": primary,
         "second_neighbor_references": second_refs,
+        "canonical_method_references": canonical,
         "warnings": warnings,
     }
 
@@ -726,6 +833,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--project", required=True, type=Path, help="Project directory, e.g. project/<project_name>")
     parser.add_argument("--pdf-root", action="append", type=Path, help="PDF root to scan. Can be repeated.")
     parser.add_argument("--search-report", type=Path, help="Optional paper_search/search_report.md for primary metadata matching.")
+    parser.add_argument(
+        "--canonical-method-references",
+        type=Path,
+        help="Optional canonical method reference registry. Defaults to the bundled registry.",
+    )
     parser.add_argument("--outdir", type=Path, help="Output directory. Defaults to <project>/references.")
     return parser.parse_args(argv)
 
@@ -743,15 +855,20 @@ def main(argv: list[str] | None = None) -> int:
     outdir = args.outdir or project / "references"
     outdir.mkdir(parents=True, exist_ok=True)
 
-    payload = build_sources(project, pdf_roots, search_report)
+    payload = build_sources(project, pdf_roots, search_report, args.canonical_method_references)
     (outdir / "citation_sources.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    write_bib(outdir / "library.bib", payload["primary_papers"], payload["second_neighbor_references"])
+    write_bib(
+        outdir / "library.bib",
+        payload["primary_papers"],
+        payload["second_neighbor_references"] + payload.get("canonical_method_references", []),
+    )
     write_summary(outdir / "citation_source_summary.md", payload)
 
     print(json.dumps({
         "ok": True,
         "primary_papers": len(payload["primary_papers"]),
         "second_neighbor_references": len(payload["second_neighbor_references"]),
+        "canonical_method_references": len(payload.get("canonical_method_references", [])),
         "outdir": str(outdir),
         "warnings": len(payload["warnings"]),
     }, indent=2))

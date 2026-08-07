@@ -31,9 +31,9 @@ conclusion, or DOCX assembly until:
   `realize-strategy-figures`, `caption-strategy-figures`,
   `insert-strategy-figures-into-docx`.
 - `manuscript/methods/`: `collect-methods-evidence`,
-  `classify-methods-evidence`, `write-methods-sections`.
+  `write-methods-sections`.
 - `manuscript/results/`: `collect-results-evidence`,
-  `write-results-section`, `add-results-literature-comparisons`.
+  `write-results-section`.
 - `manuscript/intro/`: `collect-introduction-evidence`,
   `write-introduction-section`.
 - `manuscript/general/`: `extract-citation-sources`,
@@ -161,17 +161,21 @@ project/<project_name>/manuscript/<strategy_id>/
 
 # 5. Methods Evidence Collection
 
-Use `collect-methods-evidence` before Methods evidence classification.
+Use `collect-methods-evidence` before Methods prose writing.
 
 The collector should keep evidence minimal and general:
 
 - model construction evidence from selected strategy and model manifests;
 - gas model metadata such as formula, cell lengths, and PBC when available;
 - relaxation/calculation metadata summarized by category, not full raw logs;
-- energy/free-energy reference policy and equations when available.
+- energy/free-energy reference policy and equations when available;
+- a resolved backend policy; UMA-only runs must suppress stale
+  VASP/PBE/PAW/plane-wave/k-point/DFT-D3 fields before writing or citation
+  selection.
 
-The collector must remain section-neutral. It preserves compact evidence and
-does not choose section names, grouping, or order.
+The collector uses the fixed four-section Methods contract and preserves only
+the compact evidence assigned to those supported sections. It does not create
+optional analysis sections or manuscript prose.
 
 Do not include optional analysis sections such as DOS, Bader charge, charge
 density difference, kinetics, or local geometry analysis unless separate
@@ -182,38 +186,21 @@ Save:
 ```text
 project/<project_name>/strategy_execution/<strategy_id>_methods/evidence/
   methods_minimal_evidence.json
-  methods_planner_digest.json
-```
-
-# 5A. Hybrid Methods Evidence Classification
-
-Use `classify-methods-evidence` on `methods_planner_digest.json`.
-
-The classifier assigns supported facts deterministically to DFT settings, model
-construction, vibrational/free-energy corrections, and chemical-potential
-domains. Only leftover evidence is sent to an LLM, which may create additional
-method sections or leave evidence explicitly unassigned. Validate closed,
-exactly-once evidence-ID coverage.
-
-Save:
-
-```text
-project/<project_name>/strategy_execution/<strategy_id>_methods/classification/
-  methods_evidence_classification.json
-  methods_section_plan.json
-  methods_section_plan.md
+  methods_writer_digest.json
+  methods_evidence_summary.md
 ```
 
 # 6. Methods Writing
 
 Use `write-methods-sections`.
 
-The writer reads `methods_section_plan.json`, preserves its exact section set
-and order, and writes both deterministic core sections and LLM-planned sections.
-DFT settings and model construction follow evidence-driven rhetorical
-blueprints; all other sections are organized from their own assigned evidence.
-Every assigned evidence ID must be used or explicitly omitted, while unassigned
-evidence stays out of manuscript prose.
+The writer reads `methods_writer_digest.json` and writes the four supported core
+Methods sections in their fixed order. DFT settings and model construction
+follow evidence-driven rhetorical blueprints, and each supported section uses
+only its assigned evidence.
+
+The writer treats the collector's `backend_policy` as authoritative. Generated
+public prose violating that policy fails validation.
 
 Public Methods prose must translate explicit tool roles into academic language
 and must not mention skill names, recipe IDs, file paths, JSON artifacts,
@@ -251,6 +238,8 @@ The citation library is bounded:
 
 - first-neighbor sources are local project PDFs and extracted papers;
 - second-neighbor sources are references cited by those PDFs;
+- canonical method references are the reviewed bundled candidates for standard
+  methods such as PBE, VASP, PAW, Monkhorst-Pack, pMuTT, and CHE;
 - do not add web-search references during manuscript citation insertion unless
   the user explicitly requests it.
 
@@ -270,9 +259,27 @@ Run it separately for Methods, Results, Introduction, and any other citation
 requiring section. The selector must preserve original paragraph text and write
 citation decisions into structured metadata and citation placeholders.
 
+For Methods, the selector supplies every backend-compatible reviewed canonical
+method reference to the LLM together with complete method tags and citation
+guidance. The LLM must decide from the written sentence which methods were
+actually used. Generic words such as `cutoff` or `plane wave` are not sufficient
+evidence for a VASP citation, and zero citations is a valid decision.
+
+The selector also consumes `backend_policy` from the section JSON. It filters
+forbidden canonical references and flags any sentence containing a forbidden
+backend term instead of attaching the corresponding citation.
+
 Rules:
 
 - select only citation keys present in `citation_sources.json`;
+- treat canonical method references as bounded candidates, not automatic or
+  required citation anchors;
+- let the LLM match a canonical reference only when the sentence reports actual
+  use of the corresponding method and the active backend permits it;
+- if LLM selection is unavailable, do not guess canonical Methods citations;
+  leave those decisions uncited and marked for human review;
+- use lexical scores only to bound ordinary literature candidates before LLM
+  review; never score or force canonical method references;
 - return no citation when support is weak;
 - cite the primary papers that shaped the hypothesis, strategy rationale, and
   literature gap when a sentence uses that rationale; do not collapse these
@@ -281,8 +288,6 @@ Rules:
   not as a substitute for the strategy-defining literature;
 - do not cite a sentence whose support is only the manuscript's own figure;
 - keep decisions reviewable with confidence and human-check flags.
-- honor validated comparison-layer citation requests for their exact sentences;
-  reject unknown sources or unmatched requested sentences.
 
 Save each section's citation layer under that section workspace, for example:
 
@@ -351,13 +356,6 @@ figure-centered Results and Discussion subsections. It must:
 
 Text-only evidence may be discussed with its covering superset figure, but the
 writer must not imply that the deleted underset visualization exists.
-
-After the internal Results draft is stable, use
-`add-results-literature-comparisons` with the original Results digest and bounded
-`citation_sources.json`. The skill inserts only validated prior-study comparison
-sentences and emits exact citation requests. Then run `select-citations` on
-`results_section_with_literature.json`; requested comparison sources are
-validated and applied before normal citation retrieval for other sentences.
 
 Insert Results with `insert-section-into-docx`. Use `--distribute-figures` when
 the DOCX already contains figure blocks and Results paragraphs mention those

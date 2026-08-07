@@ -16,25 +16,40 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from shared.method_citations import (
+    canonical_candidate,
+    eligible_canonical_records,
+    is_methods_section,
+)
+
 
 API_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.5"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 4
 
 SELECTOR_PROMPT = """You are selecting citations for a computational chemistry manuscript.
 
-You will receive sentence packets. Each packet contains one manuscript sentence, a sentence type, and a small candidate citation set retrieved from a bounded source library.
+You will receive sentence packets. Each packet contains one manuscript sentence,
+its section, the active backend policy, and a bounded candidate citation set.
 
 Strict rules:
 1. Use only candidate citation_key values supplied in the packet.
 2. Return zero citations when no candidate directly supports the sentence.
 3. Prefer primary_project_pdf candidates for literature/background claims about the catalyst system.
-4. Use second_neighbor_reference candidates mainly for standard methods, software, functionals, PAW, k-point sampling, thermodynamic/electrochemical formalisms, and canonical reference conventions.
-5. Do not cite second-neighbor sources for new calculated results, counts, convergence outcomes, or claims unique to the current project.
-6. Do not cite a VASP paper merely because a sentence says the present calculations were not executed with VASP.
-7. Do not cite sentences whose support is the manuscript's own figure, for example sentences centered on "Fig. 1", "Fig. 3", or "Fig. S1", unless the sentence makes an explicit literature or experimental comparison.
-8. Keep citation sets small: normally 1-3 keys.
-9. If unsure, return no citation or mark needs_human_check true.
+4. For canonical_method_reference candidates, decide from the sentence and the
+   candidate's method_tags and citation_guidance whether the method was actually
+   used. A generic word such as cutoff or plane wave is not enough to infer VASP.
+5. Do not cite a method that is negated, mentioned only as excluded/stale context,
+   or incompatible with backend_policy.
+6. Use second_neighbor_reference candidates mainly for public formalisms or
+   literature claims that their evidence directly supports.
+7. Do not cite second-neighbor sources for new calculated results, counts,
+   convergence outcomes, or claims unique to the current project.
+8. Do not cite sentences whose support is the manuscript's own figure unless
+   the sentence makes an explicit literature or experimental comparison.
+9. Keep citation sets small: normally 1-3 keys.
+10. If unsure, return no citation and mark needs_human_check true.
 
 Return JSON only.
 
@@ -61,31 +76,17 @@ STOPWORDS = {
 
 PRIMARY_SYSTEM_KEYS: set[str] = set()
 
-ALIAS_KEYWORDS = {
-    "vasp": ["Kresse1996", "Kresse1999"],
-    "vienna ab initio": ["Kresse1996"],
-    "plane wave": ["Kresse1996"],
-    "cutoff": ["Kresse1996"],
-    "paw": ["Blochl1994", "Kresse1999", "Kresse19992"],
-    "projector augmented wave": ["Blochl1994", "Kresse1999", "Kresse19992"],
-    "pbe": ["Perdew1996"],
-    "perdew": ["Perdew1996"],
-    "burke": ["Perdew1996"],
-    "ernzerhof": ["Perdew1996"],
-    "gga": ["Perdew1996"],
-    "k-point": ["Monkhorst1976"],
-    "k point": ["Monkhorst1976"],
-    "monkhorst": ["Monkhorst1976"],
-    "computational hydrogen electrode": ["Nrskov2004", "K20052"],
-    "che": ["Nrskov2004", "K20052"],
-    "rhe": ["Nrskov2004", "K20052"],
-    "reversible hydrogen electrode": ["Nrskov2004", "K20052"],
-    "0 v versus rhe": ["Nrskov2004", "K20052"],
-    "0 v versus the reversible hydrogen electrode": ["Nrskov2004", "K20052"],
-    "hydrogen chemical potential": ["Nrskov2004", "K20052"],
-    "potential-dependent": ["Nrskov2004", "K20052"],
-    "electron-transfer": ["Nrskov2004", "K20052"],
-}
+
+class CitationKeyCollisionError(ValueError):
+    """Raised when one citation key identifies different source records."""
+
+    def __init__(self, citation_key: str) -> None:
+        self.citation_key = citation_key
+        super().__init__(f"Citation key identifies multiple references: {citation_key}")
+
+
+class CitationSelectionFormatError(ValueError):
+    """Raised when an LLM citation decision violates the JSON contract."""
 
 
 def read_json(path: Path) -> Any:
@@ -153,7 +154,7 @@ def parse_json_text(text: str) -> dict[str, Any]:
             raise
         data = json.loads(stripped[start : end + 1])
     if not isinstance(data, dict):
-        raise ValueError("LLM output must be a JSON object.")
+        raise CitationSelectionFormatError("LLM output must be a JSON object.")
     return data
 
 
@@ -232,6 +233,7 @@ def source_evidence_text(rec: dict[str, Any]) -> str:
             chunks.append(str(value))
     if rec.get("authors"):
         chunks.append(compact_authors(rec.get("authors")))
+    chunks.extend(str(tag) for tag in rec.get("method_tags", []))
     for ctx in rec.get("citation_contexts", [])[:4]:
         sentence = ctx.get("sentence")
         if sentence:
@@ -240,14 +242,18 @@ def source_evidence_text(rec: dict[str, Any]) -> str:
 
 
 def build_index(sources: dict[str, Any]) -> list[dict[str, Any]]:
-    records = []
-    for rec in sources.get("primary_papers", []) + sources.get("second_neighbor_references", []):
+    records_by_key: dict[str, dict[str, Any]] = {}
+    for rec in (
+        sources.get("primary_papers", [])
+        + sources.get("second_neighbor_references", [])
+        + sources.get("canonical_method_references", [])
+    ):
         if not rec.get("citation_key"):
             continue
         source_id = rec.get("paper_id") or rec.get("reference_id") or rec.get("citation_key")
         text = source_evidence_text(rec)
         token_counts = Counter(tokens(text))
-        records.append({
+        record = {
             "source_id": source_id,
             "citation_key": rec["citation_key"],
             "source_role": rec.get("source_role"),
@@ -255,15 +261,67 @@ def build_index(sources: dict[str, Any]) -> list[dict[str, Any]]:
             "authors": rec.get("authors", []),
             "year": rec.get("year"),
             "doi": rec.get("doi"),
+            "url": rec.get("url"),
             "raw_reference": rec.get("raw_reference"),
             "collection": rec.get("collection"),
             "citation_contexts": rec.get("citation_contexts", []),
             "source_reference_numbers": rec.get("source_reference_numbers", []),
+            "method_tags": rec.get("method_tags", []),
+            "backend_family": rec.get("backend_family", "general"),
+            "citation_guidance": rec.get("citation_guidance", ""),
             "evidence_text": text,
             "tokens": token_counts,
-        })
-    return records
+        }
+        key = str(record["citation_key"])
+        existing = records_by_key.get(key)
+        if existing is not None:
+            existing_doi = str(existing.get("doi") or "").lower()
+            record_doi = str(record.get("doi") or "").lower()
+            if existing_doi != record_doi:
+                raise CitationKeyCollisionError(key)
+            if record.get("source_role") != "canonical_method_reference":
+                continue
+        records_by_key[key] = record
+    return list(records_by_key.values())
 
+
+def backend_forbidden_keys(backend_policy: dict[str, Any] | None) -> set[str]:
+    policy = backend_policy if isinstance(backend_policy, dict) else {}
+    values = policy.get("forbidden_citation_keys", [])
+    return {str(value) for value in values} if isinstance(values, list) else set()
+
+
+def backend_forbidden_terms(backend_policy: dict[str, Any] | None) -> list[str]:
+    policy = backend_policy if isinstance(backend_policy, dict) else {}
+    values = policy.get("forbidden_public_terms", [])
+    return [str(value) for value in values] if isinstance(values, list) else []
+
+
+def term_present(sentence: str, term: str) -> bool:
+    normalized = normalize_text(sentence)
+    phrase = normalize_text(term).strip()
+    if not phrase:
+        return False
+    if re.fullmatch(r"[a-z0-9]+", phrase):
+        return bool(re.search(rf"\b{re.escape(phrase)}\b", normalized))
+    return phrase in normalized
+
+
+def filter_index_for_backend(index: list[dict[str, Any]], backend_policy: dict[str, Any] | None) -> list[dict[str, Any]]:
+    forbidden = backend_forbidden_keys(backend_policy)
+    eligible_canonical_keys = {
+        str(record["citation_key"])
+        for record in eligible_canonical_records(index, backend_policy)
+    }
+    return [
+        record
+        for record in index
+        if str(record.get("citation_key", "")) not in forbidden
+        and (
+            record.get("source_role") != "canonical_method_reference"
+            or str(record.get("citation_key", "")) in eligible_canonical_keys
+        )
+    ]
 
 def classify_sentence(sentence: str, section_id: str) -> str:
     s = normalize_text(sentence)
@@ -283,17 +341,6 @@ def classify_sentence(sentence: str, section_id: str) -> str:
     if section_id == "vibrational_free_energy_corrections":
         return "method_formalism"
     return "uncited_method_description"
-
-
-def alias_scores(sentence: str, available_keys: set[str]) -> dict[str, float]:
-    normalized = normalize_text(sentence)
-    scores: dict[str, float] = {}
-    for phrase, keys in ALIAS_KEYWORDS.items():
-        if phrase in normalized:
-            for key in keys:
-                if key in available_keys:
-                    scores[key] = scores.get(key, 0.0) + 14.0
-    return scores
 
 
 def should_skip_sentence(sentence: str, sentence_type: str) -> bool:
@@ -326,12 +373,11 @@ def rank_candidates(
     max_candidates: int,
 ) -> list[dict[str, Any]]:
     query_tokens = Counter(tokens(sentence))
-    available_keys = {rec["citation_key"] for rec in index}
-    aliases = alias_scores(sentence, available_keys)
     ranked: list[dict[str, Any]] = []
-    normalized_sentence = normalize_text(sentence)
     for rec in index:
-        score = aliases.get(rec["citation_key"], 0.0)
+        if rec.get("source_role") == "canonical_method_reference":
+            continue
+        score = 0.0
         overlap = 0.0
         for tok, count in query_tokens.items():
             if tok in rec["tokens"]:
@@ -362,6 +408,7 @@ def rank_candidates(
                 "source_id": rec.get("source_id"),
                 "citation_key": rec["citation_key"],
                 "source_role": rec.get("source_role"),
+                "candidate_kind": "retrieved_literature",
                 "score": round(score, 3),
                 "title": rec.get("title"),
                 "authors": rec.get("authors", []),
@@ -375,10 +422,26 @@ def rank_candidates(
     return ranked[:max_candidates]
 
 
-def deterministic_select(sentence: str, sentence_type: str, candidates: list[dict[str, Any]]) -> tuple[list[str], str, str, bool]:
+def deterministic_select(
+    sentence: str,
+    sentence_type: str,
+    candidates: list[dict[str, Any]],
+    methods_section: bool,
+) -> tuple[list[str], str, str, bool]:
+    if methods_section and sentence_type in {
+        "method_formalism",
+        "electrochemical_formalism",
+        "uncited_method_description",
+    }:
+        return [], "none", "Canonical method citations require an LLM or human evidence review.", True
     if should_skip_sentence(sentence, sentence_type) or not candidates:
         return [], "none", "No citation selected by conservative policy.", False
-    high = [c for c in candidates if c["score"] >= 12.0]
+    high = [
+        candidate
+        for candidate in candidates
+        if candidate.get("candidate_kind") == "retrieved_literature"
+        and float(candidate.get("score", 0.0)) >= 12.0
+    ]
     if sentence_type == "literature_background":
         primary = [c for c in high if c["source_role"] == "primary_project_pdf"]
         selected = primary[:2] if primary else high[:1]
@@ -394,7 +457,13 @@ def deterministic_select(sentence: str, sentence_type: str, candidates: list[dic
     return [], "low", "No candidate exceeded the conservative retrieval threshold.", True
 
 
-def make_sentence_packets(section_json: dict[str, Any], index: list[dict[str, Any]], max_candidates: int) -> list[dict[str, Any]]:
+def make_sentence_packets(
+    section_json: dict[str, Any],
+    index: list[dict[str, Any]],
+    max_candidates: int,
+    backend_policy: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    effective_index = filter_index_for_backend(index, backend_policy)
     packets = []
     n = 1
     for section in section_json.get("sections", []):
@@ -404,7 +473,15 @@ def make_sentence_packets(section_json: dict[str, Any], index: list[dict[str, An
                 continue
             for sentence_index, sentence in enumerate(split_sentences(block.get("text", ""))):
                 sentence_type = classify_sentence(sentence, section_id)
-                candidates = rank_candidates(sentence, sentence_type, index, max_candidates)
+                candidates = rank_candidates(sentence, sentence_type, effective_index, max_candidates)
+                if is_methods_section(section_id):
+                    candidates.extend(
+                        canonical_candidate(record)
+                        for record in eligible_canonical_records(effective_index, backend_policy)
+                    )
+                backend_violations = [
+                    term for term in backend_forbidden_terms(backend_policy) if term_present(sentence, term)
+                ]
                 sentence_id = f"S{n:03d}"
                 n += 1
                 packets.append({
@@ -414,6 +491,8 @@ def make_sentence_packets(section_json: dict[str, Any], index: list[dict[str, An
                     "sentence_index": sentence_index,
                     "sentence": sentence,
                     "sentence_type": sentence_type,
+                    "backend_policy": backend_policy or {},
+                    "backend_violations": backend_violations,
                     "candidate_citations": candidates,
                 })
     return packets
@@ -428,17 +507,25 @@ def build_llm_packets(packets: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "source_id": candidate.get("source_id"),
                 "citation_key": candidate["citation_key"],
                 "source_role": candidate["source_role"],
+                "candidate_kind": candidate.get("candidate_kind"),
                 "title": candidate.get("title"),
                 "authors": candidate.get("authors", [])[:8],
                 "year": candidate.get("year"),
+                "doi": candidate.get("doi"),
+                "url": candidate.get("url"),
                 "raw_reference": candidate.get("raw_reference"),
                 "evidence_snippet": candidate.get("evidence_snippet"),
-                "retrieval_score": candidate.get("score"),
+                "method_tags": candidate.get("method_tags", []),
+                "backend_family": candidate.get("backend_family"),
+                "citation_guidance": candidate.get("citation_guidance"),
             })
         llm_packets.append({
             "sentence_id": packet["sentence_id"],
+            "section_id": packet["section_id"],
             "sentence": packet["sentence"],
             "sentence_type": packet["sentence_type"],
+            "backend_policy": packet.get("backend_policy", {}),
+            "backend_violations": packet.get("backend_violations", []),
             "candidates": candidates,
         })
     return llm_packets
@@ -456,7 +543,7 @@ def normalize_llm_decisions(packets: list[dict[str, Any]], raw: dict[str, Any]) 
     packet_by_id = {p["sentence_id"]: p for p in packets}
     out: dict[str, dict[str, Any]] = {}
     if not isinstance(raw.get("decisions"), list):
-        raise ValueError("LLM output must contain a decisions list.")
+        raise CitationSelectionFormatError("LLM output must contain a decisions list.")
     for item in raw["decisions"]:
         if not isinstance(item, dict):
             continue
@@ -495,7 +582,10 @@ def merge_decisions(packets: list[dict[str, Any]], llm_by_id: dict[str, dict[str
             choice = llm_by_id[packet["sentence_id"]]
         else:
             keys, confidence, reason, human = deterministic_select(
-                packet["sentence"], packet["sentence_type"], packet["candidate_citations"]
+                packet["sentence"],
+                packet["sentence_type"],
+                packet["candidate_citations"],
+                is_methods_section(packet["section_id"]),
             )
             choice = {
                 "selected_citation_keys": keys,
@@ -506,8 +596,20 @@ def merge_decisions(packets: list[dict[str, Any]], llm_by_id: dict[str, dict[str
             }
         decision = {
             **packet,
+            "candidate_citations": [
+                {key: value for key, value in candidate.items() if key != "score"}
+                for candidate in packet["candidate_citations"]
+            ],
             **choice,
         }
+        if decision.get("backend_violations"):
+            decision["selected_citation_keys"] = []
+            decision["needs_human_check"] = True
+            decision["confidence"] = "none"
+            decision["reason"] = (
+                "The sentence contains method term(s) forbidden by the active backend policy: "
+                + ", ".join(decision["backend_violations"])
+            )
         decision["selected_citation_source_ids"] = selected_source_ids(
             decision.get("selected_citation_keys", []),
             packet,
@@ -525,6 +627,7 @@ def compact_source_record(rec: dict[str, Any]) -> dict[str, Any]:
         "authors": rec.get("authors", []),
         "year": rec.get("year"),
         "doi": rec.get("doi"),
+        "url": rec.get("url"),
         "raw_reference": rec.get("raw_reference"),
         "collection": rec.get("collection"),
         "source_reference_numbers": rec.get("source_reference_numbers", []),
@@ -562,6 +665,7 @@ def apply_annotations(
     section_json: dict[str, Any],
     decisions: list[dict[str, Any]],
     source_lookup: dict[str, dict[str, Any]],
+    backend_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cited = copy.deepcopy(section_json)
     decisions_by_location: dict[tuple[str, int], list[dict[str, Any]]] = {}
@@ -592,6 +696,7 @@ def apply_annotations(
                         "sentence_id": decision["sentence_id"],
                         "sentence": decision["sentence"],
                         "citation_keys": cite_keys,
+                        "backend_violations": decision.get("backend_violations", []),
                         "citation_source_ids": cite_source_ids,
                         "sentence_type": decision["sentence_type"],
                         "confidence": decision["confidence"],
@@ -602,6 +707,7 @@ def apply_annotations(
             block["text_with_citation_placeholders"] = " ".join(rendered)
             block["citation_annotations"] = annotations
     cited["citation_schema_version"] = SCHEMA_VERSION
+    cited["backend_policy"] = backend_policy if backend_policy is not None else section_json.get("backend_policy", {})
     cited["citation_sources_used"] = citation_sources_used(decisions, source_lookup)
     return cited
 
@@ -646,9 +752,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--section-json", required=True, type=Path, help="Manuscript section JSON to annotate.")
     parser.add_argument("--citation-sources", required=True, type=Path, help="citation_sources.json from citation-source-extractor.")
     parser.add_argument("--outdir", type=Path, help="Output directory. Defaults near the section JSON.")
+    parser.add_argument("--backend-policy", type=Path, help="Optional backend policy JSON. Defaults to section_json.backend_policy.")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL))
     parser.add_argument("--max-candidates", type=int, default=8)
-    parser.add_argument("--no-llm", action="store_true", help="Use deterministic retrieval-only decisions.")
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Use retrieval-only fallback; canonical Methods citations remain unselected for human review.",
+    )
     parser.add_argument("--save-prompt", type=Path, help="Optional path for LLM prompt payload JSON.")
     parser.add_argument("--save-response", type=Path, help="Optional path for raw LLM response JSON.")
     return parser.parse_args(argv)
@@ -659,12 +770,17 @@ def main(argv: list[str] | None = None) -> int:
     load_default_env()
     section_json = read_json(args.section_json)
     sources = read_json(args.citation_sources)
+    if args.backend_policy:
+        backend_payload = read_json(args.backend_policy)
+        backend_policy = backend_payload.get("backend_policy", backend_payload) if isinstance(backend_payload, dict) else {}
+    else:
+        backend_policy = section_json.get("backend_policy", {})
     outdir = args.outdir or default_outdir(args.section_json)
     outdir.mkdir(parents=True, exist_ok=True)
 
     index = build_index(sources)
     source_lookup = source_lookup_from_index(index)
-    packets = make_sentence_packets(section_json, index, args.max_candidates)
+    packets = make_sentence_packets(section_json, index, args.max_candidates, backend_policy)
     llm_by_id: dict[str, dict[str, Any]] | None = None
     prompt_path = args.save_prompt or outdir / "llm_prompt.json"
     response_path = args.save_response or outdir / "llm_response.json"
@@ -679,10 +795,14 @@ def main(argv: list[str] | None = None) -> int:
             raw_decisions = parse_json_text(output_text(response))
             llm_by_id = normalize_llm_decisions(packets, raw_decisions)
         else:
-            print("OPENAI_API_KEY not found; falling back to deterministic citation selection.", file=sys.stderr)
+            print(
+                "OPENAI_API_KEY not found; using retrieval-only fallback. "
+                "Canonical Methods citations will not be guessed and require human review.",
+                file=sys.stderr,
+            )
 
     decisions = merge_decisions(packets, llm_by_id)
-    cited = apply_annotations(section_json, decisions, source_lookup)
+    cited = apply_annotations(section_json, decisions, source_lookup, backend_policy)
 
     cited_path = outdir / "cited_section_text.json"
     decisions_path = outdir / "citation_decisions.json"
@@ -692,6 +812,7 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": SCHEMA_VERSION,
         "section_json": str(args.section_json),
         "citation_sources": str(args.citation_sources),
+        "backend_policy": backend_policy,
         "decision_mode": "llm" if llm_by_id else "deterministic",
         "sentence_count": len(decisions),
         "cited_sentence_count": sum(1 for d in decisions if d.get("selected_citation_keys")),

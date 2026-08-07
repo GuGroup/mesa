@@ -18,9 +18,10 @@ source universe. The skill reads local project PDFs and extracts:
 3. citation contexts: sentences in a primary paper where a parsed
    second-neighbor reference number is cited
 
-It does not search the web, recommend citation placement, rewrite manuscript
-text, or decide whether a citation supports a specific sentence. Those steps
-belong to later citation-selection or citation-insertion skills.
+It also merges the bundled canonical method reference registry into the output
+source index. It does not search the web, recommend citation placement, rewrite
+manuscript text, or decide whether a citation supports a specific sentence.
+Those steps belong to later citation-selection or citation-insertion skills.
 
 Default output:
 
@@ -60,12 +61,15 @@ Override paths when needed:
 --pdf-root path/to/papers
 --pdf-root path/to/more_papers
 --search-report path/to/search_report.md
+--canonical-method-references path/to/canonical_method_references.json
 --outdir path/to/references
 ```
 
 ## Extraction Rules
 
 - Use only local PDFs and references printed inside those PDFs.
+- Merge only the reviewed canonical method references from the bundled registry
+  or an explicitly supplied replacement registry.
 - Do not add papers from search reports unless a local PDF is present and can be
   matched to that report entry.
 - Do not perform additive web search, DOI lookup, CrossRef lookup, or Zotero
