@@ -101,6 +101,7 @@ A complete strategy must contain:
 
 1. The exact authoritative claim or claim component being tested.
 2. A clearly labeled computational hypothesis.
+3. The explicitly and unambiguously described entry point that anyone can execute the strategy from scratch.
 3. The material, surface, active-site, and adsorbate models to construct.
 4. Matched control models that isolate the variable tested by the hypothesis.
 5. The chemical states, adsorbates, or reaction pathways to evaluate.
