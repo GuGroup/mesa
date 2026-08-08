@@ -60,7 +60,6 @@ STRATEGY_PROMPT = """You are generating computational chemistry strategies for a
 5. Prohibitied Strategies and Claims
 
 Prohibited computational work:
-* Do not propose:
   Water covered slab structure strategies,
   transition-state searches, 
   NEB calculations, 
@@ -69,12 +68,7 @@ Prohibited computational work:
   microkinetic modeling, 
   molecular dynamics, 
   or any other unsupported computational method.
-* Do not rename, approximate, or replace an unsupported calculation with an assumed or qualitative substitute.
-* Do not calculate or invent an activation barrier from adsorption energies or reaction free energies.
-
 Prohibited workflows:
-* Do not generate experimental strategies.
-* Do not propose: 
   synthesis, 
   catalyst preparation, 
   microscopy, 
@@ -86,6 +80,9 @@ Prohibited workflows:
   H-cell experiments, 
   zero-gap experiments, 
   or any other wet-lab workflow.
+* Do not generate experimental strategies.
+* Do not rename, approximate, or replace an unsupported calculation with an assumed or qualitative substitute.
+* Do not calculate or invent an activation barrier from adsorption energies or reaction free energies.
 
 Unsupported requirements:
 
@@ -99,6 +96,7 @@ Each strategy must be a self-contained claim-supporting workflow.
 
 A complete strategy must contain:
 
+0. Mechanistic explanation supports the author-reported claim.
 1. The exact authoritative claim or claim component being tested.
 2. A clearly labeled computational hypothesis.
 3. The explicitly and unambiguously described entry point that anyone can execute the strategy from scratch.
@@ -132,7 +130,7 @@ Strategy specific rules:
 * State the free-energy reference convention and applicable corrections for zero-point energy, entropy, solvation, potential, and pH. Do not omit unfavorable states or interpret an uphill free-energy step as an activation barrier or kinetic rate-determining step.
 
 
-Supplied reaciton-pathway:
+Supplied reaction-pathway:
     REACTION_PATHWAY_PRIORS = {
     "HER": {
         "products": ["H2"],
@@ -392,9 +390,9 @@ Supplied reaciton-pathway:
 * Results in this output are proposed expected computational results, computational checks, or benchmark comparisons, not established current-paper findings. Mark that status explicitly.
 * Do not collapse all evidence into one generic bibliography. Attach references directly to the decision or claim they support.
 * The "experiment" object in every strategy must contain computational experiments only.
-* Schema notation: Replace every REFERENCE_LIST with a non-empty list of complete reference objects; never output the literal placeholder.
+* Schema notation: Replace every REFERENCE_DICT with a non-empty list of complete reference objects; never output the literal placeholder.
 
-Reference schema:
+Reference schema (REFERENCE_DICT):
 {
     "extraction_artifact": "...",
     "extraction_type": "experimental_extraction | paper_decomposition | general_insight | paper_extraction",
@@ -422,32 +420,10 @@ generated_strategies = {
             "extraction_artifact": "..."
         },
         "material_domain": "...",
-        "success_criteria": [
-            {
-                "criterion": "...",
-                "references": [
-                    {
-                        "extraction_artifact": "...",
-                        "extraction_type": "...",
-                        "inherited_source": None,
-                        "supporting_statement": "...",
-                        "decision_role": "benchmark_constraint"
-                    }
-                ]
-            }
-        ],
         "benchmark_constraints": [
             {
                 "constraint": "...",
-                "references": [
-                    {
-                        "extraction_artifact": "...",
-                        "extraction_type": "...",
-                        "inherited_source": None,
-                        "supporting_statement": "...",
-                        "decision_role": "benchmark_constraint"
-                    }
-                ]
+                "references": [REFERENCE_DICT]
             }
         ]
     },
@@ -461,11 +437,12 @@ generated_strategies = {
         {
             "strategy_id": "S1",
             "title": "...",
+            "decision_target": "...",
             "problem": {
                 "question": "...",
                 "unexplained_phenomenon": "...",
                 "context": "...",
-                "references": [REFERENCE_LIST]
+                "references": [REFERENCE_DICT]
             },
             "axioms": {
                 "items": [
@@ -478,7 +455,7 @@ generated_strategies = {
                             "title": "...",
                             "claim_used": "..."
                         },
-                        "references": [REFERENCE_LIST]
+                        "references": [REFERENCE_DICT]
                     }
                 ]
             },
@@ -486,7 +463,7 @@ generated_strategies = {
                 "statement": "...",
                 "derived_from_axioms": ["..."],
                 "proposed_mechanism_or_prediction": "...",
-                "references": [REFERENCE_LIST]
+                "references": [REFERENCE_DICT]
             },
             "experiment": {
                 "computational": {
@@ -507,7 +484,7 @@ generated_strategies = {
                         "other_settings": ["..."]
                     },
                     "procedures": ["..."],
-                    "references": [REFERENCE_LIST]
+                    "references": [REFERENCE_DICT]
                 }
             },
             "results": {
@@ -515,14 +492,14 @@ generated_strategies = {
                     {
                         "statement": "...",
                         "status": "proposed expectation, not established",
-                        "references": [REFERENCE_LIST]
+                        "references": [REFERENCE_DICT]
                     }
                 ],
                 "computational_benchmark_comparisons": [
                     {
                         "statement": "...",
                         "status": "benchmark comparison to compute, not established",
-                        "references": [REFERENCE_LIST]
+                        "references": [REFERENCE_DICT]
                     }
                 ],
                 "computational_tests_to_run": {
@@ -530,24 +507,29 @@ generated_strategies = {
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": [REFERENCE_LIST]
+                            "references": [REFERENCE_DICT]
                         }
                     ],
                     "selectivity_and_competing_pathway_tests": [
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": [REFERENCE_LIST]
+                            "references": [REFERENCE_DICT]
                         }
                     ],
                     "stability_and_surface_state_tests": [
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": [REFERENCE_LIST]
+                            "references": [REFERENCE_DICT]
                         }
                     ]
                 }
+            },
+            "author_claim_support_if_successful": {
+                "expected_strength": "strong | moderate | weak",
+                "maximum_supported_conclusion": "...",
+                "out_of_scope": ["..."]
             },
             "conclusion": {
                 "causal_mechanism": "...",
@@ -583,8 +565,11 @@ generated_strategies = {
     ]
 }
 
-If a strategy cannot be supported by the extraction artifacts, do not include it as a strategy. Put the missing idea in unsupported_gaps instead.
-If an idea would require experimental work, do not include it as a strategy. Only mention it as a benchmark constraint if it is already present in the extraction artifacts."""
+10. Definitions of Selected generated_strategies Fields:
+"decision_target": The specific component or causal link within the author-reported claim that the strategy is designed to evaluate computationally.
+"author_claim_support_if_successful": The strongest bounded mechanistic support that the strategy may provide for the author-reported claim if its expected computational outcome is obtained.
+"unsupported_gaps": If a strategy cannot be supported by the extraction artifacts, do not include it as a strategy. Put the missing idea in unsupported_gaps instead.
+"""
 
 
 def parse_args() -> argparse.Namespace:
@@ -919,6 +904,41 @@ def validate_generated_output(
         raise SystemExit("Generated target_task.author_reported_claim does not exactly preserve the extraction")
     if author_claim is None and target.get("author_reported_claim") is not None:
         raise SystemExit("Generated target_task.author_reported_claim must be None without an extracted claim")
+
+    strategies = payload.get("strategies")
+    if not isinstance(strategies, list):
+        raise SystemExit("Generated strategies must be a list")
+    for index, strategy in enumerate(strategies):
+        strategy_path = f"generated_strategies.strategies[{index}]"
+        if not isinstance(strategy, dict):
+            raise SystemExit(f"{strategy_path} must be an object")
+        if not isinstance(strategy.get("decision_target"), str) or not strategy[
+            "decision_target"
+        ].strip():
+            raise SystemExit(f"{strategy_path}.decision_target must be a non-empty string")
+
+        support = strategy.get("author_claim_support_if_successful")
+        if not isinstance(support, dict):
+            raise SystemExit(f"{strategy_path}.author_claim_support_if_successful must be an object")
+        if support.get("expected_strength") not in {"strong", "moderate", "weak"}:
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful.expected_strength "
+                "must be one of: strong, moderate, weak"
+            )
+        maximum_conclusion = support.get("maximum_supported_conclusion")
+        if not isinstance(maximum_conclusion, str) or not maximum_conclusion.strip():
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful."
+                "maximum_supported_conclusion must be a non-empty string"
+            )
+        out_of_scope = support.get("out_of_scope")
+        if not isinstance(out_of_scope, list) or not all(
+            isinstance(item, str) and item.strip() for item in out_of_scope
+        ):
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful.out_of_scope "
+                "must be a list of non-empty strings"
+            )
 
     allowed_reference_roles = {
         "benchmark_constraint",
