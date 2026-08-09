@@ -7,7 +7,7 @@ decision file.
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "project": "<project_name>",
   "created_at": "2026-07-06T00:00:00+09:00",
   "extraction_policy": {
@@ -16,6 +16,7 @@ decision file.
   },
   "primary_papers": [],
   "second_neighbor_references": [],
+  "canonical_method_references": [],
   "warnings": []
 }
 ```
@@ -84,3 +85,30 @@ by normalized raw reference text when no DOI is present.
 `citation_contexts` is evidence for later citation selection. It is not a
 guarantee that the second-neighbor reference supports every sentence in the
 new manuscript.
+
+## Canonical Method Reference Record
+
+Canonical method references are reviewed, bundled candidates for standard
+methods. They are merged from
+`canonical_method_references.json`. They are never preselected by this skill;
+the later selector gives backend-compatible records to the LLM, which decides
+whether the manuscript sentence reports actual use of the corresponding method.
+
+```json
+{
+  "reference_id": "M0001",
+  "source_id": "M0001",
+  "citation_key": "Perdew1996",
+  "title": "Generalized Gradient Approximation Made Simple",
+  "authors": ["John P. Perdew", "Kieron Burke", "Matthias Ernzerhof"],
+  "year": "1996",
+  "doi": "10.1103/PhysRevLett.77.3865",
+  "url": null,
+  "raw_reference": "Reviewed canonical reference string.",
+  "collection": "canonical_method_references",
+  "source_role": "canonical_method_reference",
+  "method_tags": ["PBE", "GGA"],
+  "backend_family": "dft",
+  "citation_guidance": "Use when the PBE functional was actually used."
+}
+```

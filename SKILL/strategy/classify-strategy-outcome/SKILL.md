@@ -32,7 +32,8 @@ exists.
 
 The script:
 
-- extracts only the agreed claim, strategy, and prioritization fields;
+- extracts only the agreed claim, strategy, and prioritization fields, including
+  each strategy's `decision_target` and `author_claim_support_if_successful`;
 - uses `recipe_index.json` only to require one terminal diagnosis for every
   procedure;
 - validates that each `-R1` or `-R2` diagnosis was authorized by the preceding

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Delegate Literature Workflow"
+  short_description: "Delegate literature work without parent context"
+  default_prompt: "Use $delegate-literature-workflow to run the next bounded literature phase in a fresh sub-agent."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Execution Unit"
+  short_description: "Resolve one E unit through manifest and repair"
+  default_prompt: "Use $manage-execution-unit to record, diagnose, and terminally resolve one recipe-backed E execution unit."

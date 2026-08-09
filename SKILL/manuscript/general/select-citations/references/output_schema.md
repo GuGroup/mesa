@@ -3,11 +3,16 @@
 `cited_section_text.json` preserves the input section JSON and adds citation
 metadata. The original paragraph `text` is not changed.
 
+The output preserves `backend_policy` when present. Backend-forbidden sentences
+carry `backend_violations` in their annotation, receive no citations, and are
+marked `needs_human_check: true`.
+
 ## Top-Level Additions
 
 ```json
 {
-  "citation_schema_version": 2,
+  "citation_schema_version": 4,
+  "backend_policy": {"mode": "dft"},
   "citation_sources_used": [
     {
       "source_id": "P004",
@@ -17,6 +22,7 @@ metadata. The original paragraph `text` is not changed.
       "authors": ["A. Author"],
       "year": "2024",
       "doi": "10.0000/example",
+      "url": null,
       "raw_reference": null,
       "collection": "strategy",
       "source_reference_numbers": []
@@ -40,6 +46,7 @@ citations only. It is intentionally smaller than the full `citation_sources.json
       "sentence_id": "S001",
       "sentence": "Sentence selected for citation.",
       "citation_keys": ["Key1"],
+      "backend_violations": [],
       "citation_source_ids": ["P004"],
       "sentence_type": "method_formalism",
       "confidence": "high",
@@ -70,15 +77,22 @@ Equation blocks are copied unchanged.
   "candidate_citations": [
     {
       "citation_key": "Kresse1996",
-      "source_role": "second_neighbor_reference",
-      "score": 18.5,
-      "title": null,
+      "source_role": "canonical_method_reference",
+      "candidate_kind": "canonical_method",
+      "title": "Efficient iterative schemes for ab initio total-energy calculations using a plane-wave basis set",
       "year": "1996",
-      "evidence_snippet": "Candidate source text."
+      "doi": "10.1103/PhysRevB.54.11169",
+      "method_tags": ["VASP"],
+      "backend_family": "dft",
+      "citation_guidance": "Use when VASP was actually used; generic plane-wave or cutoff wording is insufficient."
     }
   ]
 }
 ```
 
 `citation_decisions.json` contains all sentence-level decisions plus aggregate
-counts and validation warnings.
+counts and validation warnings. Canonical Methods candidates have no retrieval
+score and are selected only by an LLM decision bounded to the supplied keys. If
+no LLM decision is available, canonical Methods citations remain empty and the
+sentence is marked for human review. The original paragraph `text` remains
+unchanged.

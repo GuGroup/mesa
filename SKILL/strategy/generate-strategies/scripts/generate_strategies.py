@@ -22,52 +22,377 @@ NOT_STATED = "not explicitly stated"
 
 STRATEGY_PROMPT = """You are generating computational chemistry strategies for a target materials or chemistry task.
 
-You will receive saved extraction artifacts from earlier workflow steps:
-1. Experimental extraction from extract-data-from-experiment.
-2. Paper decomposition from decompose-chemistry-paper-pdf.
-3. General paper insight from extract-general-insight-pdf.
 
-Your job is to generate multiple actionable computational proof strategies for the authoritative target task by synthesizing these artifacts.
+1. Task and Objective
 
-Scope:
-* Generate only computational chemistry strategies.
-* Allowed strategy types include DFT slab and adsorbate modeling, adsorption-energy and free-energy diagram.
-* Free-energy diagram is always recommended, but pursue the best if there are other strategies.
-* But transition / NEB study is not supported in this session. Please evade it.
-* All intermediate states, initial, and final gas state should be explicitly implemented for free-energy diagram strategy.
-* Do not generate experimental strategies. Do not propose synthesis, catalyst preparation, microscopy, spectroscopy, electrochemical cell testing, isotope labeling, product quantification, Faradaic-efficiency measurement, H-cell/zero-gap experiments, or other wet-lab workflows.
-* The extracted author-reported claim defines the target when present. Use all other experimental-extraction content only as benchmark constraints, observed material identity, observed performance targets, or measured facts that the computational strategy should explain. It must not become an experimental action plan.
+* Generate multiple distinct, self-contained computational strategies that can support authoritative target claim by synthesizing these artifacts.
+* Each strategy must use supported computational chemistry methods to produce an interpretable conclusion about a directly or partially testable component of the authoritative claim.
+* Generate strategies at the strongest mechanistic depth supported by the authoritative claim, the extraction artifacts, and the available computational capabilities.
+* Do NOT increase mechanistic ambition by rewriting, extending, or strengthening the target claim.
 
-Critical requirements:
+
+2. Input Artifacts and Source Roles
+
+* Use the provided experimental extraction, paper decomposition, general paper insight, Generation context, and optional reaction-pathway prior only for their designated roles.
+* Use experimental extraction for author-reported claims, observed material identity, measured facts, performance benchmarks, and constraints that the calculations should explain.
+* Prefer paper decomposition for detailed mechanisms, structural models, computational methods, and calculation settings.
+* Prefer general paper insight for broad design principles, descriptors, field bottlenecks, alternative explanations, and computational opportunities.
+* Use Generation context to determine the authoritative target, and treat any reaction-pathway prior only as a candidate hypothesis library rather than an established mechanism.
+
+
+3. Target Claim and Autority Rules
+
+* When author_reported_claim is present, copy its statement exactly into target_task.statement and copy the complete object into target_task.author_reported_claim. Otherwise, copy Generation context target_task exactly and set author_reported_claim to None.
+* Preserve the authoritative claim exactly, but decompose it internally into scientifically meaningful claim components for computational scope assessment.
+* Classify each component as directly testable, partially testable, or not testable using the supported computational capabilities.
+* Generate strategies only for directly or partially testable components. For partial tests, state exactly what is evaluated and do not present a descriptor, thermodynamic tendency, or necessary condition as proof of the complete claim.
+* Explicitly skip components that require experiments or unsupported calculations. Do not invent a proxy strategy for them, and if no component is computationally testable, generate no strategy.
+
+
+4. Supported Computational Capabilities
+
+* Supported model-building operations include bulk, slab, gas-phase, and adsorption site selection, together with only the structural modifications explicitly available in the provided capability registry.
+* Default atomic simulation engine is MLIP (UMA), unless there is an explicit information that VASP is supported for this project.
+* MLIP supports geometry relaxation and vibrational calculations.
+* VASP calculations may use only operations listed as validated in the provided VASP capability registry.
+
+
+5. Prohibitied Strategies and Claims
+
+Prohibited computational work:
+  Water covered slab structure strategies,
+  transition-state searches, 
+  NEB calculations, 
+  activation-barrier calculations, 
+  reaction-rate calculations, 
+  microkinetic modeling, 
+  molecular dynamics, 
+  or any other unsupported computational method.
+Prohibited workflows:
+  synthesis, 
+  catalyst preparation, 
+  microscopy, 
+  spectroscopy, 
+  electrochemical cell testing, 
+  isotope labeling, 
+  product quantification, 
+  Faradaic-efficiency measurement, 
+  H-cell experiments, 
+  zero-gap experiments, 
+  or any other wet-lab workflow.
+* Do not generate experimental strategies.
+* Do not rename, approximate, or replace an unsupported calculation with an assumed or qualitative substitute.
+* Do not calculate or invent an activation barrier from adsorption energies or reaction free energies.
+
+Unsupported requirements:
+
+* If the authoritative claim cannot be fully tested without a prohibited or unsupported calculation, state that limitation explicitly.
+* In that case, provide only the strongest supported computational test and clearly delimit the conclusion it can support.
+
+
+6. Definition of a Complete Strategy
+
+Each strategy must be a self-contained claim-supporting workflow.
+
+A complete strategy must contain:
+
+0. Mechanistic explanation supports the author-reported claim.
+1. The exact authoritative claim or claim component being tested.
+2. A clearly labeled computational hypothesis.
+3. The explicitly and unambiguously described entry point that anyone can execute the strategy from scratch.
+3. The material, surface, active-site, and adsorbate models to construct.
+4. Matched control models that isolate the variable tested by the hypothesis.
+5. The chemical states, adsorbates, or reaction pathways to evaluate.
+6. An ordered sequence of supported calculations.
+7. The computational observables and comparisons to be obtained.
+8. And requested fields on following python dictionary structure.
+9. Free-energy diagram about complete reaction pathway. Full reaction pathway free-energy diagram is always required.
+
+Completeness rules:
+
+* Model construction, adsorption-site enumeration, geometry relaxation, intermediate enumeration, or adsorption-energy calculation alone is not a complete strategy.
+* Model construction, adsorption-energy analysis, and free-energy analysis are calculation stages, not automatically separate strategies.
+* If two proposed strategies must be combined to reach one primary claim-level conclusion, merge them into one strategy.
+* Every strategy must independently produce an interpretable result concerning the authoritative claim.
+
+Strategy specific rules:
+  1. If doping is included in a strategy, doping formation energy always needs to be presented.
+  2. For oxygen evolution and reduction reaction, you may run O, OH, or OOH precovered structure, depending on the intermediate before the potential determining step, or using grand potential surface phase diagram. Nonetheless prefer to skip precovered simulations unless absolutely needed for describing the experiment.
+  3. CHE (Computational Hydrogen Electrode) method is always recommended for electrochemical energy calculation. Method called grand canonical electrode potential or constant charge potential methods are the more specific method to implement actual potential in the DFT. These are currently not implemented here, thus use the computational hydrogen electrode method for now.
+
+
+7. Reaction and Mechanistic Modeling Rules
+
+* Keep observations distinct from causal mechanisms, and label any mechanism not directly supported by the extraction artifacts as a hypothesis.
+* Use the supplied reaction-pathway lists. Only deviate if it is absolutely necessary to describe experiment.
+* If no artifact or pathway prior supports a detailed mechanism, do not invent one. State the limitation and use only the strongest supported intermediate or thermodynamic comparison.
+* For every free-energy strategy, define the balanced overall reaction and explicitly include the initial state, every evaluated intermediate, and the terminal state. Map each state to an explicit computational model or thermodynamic reference, including gas, liquid, solvated, proton, and electron references when applicable.
+* State the free-energy reference convention and applicable corrections for zero-point energy, entropy, solvation, potential, and pH. Do not omit unfavorable states or interpret an uphill free-energy step as an activation barrier or kinetic rate-determining step.
+
+
+Supplied reaction-pathway:
+    REACTION_PATHWAY_PRIORS = {
+    "HER": {
+        "products": ["H2"],
+        "overall_reactions": {
+            "acidic": "2H+ + 2e- -> H2",
+            "alkaline": "2H2O + 2e- -> H2 + 2OH-"
+        },
+        "candidate_pathways": {
+            "acidic_volmer_heyrovsky": [
+                "*",
+                "H*",
+                "H2(g) + *"
+            ],
+            "acidic_volmer_tafel": [
+                "2*",
+                "2H*",
+                "H2(g) + 2*"
+            ],
+            "alkaline_volmer_heyrovsky": [
+                "* + H2O",
+                "H* + OH-",
+                "H2(g) + OH- + *"
+            ],
+            "alkaline_volmer_tafel": [
+                "2* + 2H2O",
+                "2H* + 2OH-",
+                "H2(g) + 2OH- + 2*"
+            ]
+        },
+        "reverse_reaction": "HOR"
+    },
+
+    "OER": {
+        "products": ["O2"],
+        "overall_reactions": {
+            "acidic": "2H2O -> O2 + 4H+ + 4e-",
+            "alkaline": "4OH- -> O2 + 2H2O + 4e-"
+        },
+        "candidate_pathways": {
+            "adsorbate_evolution_mechanism": [
+                "*",
+                "OH*",
+                "O*",
+                "OOH*",
+                "O2(g) + *"
+            ],
+            "lattice_oxygen_mechanism": [
+                "Use only for oxygen-containing catalysts when lattice-oxygen participation is supported by the target claim or inherited evidence.",
+                "Explicitly model lattice-oxygen activation, O-O coupling, oxygen-vacancy formation, O2 release, and lattice replenishment.",
+                "Do not assume one universal lattice-oxygen sequence."
+            ]
+        }
+    },
+
+    "ORR": {
+        "products": ["H2O", "OH-", "H2O2", "HO2-"],
+        "overall_reactions": {
+            "acidic_4e": "O2 + 4H+ + 4e- -> 2H2O",
+            "alkaline_4e": "O2 + 2H2O + 4e- -> 4OH-",
+            "acidic_2e": "O2 + 2H+ + 2e- -> H2O2",
+            "alkaline_2e": "O2 + H2O + 2e- -> HO2- + OH-"
+        },
+        "candidate_pathways": {
+            "associative_4e": [
+                "O2(g) + *",
+                "OOH*",
+                "O* + H2O",
+                "OH* + H2O",
+                "2H2O + *"
+            ],
+            "associative_2e": [
+                "O2(g) + *",
+                "OOH*",
+                "H2O2 or HO2- + *"
+            ],
+            "dissociative_4e": [
+                "O2(g) + 2*",
+                "O2* + *",
+                "2O*",
+                "O* + OH*",
+                "2OH*",
+                "OH* + H2O + *",
+                "2H2O + 2*"
+            ]
+        }
+    },
+
+    "CO2RR": {
+        "products": [
+            "CO",
+            "HCOOH or HCOO-",
+            "CH4",
+            "CH3OH",
+            "C2H4",
+            "C2H5OH"
+        ],
+        "overall_reactions": {
+            "CO": "CO2 + 2H+ + 2e- -> CO + H2O",
+            "formic_acid": "CO2 + 2H+ + 2e- -> HCOOH",
+            "methane": "CO2 + 8H+ + 8e- -> CH4 + 2H2O",
+            "methanol": "CO2 + 6H+ + 6e- -> CH3OH + H2O",
+            "ethylene": "2CO2 + 12H+ + 12e- -> C2H4 + 4H2O",
+            "ethanol": "2CO2 + 12H+ + 12e- -> C2H5OH + 3H2O"
+        },
+        "candidate_pathways": {
+            "CO": [
+                "CO2 + *",
+                "COOH*",
+                "CO* + H2O",
+                "CO(g) + H2O + *"
+            ],
+            "formate": [
+                "CO2 + *",
+                "OCHO* or HCOO*",
+                "HCOOH or HCOO- + *"
+            ],
+            "methane_via_CHO": [
+                "CO2 + *",
+                "COOH*",
+                "CO*",
+                "CHO*",
+                "CHOH*",
+                "CH* + H2O",
+                "CH2*",
+                "CH3*",
+                "CH4(g) + *"
+            ],
+            "methane_via_COH": [
+                "CO2 + *",
+                "COOH*",
+                "CO*",
+                "COH*",
+                "C* + H2O",
+                "CH*",
+                "CH2*",
+                "CH3*",
+                "CH4(g) + *"
+            ],
+            "methanol": [
+                "CO2 + *",
+                "COOH*",
+                "CO*",
+                "CHO*",
+                "CH2O*",
+                "CH3O*",
+                "CH3OH + *"
+            ],
+            "C2_coupling_entry": [
+                "2CO* -> OCCO*",
+                "CO* + CHO* -> OCCHO*",
+                "Select and fully specify downstream intermediates using product-specific inherited evidence.",
+                "Do not generate a C2 free-energy diagram from this entry pathway alone."
+            ]
+        },
+        "required_competing_pathways": [
+            "HER",
+            "CO desorption versus further CO* reduction",
+            "COOH* versus OCHO* formation",
+            "C1 hydrogenation versus C-C coupling when C2 products are relevant"
+        ]
+    },
+
+    "NRR": {
+        "products": ["NH3"],
+        "overall_reaction": "N2 + 6H+ + 6e- -> 2NH3",
+        "candidate_pathways": {
+            "associative_distal": [
+                "N2(g) + *",
+                "N2*",
+                "NNH*",
+                "NNH2*",
+                "N* + NH3",
+                "NH* + NH3",
+                "NH2* + NH3",
+                "NH3* + NH3",
+                "2NH3 + *"
+            ],
+            "associative_alternating": [
+                "N2(g) + *",
+                "N2*",
+                "NNH*",
+                "NHNH*",
+                "NHNH2*",
+                "NH2NH2*",
+                "NH2* + NH3",
+                "NH3* + NH3",
+                "2NH3 + *"
+            ]
+        },
+        "required_competing_pathways": [
+            "HER"
+        ],
+        "conditional_pathways": {
+            "dissociative": [
+                "Evaluate only when N-N dissociation is supported by inherited evidence and the required calculation is supported.",
+                "Do not infer N-N dissociation kinetics from the thermodynamic stability of 2N*."
+            ]
+        }
+    },
+
+    "NO3RR": {
+        "products": ["NH3", "NO2-", "NO", "N2O", "N2"],
+        "overall_reaction_to_NH3": "NO3- + 9H+ + 8e- -> NH3 + 3H2O",
+        "candidate_pathways": {
+            "hydroxylamine_pathway": [
+                "NO3- + *",
+                "NO3*",
+                "NO3H*",
+                "NO2* + H2O",
+                "NO2H*",
+                "NO* + H2O",
+                "NOH*",
+                "NHOH*",
+                "NH2OH*",
+                "NH2* + H2O",
+                "NH3*",
+                "NH3 + *"
+            ],
+            "atomic_nitrogen_branch": [
+                "NO*",
+                "NOH*",
+                "N* + H2O",
+                "NH*",
+                "NH2*",
+                "NH3*",
+                "NH3 + *"
+            ],
+            "alternative_NO_hydrogenation": [
+                "NO*",
+                "NHO* or HNO*",
+                "Continue only when the downstream pathway is supported by inherited evidence."
+            ]
+        },
+        "selectivity_branches": [
+            "NO3* or NO2* desorption toward NO2-",
+            "NO* desorption toward NO",
+            "N-N coupling toward N2O or N2 when adjacent active sites are available",
+            "HER"
+        ]
+    },
+
+
+8. Strategy Prioritization
+* Always start with strategy that cost less computation time, and build up as needed to describe experiment.
+
+
+9. General requirements:
 * Output exactly one Python assignment named generated_strategies.
-* Do not use Markdown fences or prose outside the assignment.
 * Use valid Python syntax with double-quoted string keys and string values.
 * Use None for unavailable scalar values.
 * Use empty lists when no supported entries exist.
 * Do not invent references, paper metadata, mechanisms, settings, experimental values, or source claims.
 * Every decision must include explicit references showing where it came from.
+* Every field named "references" must contain at least one complete reference object.
 * References must be inherited from the extraction artifacts. If an extraction artifact contains source metadata from a cited paper, preserve that metadata under inherited_source.
 * If source metadata is unavailable, set inherited_source to None and still identify the extraction artifact plus supporting statement.
-* Paper decomposition artifacts are preferred for detailed mechanism, method, model, and computational-setting decisions.
-* General insight artifacts are preferred for broad design principles, descriptors, field bottlenecks, risk framing, and computational opportunities.
 * Results in this output are proposed expected computational results, computational checks, or benchmark comparisons, not established current-paper findings. Mark that status explicitly.
 * Do not collapse all evidence into one generic bibliography. Attach references directly to the decision or claim they support.
 * The "experiment" object in every strategy must contain computational experiments only.
-* Copy Generation context target_task exactly into target_task.statement.
-* When Generation context contains author_reported_claim, copy its statement exactly into target_task.statement and copy the complete author_reported_claim object exactly into target_task.author_reported_claim.
-* When Generation context author_reported_claim is null, set target_task.author_reported_claim to None.
-* Treat author_reported_claim as the definition of what must be supported. Do not add a material feature, causal variable, mechanism, structure, or performance claim to target_task.statement.
-* Descriptive coexistence, correlation, characterization, or measured association must not be promoted into causation unless the author-reported claim explicitly makes that causal statement.
-* Strategies may test alternative explanations, but label them as hypotheses and do not rewrite the authoritative target claim around them.
+* Schema notation: Replace every REFERENCE_DICT with a non-empty list of complete reference objects; never output the literal placeholder.
 
-Mechanistic discipline requirements:
-
-* Generate strategies at the strongest mechanistic depth supported by the authoritative claim and extraction artifacts; do not increase ambition by changing the claim.
-* Use matched controls that isolate each variable named in the claim.
-* Keep observations distinct from causal explanations. Connect an observation to a mechanism only when the evidence or a clearly labeled hypothesis supports that connection.
-* Supported extrapolation is allowed inside strategy hypotheses, but unsupported invention is not. When combining multiple artifacts, use the allowed role that matches each source's contribution and explain the inference chain.
-
-Reference schema:
+Reference schema (REFERENCE_DICT):
 {
     "extraction_artifact": "...",
     "extraction_type": "experimental_extraction | paper_decomposition | general_insight | paper_extraction",
@@ -95,32 +420,10 @@ generated_strategies = {
             "extraction_artifact": "..."
         },
         "material_domain": "...",
-        "success_criteria": [
-            {
-                "criterion": "...",
-                "references": [
-                    {
-                        "extraction_artifact": "...",
-                        "extraction_type": "...",
-                        "inherited_source": None,
-                        "supporting_statement": "...",
-                        "decision_role": "benchmark_constraint"
-                    }
-                ]
-            }
-        ],
         "benchmark_constraints": [
             {
                 "constraint": "...",
-                "references": [
-                    {
-                        "extraction_artifact": "...",
-                        "extraction_type": "...",
-                        "inherited_source": None,
-                        "supporting_statement": "...",
-                        "decision_role": "benchmark_constraint"
-                    }
-                ]
+                "references": [REFERENCE_DICT]
             }
         ]
     },
@@ -134,11 +437,12 @@ generated_strategies = {
         {
             "strategy_id": "S1",
             "title": "...",
+            "decision_target": "...",
             "problem": {
                 "question": "...",
                 "unexplained_phenomenon": "...",
                 "context": "...",
-                "references": []
+                "references": [REFERENCE_DICT]
             },
             "axioms": {
                 "items": [
@@ -151,7 +455,7 @@ generated_strategies = {
                             "title": "...",
                             "claim_used": "..."
                         },
-                        "references": []
+                        "references": [REFERENCE_DICT]
                     }
                 ]
             },
@@ -159,7 +463,7 @@ generated_strategies = {
                 "statement": "...",
                 "derived_from_axioms": ["..."],
                 "proposed_mechanism_or_prediction": "...",
-                "references": []
+                "references": [REFERENCE_DICT]
             },
             "experiment": {
                 "computational": {
@@ -180,7 +484,7 @@ generated_strategies = {
                         "other_settings": ["..."]
                     },
                     "procedures": ["..."],
-                    "references": []
+                    "references": [REFERENCE_DICT]
                 }
             },
             "results": {
@@ -188,14 +492,14 @@ generated_strategies = {
                     {
                         "statement": "...",
                         "status": "proposed expectation, not established",
-                        "references": []
+                        "references": [REFERENCE_DICT]
                     }
                 ],
                 "computational_benchmark_comparisons": [
                     {
                         "statement": "...",
                         "status": "benchmark comparison to compute, not established",
-                        "references": []
+                        "references": [REFERENCE_DICT]
                     }
                 ],
                 "computational_tests_to_run": {
@@ -203,36 +507,41 @@ generated_strategies = {
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": []
+                            "references": [REFERENCE_DICT]
                         }
                     ],
                     "selectivity_and_competing_pathway_tests": [
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": []
+                            "references": [REFERENCE_DICT]
                         }
                     ],
                     "stability_and_surface_state_tests": [
                         {
                             "statement": "...",
                             "status": "calculation to run",
-                            "references": []
+                            "references": [REFERENCE_DICT]
                         }
                     ]
                 }
+            },
+            "author_claim_support_if_successful": {
+                "expected_strength": "strong | moderate | weak",
+                "maximum_supported_conclusion": "...",
+                "out_of_scope": ["..."]
             },
             "conclusion": {
                 "causal_mechanism": "...",
                 "design_principle": "...",
                 "scope_or_limitations": "...",
-                "references": []
+                "references": [REFERENCE_LIST]
             },
             "decision_trace": [
                 {
                     "decision": "...",
                     "why_it_matters_for_target_task": "...",
-                    "references": []
+                    "references": [REFERENCE_LIST]
                 }
             ]
         }
@@ -242,7 +551,7 @@ generated_strategies = {
         "rationale": [
             {
                 "statement": "...",
-                "references": []
+                "references": [REFERENCE_LIST]
             }
         ],
         "comparison_axes": ["feasibility", "expected impact", "evidence strength", "risk"]
@@ -256,8 +565,11 @@ generated_strategies = {
     ]
 }
 
-If a strategy cannot be supported by the extraction artifacts, do not include it as a strategy. Put the missing idea in unsupported_gaps instead.
-If an idea would require experimental work, do not include it as a strategy. Only mention it as a benchmark constraint if it is already present in the extraction artifacts."""
+10. Definitions of Selected generated_strategies Fields:
+"decision_target": The specific component or causal link within the author-reported claim that the strategy is designed to evaluate computationally.
+"author_claim_support_if_successful": The strongest bounded mechanistic support that the strategy may provide for the author-reported claim if its expected computational outcome is obtained.
+"unsupported_gaps": If a strategy cannot be supported by the extraction artifacts, do not include it as a strategy. Put the missing idea in unsupported_gaps instead.
+"""
 
 
 def parse_args() -> argparse.Namespace:
@@ -592,6 +904,41 @@ def validate_generated_output(
         raise SystemExit("Generated target_task.author_reported_claim does not exactly preserve the extraction")
     if author_claim is None and target.get("author_reported_claim") is not None:
         raise SystemExit("Generated target_task.author_reported_claim must be None without an extracted claim")
+
+    strategies = payload.get("strategies")
+    if not isinstance(strategies, list):
+        raise SystemExit("Generated strategies must be a list")
+    for index, strategy in enumerate(strategies):
+        strategy_path = f"generated_strategies.strategies[{index}]"
+        if not isinstance(strategy, dict):
+            raise SystemExit(f"{strategy_path} must be an object")
+        if not isinstance(strategy.get("decision_target"), str) or not strategy[
+            "decision_target"
+        ].strip():
+            raise SystemExit(f"{strategy_path}.decision_target must be a non-empty string")
+
+        support = strategy.get("author_claim_support_if_successful")
+        if not isinstance(support, dict):
+            raise SystemExit(f"{strategy_path}.author_claim_support_if_successful must be an object")
+        if support.get("expected_strength") not in {"strong", "moderate", "weak"}:
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful.expected_strength "
+                "must be one of: strong, moderate, weak"
+            )
+        maximum_conclusion = support.get("maximum_supported_conclusion")
+        if not isinstance(maximum_conclusion, str) or not maximum_conclusion.strip():
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful."
+                "maximum_supported_conclusion must be a non-empty string"
+            )
+        out_of_scope = support.get("out_of_scope")
+        if not isinstance(out_of_scope, list) or not all(
+            isinstance(item, str) and item.strip() for item in out_of_scope
+        ):
+            raise SystemExit(
+                f"{strategy_path}.author_claim_support_if_successful.out_of_scope "
+                "must be a list of non-empty strings"
+            )
 
     allowed_reference_roles = {
         "benchmark_constraint",

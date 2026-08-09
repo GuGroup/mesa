@@ -179,9 +179,9 @@ def build_prompt(data: dict[str, Any]) -> str:
             {
                 "class": "manuscript_ready",
                 "criterion": (
-                    "Scientific outputs directly support the exact "
-                    "author-reported claim with sufficient execution coverage. "
-                    "Support for only a strategy hypothesis or proxy is insufficient."
+                    "Scientific outputs resolve the current strategy's decision_target in the "
+                    "expected direction and realize a mechanisitic support to the author-reported "
+                    "claim. Full support of the complete author-reported claim is not required."
                 ),
             },
             {
@@ -243,6 +243,7 @@ def build_prompt(data: dict[str, Any]) -> str:
                 "replace_strategy | blocked"
             ),
             "reason": "<one concise evidence-based reason>",
+            "support_strength": "strong | moderate | weak",
             "evidence_sources": ["<exact supplied source>"],
             "next_run": {
                 "mode": "extend_strategy | prerequisite | replace_strategy",

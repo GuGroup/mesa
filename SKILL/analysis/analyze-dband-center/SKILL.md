@@ -6,12 +6,38 @@ description: >-
   analysis and multi-system comparison with d-DOS visualisation.  Use when
   Codex needs to quantify d-band electronic structure, compare d-band centers
   across catalyst systems, or interpret results using Hammer–Nørskov d-band
-  theory.  Renders d-DOS plots in the sumo visual style.
+  theory.  Use adsorbate-free clean slabs by default; adsorbate-covered PDOS is
+  a separate, explicitly requested post-adsorption analysis.  Renders d-DOS
+  plots in the sumo visual style.
 ---
 
 For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
 
 # D-Band Center Analyzer
+
+## Structure-State Contract
+
+For the conventional Hammer–Nørskov descriptor, the input MUST be the
+**adsorbate-free clean (bare) slab before adsorbate interaction**. The default
+comparison is therefore clean candidate slab versus clean reference slab.
+
+- Relax the clean slab first, then run the static DOS calculation on that clean
+  relaxed geometry. Do not reuse a CONTCAR from an adsorbate relaxation.
+- Keep adsorbate coverage at zero for every system in a conventional d-band
+  comparison. The phrase "same adsorbate" refers to the adsorption-energy trend
+  being explained; it does not mean that the adsorbate belongs in the DOS input
+  structures.
+- Before analysis, inspect the structure associated with every `vasprun.xml`.
+  The analyzer cannot determine from a path or label whether a slab is clean.
+- Use an adsorbate-covered slab only when the user explicitly requests an
+  adsorbate-induced or post-adsorption electronic-structure analysis. In that
+  case, pair it with the corresponding clean slab, keep adsorbate identity,
+  site, and coverage matched across systems, label it `adsorbate-covered`, and
+  do not present its ε_d as the conventional clean-surface descriptor.
+- The current CLI reports **element-resolved** values aggregated over all atoms
+  of the selected element. Do not call them surface-atom-resolved or
+  site-resolved values. A true site-resolved claim requires a separate
+  site-projected calculation or analysis.
 
 ## Prerequisites — VASP Single-Point Calculation
 
@@ -35,7 +61,9 @@ EMIN    = -15         # Energy range for DOS (optional, VASP auto-detects)
 EMAX    = 15
 ```
 
-> **Tip**: Run this as a follow-up calculation using the converged CONTCAR from your geometry optimization as the POSCAR.
+> **Tip**: Run this as a follow-up calculation using the converged CONTCAR from
+> the **clean-slab geometry optimization** as the POSCAR. A CONTCAR containing
+> an adsorbate is not a valid default input for the conventional descriptor.
 
 If `LORBIT` is not set, the `vasprun.xml` will not contain projected DOS data, and element/orbital decomposition will fail.
 
@@ -48,30 +76,35 @@ mamba environment:
 mamba run -n modeling python scripts/analyze_dband.py ...
 ```
 
-1. Ensure the user has a `vasprun.xml` from a single-point calculation with `LORBIT = 11`.
-2. Check for VASP convergence warnings when parsing. Do not interpret
+1. Inspect the structure associated with each `vasprun.xml` and verify that it
+   is an adsorbate-free clean slab. If it is adsorbate-covered, do not use it as
+   the default descriptor input.
+2. Ensure the clean-slab `vasprun.xml` comes from a single-point calculation
+   with `LORBIT = 11`.
+3. Check for VASP convergence warnings when parsing. Do not interpret
    unconverged electronic runs as reliable d-band evidence; request/recommend a
    rerun with at least `NELM = 300` and tighter convergence.
-3. Run `mamba run -n modeling python scripts/analyze_dband.py single` for a single system or `compare` for multi-system comparison.
-4. Report the d-band center (ε_d), width (W_d), and filling (f_d) values.
-5. Interpret the results using the Hammer–Nørskov d-band theory framework described in `references/dband-theory.md`.
+4. Run `mamba run -n modeling python scripts/analyze_dband.py single` for a single system or `compare` for multi-system comparison.
+5. Report the element-resolved d-band center (ε_d), width (W_d), and filling
+   (f_d) values without claiming site resolution.
+6. Interpret the results using the Hammer–Nørskov d-band theory framework described in `references/dband-theory.md`.
 
 ## Quick Start
 
 ```bash
 # Single system
-mamba run -n modeling python scripts/analyze_dband.py single --vasprun vasprun.xml --elements Pt --output dband.svg --json dband.json
+mamba run -n modeling python scripts/analyze_dband.py single --vasprun clean_slab/vasprun.xml --elements Pt --output dband.svg --json dband.json
 
 # Compare multiple systems (overlay; 2-3 systems)
 mamba run -n modeling python scripts/analyze_dband.py compare \
-    --vaspruns sys_a/vasprun.xml sys_b/vasprun.xml \
+    --vaspruns clean_sys_a/vasprun.xml clean_sys_b/vasprun.xml \
     --labels "Pt(111)" "PtNi(111)" \
     --element Pt \
     --output dband_compare.svg
 
 # Compare d-band centres across several systems (vertical columns; publication style)
 mamba run -n modeling python scripts/analyze_dband.py columns \
-    --vaspruns a/vasprun.xml b/vasprun.xml c/vasprun.xml \
+    --vaspruns clean_a/vasprun.xml clean_b/vasprun.xml clean_c/vasprun.xml \
     --labels "Ni(111)" "Ni+Co-dopant" "Co(111)" \
     --elements Ni Co Co \
     --output dband_columns.svg
@@ -104,6 +137,7 @@ Use the `modeling` mamba environment. It already provides `pymatgen`,
 
 Comparability conventions (apply consistently across a figure set):
 
+- Use clean slabs with zero adsorbate coverage for the conventional descriptor.
 - d-DOS is normalized **per atom** (`states eV⁻¹ atom⁻¹`) so a single dopant and a
   full slab are comparable; this does not change ε_d/width/filling.
 - Default energy window is trimmed to the d-band (`--emin -8 --emax 2`).

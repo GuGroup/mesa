@@ -54,6 +54,7 @@ Override paths when needed:
 --strategy path/to/selected_strategy.json
 --execution-root path/to/S1_execution
 --outdir path/to/evidence
+--backend-mode uma_mlip   # optional explicit calculator branch override
 ```
 
 By default the script removes older large evidence outputs from the output
@@ -65,10 +66,18 @@ Use `--keep-legacy` only when comparing old and new schemas.
 
 - Read the active `project/<project_name>/project_profile.md` calculation
   policy before interpreting calculator-specific fields.
-- Always include the strategy computational block:
-  `models`, `methods`, `dft_details`, and `procedures`.
-- Collect available `dft_details`, but let the active profile decide whether
-  those fields imply VASP input preparation or are merely retained context.
+- Resolve the active calculator branch from the explicit override,
+  active project profile, explicit computational backend fields, and only then
+  methods/procedures. An authoritative project profile wins over stale strategy
+  prose.
+- In `uma_mlip` mode, stale `dft_details` are not copied into the evidence:
+  VASP, PBE, PAW, plane-wave, k-point, and DFT-D3 fields and citation anchors
+  are omitted. In `dft` mode, UMA-only anchors are omitted. `hybrid` and
+  modes preserve both branches. An `unknown` backend fails closed and the CLI
+  stops until the project profile or explicit override resolves the branch.
+- Preserve explicit calculator/backend, optimizer, force tolerance, maximum
+  steps, and convergence metadata. FIRE, ASE, UMA, and FAIRChem are conditional
+  facts and must not be introduced as defaults.
 - For model details, extract only `records.motif_label` and `records.state`
   from `model_manifest.json`; current artifacts do not store full slab-builder
   arguments.
@@ -77,8 +86,17 @@ Use `--keep-legacy` only when comparing old and new schemas.
 - For energy/free-energy details, include brief internal tool metadata and
   `reference_policy.json`. A later writer must translate tool names into public
   academic language and must not cite internal skill names directly.
+- Preserve explicit Gibbs-correction, gas-pressure/standard-state,
+  liquid-water activity, CHE/SHE/RHE, pH, potential, and equation fields when
+  they are present in the source evidence.
 - Do not add descriptor analysis, electronic-structure analysis, or a standalone
   limitations section in this version.
+
+The emitted `backend_policy` is carried into `methods_writer_digest.json` and
+later into the written section JSON. Downstream writers and citation selectors
+must honor it as a hard branch constraint. This collector does not preselect or
+require citation keys; canonical method matching is an LLM evidence decision in
+`select-citations` after the Methods sentences exist.
 
 Read [references/evidence_schema.md](references/evidence_schema.md) when
 consuming or revising the JSON contract.

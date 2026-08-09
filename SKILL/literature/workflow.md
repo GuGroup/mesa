@@ -8,6 +8,7 @@ create wet-lab tasks, run calculations, or decide that a strategy is complete.
 
 # Skills
 
+- `delegate-literature-workflow`
 - `extract-data-from-experiment`
 - `search-papers-with-mcp`
 - `extract-strategy-paper`
@@ -18,6 +19,25 @@ create wet-lab tasks, run calculations, or decide that a strategy is complete.
 Save outputs under `project/<project_name>/` in task-appropriate literature,
 strategy-input, or reference subfolders. Preserve source paths, metadata,
 paper identifiers, extracted claims, and confidence or caveat fields.
+
+# Delegated Literature Preparation
+
+Use `delegate-literature-workflow` for the multi-step path from an experimental
+PDF through paper search and local paper extraction. The parent must spawn one
+fresh literature sub-agent for each active phase and must not execute the
+worker skills itself.
+
+Phase 1 runs `extract-data-from-experiment` and `search-papers-with-mcp`, saves
+their normal artifacts, and stops at the manual-download queue. The parent
+reports that queue to the user and waits. After the user confirms that selected
+PDFs are present, phase 2 starts a fresh sub-agent to run
+`extract-strategy-paper` and `extract-general-insights-paper`, then stops before
+strategy generation.
+
+Use existing artifacts as the checkpoint between phases. Keep user interaction
+and final artifact-path validation in the parent. Follow the delegation skill
+for the child boundary and compact handoff. Direct use of one worker skill
+remains valid for a standalone, explicitly scoped literature task.
 
 # Experimental Data Extraction
 

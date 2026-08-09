@@ -133,8 +133,8 @@ to summary/triage files. Keep full analyzer JSON and stdout/stderr in files.
 # Execution Manifest
 
 After each E-level execution completes or fails, use
-`write-execution-manifest`. After E-level diagnosis and repair terminate for a
-C recipe, use `write-calculation-manifest`. Every calculation recipe that
+`manage-execution-unit`. After E-level diagnosis and repair terminate for a C
+recipe, use `manage-calculation`. Every calculation recipe that
 produces or uses artifacts must have:
 
 ```text

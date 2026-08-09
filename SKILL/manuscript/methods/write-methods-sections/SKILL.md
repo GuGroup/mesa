@@ -23,6 +23,11 @@ content blocks for exactly four sections:
 It does not edit DOCX files, add figures, write Results, or add descriptor,
 electronic-structure, or standalone limitations sections.
 
+Before writing, read [references/methods_formalism_guide.md](references/methods_formalism_guide.md)
+as a conditional reference. The guide supplies examples for DFT, UMA/ASE,
+vibrational/Gibbs corrections, gas pressure, and HER CHE writing; the evidence
+digest remains authoritative and unsupported branches must be omitted.
+
 Default output:
 
 ```text
@@ -49,6 +54,9 @@ Use `--no-llm` only for deterministic smoke testing. Normal use requires
 
 - Write academic Methods style, not planning or strategy language.
 - Use only the digest facts.
+- Treat `backend_policy` as authoritative. In UMA-only mode, omit DFT/VASP/PBE/
+  PAW/plane-wave/k-point/DFT-D3 prose even if stale input fields are present,
+  and report any violating generated text as invalid.
 - Do not mention internal skill names, JSON, file paths, workflow ids,
   `P00x`/`C00x`, source artifacts, prompts, or project directories.
 - Translate internal tool metadata into public language, for example "UMA-based
@@ -57,6 +65,12 @@ Use `--no-llm` only for deterministic smoke testing. Normal use requires
 - Do not add descriptor analysis, electronic-structure analysis, or standalone
   limitations sections.
 - If a detail is missing, write generally rather than inventing a value.
+- Do not write FIRE, ASE, UMA, FAIRChem, pMuTT, CHE, SHE, or RHE unless the
+  corresponding evidence field identifies its use.
+- Use the CHE example only for HER or hydrogen-adsorption text supported by the
+  evidence. Do not extend it to OH-, water autoionization, or another reaction.
+- Resolve all example tokens before output. No `[VALUE]` or `{{VALUE}}`
+  placeholder may remain in `methods_section_text.json`.
 - Round non-integer values in public text and equations to at most two decimal
   places (for example, `1.184` becomes `1.18`); leave integers as integers.
   Preserve full precision in the evidence digest.

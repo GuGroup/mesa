@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Procedure"
+  short_description: "Diagnose and repair one P procedure execution"
+  default_prompt: "Use $manage-procedure to diagnose and terminally resolve one grouped P-level execution."

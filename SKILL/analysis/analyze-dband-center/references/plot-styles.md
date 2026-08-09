@@ -19,16 +19,17 @@ crowded past ~3 curves.
 
 ```bash
 mamba run -n modeling python scripts/analyze_dband.py columns \
-    --vaspruns A/vasprun.xml B/vasprun.xml C/vasprun.xml \
+    --vaspruns clean_A/vasprun.xml clean_B/vasprun.xml clean_C/vasprun.xml \
     --labels "Ni(111)" "Ni+Co-dopant" "Co(111)" \
     --elements Ni Co Co \
     --colors "#3f9a57" "#7663ab" "#c8557c" \
     --output dband_columns.svg
 ```
 
-- `--elements` takes **one metal per column** (project the active-site metal in
-  each system, e.g. Ni-d for Ni(111) but the Co dopant for the alloy). Pass a
-  single value to broadcast it to every column.
+- `--elements` takes **one metal element per column** (e.g. Ni-d for Ni(111) but
+  Co-d for a single-Co-dopant slab). The CLI aggregates all atoms of that
+  element; it does not isolate an adsorption site. Pass a single value to
+  broadcast it to every column.
 - Each panel draws: filled metal d-DOS, a dashed **d-band-centre** line with the
   `ε_d` value printed **just below that line, right-aligned** in the column (not at
   the panel bottom), and the **Fermi level** (dash-dot at 0 eV). Keeping the value
@@ -38,6 +39,9 @@ mamba run -n modeling python scripts/analyze_dband.py columns \
 
 These keep panels/curves comparable — apply them consistently:
 
+- **Clean-slab state**: for the conventional descriptor, every plotted system
+  must be adsorbate-free. Adsorbate-covered PDOS belongs in a separately labeled
+  post-adsorption analysis.
 - **Per-atom DOS** (`states eV⁻¹ atom⁻¹`): the DOS is normalized by the number of
   atoms of the projected element, so a single dopant atom and a full slab are on
   the same footing. This is a constant factor and does **not** change ε_d.

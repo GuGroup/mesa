@@ -71,6 +71,30 @@ If multiple skills apply:
 If no skill applies:
 - say: "No matching skill found; proceeding without a skill."
 
+# Sub-agent delegation
+
+Sub-agent use is opt-in. Spawn a sub-agent only when an applicable skill and
+workflow explicitly require delegation.
+
+For multi-step literature preparation, the parent must use
+`delegate-literature-workflow` and spawn exactly one fresh sub-agent for each
+active phase. The parent owns user interaction, phase selection, and returned
+artifact-path validation. The sub-agent owns only its bounded worker steps,
+must not spawn another sub-agent, and returns the compact handoff required by
+the delegation skill.
+
+For one planned strategy execution, after its explicit recipe root and
+`execution_plan.json` exist, the parent must use
+`delegate-strategy-execution`. Spawn exactly one fresh sub-agent for the active
+execution attempt and never run concurrent workers for the same strategy. The
+worker owns recipe-backed E execution and terminal E/C/P management, must not
+spawn another sub-agent, and stops before S-level evaluation. The parent owns
+user interaction, returned-path validation, sequential continuation after
+`resume_required`, and all scientific strategy evaluation.
+
+Pass only the minimum task-local context needed by the sub-agent. Every agent
+must follow the same workflow-loading, skill-first, language, and skill-call
+logging rules in this file.
 
 # Skill-call logging
 

@@ -188,6 +188,8 @@ runtimes:
       - No runtime install required.
 
 skills:
+  delegate-literature-workflow: no-runtime
+  delegate-strategy-execution: no-runtime
   extract-data-from-experiment: mesa-general
   extract-strategy-paper: mesa-general
   extract-general-insights-paper: mesa-general
@@ -196,12 +198,9 @@ skills:
   classify-strategy-outcome: mesa-general
   update-strategies-from-manuscript: mesa-general
   generate-explicit-calculation-recipe: mesa-general
-  write-execution-manifest: mesa-general
-  diagnose-execution: mesa-general
-  repair-execution: mesa-general
-  write-calculation-manifest: mesa-general
-  diagnose-procedure: mesa-general
-  repair-procedure: mesa-general
+  manage-execution-unit: mesa-general
+  manage-calculation: mesa-general
+  manage-procedure: mesa-general
   record-missing-evidence: mesa-general
   balance-reaction-pathway: mesa-general
   evaluate-energy-diagram: mesa-general

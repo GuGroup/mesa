@@ -42,9 +42,10 @@ python SKILL/manuscript/general/select-citations/scripts/select_citations.py \
   --citation-sources project/<project>/references/citation_sources.json
 ```
 
-Use `--no-llm` for deterministic retrieval-only selection. Normal use uses the
-OpenAI API when `OPENAI_API_KEY` is available from the environment or
-`DEPENDENCY/.env`.
+Normal use uses the OpenAI API when `OPENAI_API_KEY` is available from the
+environment or `DEPENDENCY/.env`. Use `--no-llm` only for retrieval-only
+fallback. That fallback deliberately leaves canonical Methods citations
+unselected and marks them for human review rather than guessing from keywords.
 
 Useful options:
 
@@ -54,13 +55,27 @@ Useful options:
 --model gpt-5.5
 --save-prompt project/.../llm_prompt.json
 --save-response project/.../llm_response.json
+--backend-policy project/.../methods_writer_digest.json  # optional; section metadata is the default
 ```
 
 ## Selection Rules
 
 - Never cite sources outside `citation_sources.json`.
-- Retrieve candidates algorithmically first; send only top candidates to the
-  LLM.
+- For a Methods sentence, supply every backend-compatible
+  `canonical_method_reference` to the LLM with its full title, authors, year,
+  DOI, URL, `method_tags`, `backend_family`, and `citation_guidance`.
+- Let the LLM decide whether the sentence reports actual use of PBE, VASP, PAW,
+  Monkhorst-Pack, ASE, UMA, pMuTT, CHE, or another registered method. Do not
+  force a citation from lexical overlap. Generic `cutoff` or `plane wave` text
+  alone does not establish use of VASP.
+- Honor `backend_policy` from the section JSON (or `--backend-policy`). In
+  UMA-only mode, remove DFT canonical references from the candidate index and
+  never select them. If stale DFT terms appear in a sentence, select no
+  citation and mark the sentence for human correction.
+- Retrieve and score only ordinary project/second-neighbor literature to bound
+  its candidate set. Do not score canonical method references, and do not expose
+  internal retrieval scores to the LLM.
+- Bound every LLM decision to the citation keys supplied in its sentence packet.
 - Preserve the original paragraph `text`; write citations into
   `citation_annotations` and `text_with_citation_placeholders`.
 - Include `citation_sources_used` so downstream renderers can resolve selected

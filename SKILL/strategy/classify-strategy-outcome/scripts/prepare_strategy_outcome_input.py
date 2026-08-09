@@ -130,11 +130,29 @@ def extract_strategy_context(data: dict[str, Any], strategy_id: str) -> dict[str
         results = require_dict(
             strategy.get("results"), f"strategies[{index}].results"
         )
+        support_label = f"strategies[{index}].author_claim_support_if_successful"
+        author_claim_support = require_dict(
+            strategy.get("author_claim_support_if_successful"),
+            support_label,
+        )
+        out_of_scope = [
+            require_string(item, f"{support_label}.out_of_scope[{item_index}]")
+            for item_index, item in enumerate(
+                require_list(
+                    author_claim_support.get("out_of_scope"),
+                    f"{support_label}.out_of_scope",
+                )
+            )
+        ]
         extracted_strategies.append(
             {
                 "strategy_id": item_id,
                 "title": require_string(
                     strategy.get("title"), f"strategies[{index}].title"
+                ),
+                "decision_target": require_string(
+                    strategy.get("decision_target"),
+                    f"strategies[{index}].decision_target",
                 ),
                 "hypothesis": {
                     "statement": require_string(
@@ -151,6 +169,17 @@ def extract_strategy_context(data: dict[str, Any], strategy_id: str) -> dict[str
                         results.get("computational_benchmark_comparisons"),
                         f"strategies[{index}].results.computational_benchmark_comparisons",
                     ),
+                },
+                "author_claim_support_if_successful": {
+                    "expected_strength": require_string(
+                        author_claim_support.get("expected_strength"),
+                        f"{support_label}.expected_strength",
+                    ),
+                    "maximum_supported_conclusion": require_string(
+                        author_claim_support.get("maximum_supported_conclusion"),
+                        f"{support_label}.maximum_supported_conclusion",
+                    ),
+                    "out_of_scope": out_of_scope,
                 },
             }
         )

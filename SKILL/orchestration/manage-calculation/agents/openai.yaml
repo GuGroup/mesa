@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Calculation"
+  short_description: "Aggregate terminal E attempts for one C recipe"
+  default_prompt: "Use $manage-calculation to write the factual C-level manifest from terminal E attempts."

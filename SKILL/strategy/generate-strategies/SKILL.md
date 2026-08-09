@@ -13,17 +13,12 @@ Before generating any strategy, the agent must complete the following validation
 
 Do not generate a strategy until all of the following conditions are satisfied:
 
-1. Verify that the following directories exist under the `literature` directory:
-   - `strategy_papers`
-   - `domain_papers`
-   - `legacy_papers`
+1. Verify that each directory exists and contains one or more PDF files and its extractions:
+   - `literature/strategy*`
+   - `literature/domain*`
+   - `literature/legacy*`
 
-2. Verify that each directory contains one or more PDF files:
-   - `literature/strategy_papers`
-   - `literature/domain_papers`
-   - `literature/legacy_papers`
-
-3. If any required directory is missing, or if any directory does not contain at least one PDF file, stop the strategy generation process and request the missing materials from the user.
+2. If any required directory is missing, or if any directory does not contain at least one PDF file, stop the strategy generation process and request the missing materials from the user.
 
 ## Failure Handling
 
@@ -32,9 +27,9 @@ If the prerequisites are not met, respond with a message similar to:
 > Strategy generation cannot proceed because the required literature sources are incomplete.
 >
 > Please ensure that:
-> - `literature/strategy_papers` exists and contains relevant PDF papers.
-> - `literature/domain_papers` exists and contains relevant PDF papers.
-> - `literature/legacy_papers` exists and contains relevant PDF papers.
+> - `literature/strategy*` exists and contains relevant PDF papers.
+> - `literature/domain*` exists and contains relevant PDF papers.
+> - `literature/legacy*` exists and contains relevant PDF papers.
 >
 > Upload or provide the missing documents before requesting strategy generation again.
 
@@ -61,7 +56,7 @@ The generator must:
   benchmark constraints, material identity, or measured targets to explain
   computationally.
 - Use paper extraction as the source of mechanisms, design principles, computational methods, descriptors, and inherited references.
-- Generate only computational chemistry strategies, such as DFT slab/adsorbate modeling, adsorption/free-energy analysis, transition-state searches, HEA site sampling, AIMD/solvation/potential corrections, microkinetics, descriptor screening, stability/reconstruction calculations, and computational uncertainty checks.
+- Generate only computational chemistry strategies, such as free-energy analysis.
 - Do not generate synthesis, characterization, electrochemical testing, isotope labeling, cell design, product quantification, or other wet-lab strategies.
 - Produce multiple strategies, each shaped like a `paper_decomposition` branch:
 
@@ -156,11 +151,13 @@ generated_strategies = {
         {
             "strategy_id": "S1",
             "title": "...",
+            "decision_target": "...",
             "problem": {...},
             "axioms": {...},
             "hypothesis": {...},
             "experiment": {...},
             "results": {...},
+            "author_claim_support_if_successful": {...},
             "conclusion": {...},
             "decision_trace": [...]
         }

@@ -51,12 +51,21 @@ project folder, start from the Per-Strategy Execution Loop using the latest
 `generated_strategies` artifact. Do not regenerate strategies unless the user
 asks or the existing strategy artifact is missing, invalid, or superseded.
 
+Before first strategy generation, if traceable literature extraction artifacts
+are missing, use `delegate-literature-workflow`. The parent must spawn one fresh
+literature sub-agent for each active phase. Phase 1 stops at the manual-download
+queue; the parent waits for user confirmation before starting a fresh phase-2
+sub-agent for local paper extraction. Continue to strategy generation only
+after the returned artifact paths are validated. Read
+`SKILL/literature/workflow.md`.
+
 ```text
-strategy generation
+literature preparation when source evidence is missing
+-> strategy generation
 -> select one strategy
 -> generate explicit calculation recipes from the selected strategy
 -> plan execution from those recipes
--> execute only recipe-backed calculations
+-> delegate recipe-backed E/C/P execution
 -> analyze evidence readiness
 -> write manuscript/result artifact
 -> update strategy plan from manuscript/result
@@ -72,16 +81,16 @@ replace a requested calculation with an easier proxy.
 Use active skill names from the current `SKILL/` tree. Do not use retired
 `TASK_*` names except when reading archived material.
 
-- `literature/`: `extract-data-from-experiment`,
-  `search-papers-with-mcp`, `extract-strategy-paper`,
+- `literature/`: `delegate-literature-workflow`,
+  `extract-data-from-experiment`, `search-papers-with-mcp`,
+  `extract-strategy-paper`,
   `extract-general-insights-paper`.
 - `strategy/`: `generate-strategies`, `select-next-strategy`,
   `classify-strategy-outcome`, `update-strategies-from-manuscript`.
 - `orchestration/`: `generate-explicit-calculation-recipe`,
-  `plan-recipe-execution`, `write-execution-manifest`,
-  `diagnose-execution`, `repair-execution`, `write-calculation-manifest`,
-  `diagnose-procedure`,
-  `repair-procedure`,
+  `plan-recipe-execution`, `delegate-strategy-execution`,
+  `manage-execution-unit`,
+  `manage-calculation`, `manage-procedure`,
   `record-missing-evidence`.
 - `modeling/`: `import-bulk-structure`, `build-slab-models`,
   `build-gas-phase-models`,
@@ -144,35 +153,32 @@ Repeat this loop for one selected strategy at a time.
    The plan defines execution units, dependencies, consumers, and paths without
    selecting skills, commands, backends, feasibility, or status.
 
-4. Build models only from recipe artifacts.
-   Read `SKILL/modeling/workflow.md`.
+4. Delegate the planned strategy execution with
+   `delegate-strategy-execution`. The parent must spawn one fresh sub-agent for
+   the active execution attempt and must not execute the delegated work itself.
+   The worker:
+   - builds models only from recipe artifacts;
+   - executes only recipe-backed E units in plan-assigned paths;
+   - loads modeling, calculation, or analysis workflows only when required by
+     the current E unit;
+   - uses `manage-execution-unit`, `record-missing-evidence`,
+     `manage-calculation`, and `manage-procedure` in order;
+   - stops before S-level evaluation and returns the skill's compact handoff.
+   The parent validates returned paths. For `resume_required`, start a fresh
+   sequential worker from existing artifacts; never run concurrent workers for
+   the same strategy.
 
-5. Execute only recipe-backed calculations and save outputs under the recipe
-   calculation's `execution/` directory.
-   Codex may perform minor repairs during execution using its own judgment.
-   Record each completed or failed E execution with
-   `write-execution-manifest`.
-   Use `diagnose-execution` and `repair-execution` for E-level handling.
-   After terminal E handling, use `record-missing-evidence` for required
-   artifacts that remain unavailable.
-   After E-level diagnosis and repair terminate for a C calculation, use
-   `write-calculation-manifest`.
-   After all C manifests for a P procedure exist, use
-   `diagnose-procedure`.
-   Use `repair-procedure` for repairable grouped-execution gaps.
-   Read `SKILL/calculation/workflow.md`.
-
-6. Validate evidence readiness, carry terminal missing-evidence records
+5. Validate evidence readiness, carry terminal missing-evidence records
    forward, and separate accepted, caveated, exploratory, failed, and excluded
    artifacts.
    Read `SKILL/analysis/workflow.md` and
    `SKILL/orchestration/workflow.md`.
 
-7. Write a manuscript-like result artifact or full manuscript from accepted
+6. Write a manuscript-like result artifact or full manuscript from accepted
    evidence only.
    Read `SKILL/manuscript/workflow.md`.
 
-8. Update the strategy plan with `update-strategies-from-manuscript`.
+7. Update the strategy plan with `update-strategies-from-manuscript`.
    Only after this update may the workflow proceed to the next strategy.
 
 # Recipe And Execution Contract
