@@ -796,10 +796,19 @@ def _score_result_against_targets(
 def _estimate_surface_cell_metrics(
     bulk_structure: Structure,
     miller_index: tuple[int, int, int],
+    standardize_bulk: bool = True,
 ) -> tuple[np.ndarray, float, float, float, float]:
-    """Estimate base surface cell, a/b, atoms per layer, and d-spacing."""
-    conv = get_conventional_structure(bulk_structure)
-    prim = conv.get_primitive_structure()
+    """Estimate base surface cell, a/b, atoms per layer, and d-spacing.
+
+    When ``standardize_bulk`` is False, ``miller_index`` is interpreted
+    against ``bulk_structure`` exactly as given (no conventional/primitive
+    reduction), matching the actual generation backends below.
+    """
+    if standardize_bulk:
+        conv = get_conventional_structure(bulk_structure)
+        prim = conv.get_primitive_structure()
+    else:
+        prim = bulk_structure
     d_hkl = max(float(prim.lattice.d_hkl(miller_index)), 0.5)
 
     gen = PmgSlabGenerator(
@@ -808,7 +817,7 @@ def _estimate_surface_cell_metrics(
         min_slab_size=max(4 * d_hkl, 1.0),
         min_vacuum_size=0,
         in_unit_planes=False,
-        primitive=True,
+        primitive=standardize_bulk,
     )
     slabs = gen.get_slabs()
     if not slabs:
@@ -837,10 +846,11 @@ def _choose_target_slab_parameters(
     target_slab_thickness: float = TARGET_SLAB_THICKNESS_ANGSTROM,
     supercell: tuple[int, int] | None = None,
     n_layers_override: int | None = None,
+    standardize_bulk: bool = True,
 ) -> _TargetSlabChoice:
     """Find layer and supercell parameters closest to the requested slab targets."""
     base_cell_2d, base_a, base_b, atoms_per_layer, d_spacing = _estimate_surface_cell_metrics(
-        bulk_structure, miller_index
+        bulk_structure, miller_index, standardize_bulk=standardize_bulk
     )
 
     layer_center = max(2, int(round(target_slab_thickness / d_spacing)) + 1)
@@ -1013,6 +1023,7 @@ def _generate_via_catkit(
     layer_type: str = "trim",
     supercell: tuple[int, int] | None = None,
     supercell_matrix: tuple[tuple[int, int], tuple[int, int]] | None = None,
+    standardize_bulk: bool = True,
 ) -> list[SlabResult]:
     """Generate slabs using CatKit SlabGenerator.
 
@@ -1022,14 +1033,20 @@ def _generate_via_catkit(
     - layer_type='trim' makes the public n_layers argument mean atomic layers.
     - Use surfaxe or pymatgen symmetrization when symmetric oxide slabs matter.
     - Attaches bond graph to Gratoms for downstream CatKit adsorption tools.
+
+    See ``generate_slab``'s ``standardize_bulk`` doc; ``standardize_bulk=False``
+    also disables CatKit's own reduction here.
     """
     from catkit.gen.surface import SlabGenerator as CatKitSlabGen
 
     # CatKit works with ASE Atoms — convert pymatgen Structure
-    conv_struct = _preserve_magnetic_moments(
-        bulk_structure,
-        get_conventional_structure(bulk_structure),
-    )
+    if standardize_bulk:
+        conv_struct = _preserve_magnetic_moments(
+            bulk_structure,
+            get_conventional_structure(bulk_structure),
+        )
+    else:
+        conv_struct = bulk_structure
     ase_bulk = pymatgen_to_ase(conv_struct)
     uniform_magmoms_by_number = _uniform_initial_magmoms_by_number(ase_bulk)
 
@@ -1041,7 +1058,7 @@ def _generate_via_catkit(
         fixed=n_fix,
         layer_type=layer_type,
         attach_graph=True,
-        standardize_bulk=True,
+        standardize_bulk=standardize_bulk,
     )
 
     terminations = gen.get_unique_terminations()
@@ -1110,19 +1127,28 @@ def _generate_via_pymatgen(
     symmetrize: bool = False,
     supercell: tuple[int, int] | None = None,
     supercell_matrix: tuple[tuple[int, int], tuple[int, int]] | None = None,
+    standardize_bulk: bool = True,
 ) -> list[SlabResult]:
-    """Generate slabs using pymatgen SlabGenerator."""
+    """Generate slabs using pymatgen SlabGenerator.
+
+    See ``generate_slab``'s ``standardize_bulk`` doc; also disables
+    pymatgen's own slab-level ``primitive`` reduction so the result isn't
+    shrunk back down after slicing.
+    """
     # Use primitive cell so the surface unit cell matches CatKit's starting cell.
     # CatKit internally standardizes to the primitive bulk (standardize_bulk=True),
     # while pymatgen with conventional cell produces a 2× larger surface unit cell.
-    conv_struct = _preserve_magnetic_moments(
-        bulk_structure,
-        get_conventional_structure(bulk_structure),
-    )
-    prim_struct = _preserve_magnetic_moments(
-        conv_struct,
-        conv_struct.get_primitive_structure(),
-    )
+    if standardize_bulk:
+        conv_struct = _preserve_magnetic_moments(
+            bulk_structure,
+            get_conventional_structure(bulk_structure),
+        )
+        prim_struct = _preserve_magnetic_moments(
+            conv_struct,
+            conv_struct.get_primitive_structure(),
+        )
+    else:
+        prim_struct = bulk_structure
 
     # Use in_unit_planes=False so both min_slab_size and min_vacuum_size are in Å.
     # n_layers (plane count) → Å via d-spacing; vacuum is passed directly in Å.
@@ -1139,13 +1165,13 @@ def _generate_via_pymatgen(
         in_unit_planes=False,
         lll_reduce=True,
         center_slab=True,
-        primitive=True,  # start from minimal cell, then supercell to target size
+        primitive=standardize_bulk,  # start from minimal cell, then supercell to target size
     )
 
     slabs = gen.get_slabs(symmetrize=symmetrize, repair=symmetrize)
     if not slabs:
         raise RuntimeError(
-            f"pymatgen generated no slabs for {conv_struct.formula} {miller_index}."
+            f"pymatgen generated no slabs for {prim_struct.formula} {miller_index}."
         )
 
     if symmetrize:
@@ -1154,7 +1180,7 @@ def _generate_via_pymatgen(
             slabs = filtered
         else:
             warnings.warn(
-                f"No symmetric, non-polar slabs found for {conv_struct.formula} "
+                f"No symmetric, non-polar slabs found for {prim_struct.formula} "
                 f"{miller_index}. Returning all {len(slabs)} candidates.",
                 stacklevel=3,
             )
@@ -1185,6 +1211,7 @@ def _generate_via_surfaxe(
     lateral_tolerance: float,
     supercell: tuple[int, int] | None = None,
     supercell_matrix: tuple[tuple[int, int], tuple[int, int]] | None = None,
+    standardize_bulk: bool = True,
 ) -> list[SlabResult]:
     """Generate slabs using surfaxe (oxide/nitride preferred).
 
@@ -1192,18 +1219,22 @@ def _generate_via_surfaxe(
     Must pass save_slabs=False to get a list of dicts back.
     Each dict has key 'slab' (pymatgen Slab) and metadata fields.
     The public API's n_layers is converted to surfaxe's Å-based thicknesses
-    argument before calling surfaxe.
+    argument before calling surfaxe. See ``generate_slab``'s
+    ``standardize_bulk`` doc.
     """
     from surfaxe.generation import generate_slabs as sx_generate
 
-    conv_struct = _preserve_magnetic_moments(
-        bulk_structure,
-        get_conventional_structure(bulk_structure),
-    )
-    prim_struct = _preserve_magnetic_moments(
-        conv_struct,
-        conv_struct.get_primitive_structure(),
-    )
+    if standardize_bulk:
+        conv_struct = _preserve_magnetic_moments(
+            bulk_structure,
+            get_conventional_structure(bulk_structure),
+        )
+        prim_struct = _preserve_magnetic_moments(
+            conv_struct,
+            conv_struct.get_primitive_structure(),
+        )
+    else:
+        prim_struct = bulk_structure
     min_slab_thickness = _min_slab_thickness_from_layers(
         bulk_structure, miller_index, n_layers
     )
@@ -1226,7 +1257,7 @@ def _generate_via_surfaxe(
 
     # sx_results is None when save_slabs=True (default), list of dicts when False
     if not sx_results:
-        raise RuntimeError(f"surfaxe returned no slabs for {conv_struct.formula} {miller_index}.")
+        raise RuntimeError(f"surfaxe returned no slabs for {prim_struct.formula} {miller_index}.")
 
     raw_slabs: list[Slab] = []
     for r in sx_results:
@@ -1236,7 +1267,7 @@ def _generate_via_surfaxe(
             raw_slabs.append(r)
 
     if not raw_slabs:
-        raise RuntimeError(f"surfaxe returned no valid slabs for {conv_struct.formula} {miller_index}.")
+        raise RuntimeError(f"surfaxe returned no valid slabs for {prim_struct.formula} {miller_index}.")
 
     results = []
     for term_idx, slab in enumerate(raw_slabs):
@@ -1275,6 +1306,7 @@ def generate_slab(
     supercell: tuple[int, int] | None = None,
     n_layers_override: int | None = None,
     catkit_layer_type: str = "trim",
+    standardize_bulk: bool = True,
 ) -> list[SlabResult]:
     """Generate slab structures from a bulk structure.
 
@@ -1313,10 +1345,29 @@ def generate_slab(
         catkit_layer_type:     CatKit layer mode. Use 'stoich' for stoichiometric
                                slabs and 'trim' when intentionally enumerating
                                non-stoichiometric terminations.
+        standardize_bulk:      When True (default), reduce ``bulk_structure`` to
+                               its conventional/primitive form (spglib) before
+                               slicing — geometry/species only, ignores magmom.
+                               Set False to slice it exactly as given, with
+                               ``miller_index`` against that exact lattice; use
+                               for cells encoding site-level physics (AFM
+                               ordering, dopant/defect cells) that reduction
+                               could collapse.
 
     Returns:
         List of SlabResult objects, one per unique termination.
     """
+    if standardize_bulk:
+        magmoms = _valid_site_property(bulk_structure, "magmom")
+        if magmoms is not None and _uniform_site_property_by_species(bulk_structure, "magmom") is None:
+            warnings.warn(
+                "bulk_structure has magmom values that differ within the same "
+                "species (e.g. AFM ordering). standardize_bulk=True (default) "
+                "ignores magmom and can collapse/misassign this pattern. Pass "
+                "standardize_bulk=False to preserve it.",
+                stacklevel=2,
+            )
+
     choice = _choose_target_slab_parameters(
         bulk_structure=bulk_structure,
         miller_index=miller_index,
@@ -1327,6 +1378,7 @@ def generate_slab(
         target_slab_thickness=target_slab_thickness,
         supercell=supercell,
         n_layers_override=n_layers_override,
+        standardize_bulk=standardize_bulk,
     )
     n_fix = fix_layers if fix_layers is not None else choice.n_fix
     if fix_layers is not None and fix_ratio is not None:
@@ -1370,6 +1422,7 @@ def generate_slab(
         lateral_tolerance=lateral_tolerance,
         supercell=supercell,
         supercell_matrix=choice.supercell_matrix,
+        standardize_bulk=standardize_bulk,
     )
 
     def _run_backend(params: dict) -> list[SlabResult]:
