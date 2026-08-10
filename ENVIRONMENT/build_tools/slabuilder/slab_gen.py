@@ -1034,12 +1034,8 @@ def _generate_via_catkit(
     - Use surfaxe or pymatgen symmetrization when symmetric oxide slabs matter.
     - Attaches bond graph to Gratoms for downstream CatKit adsorption tools.
 
-    ``standardize_bulk=False`` skips conventional/primitive reduction (both
-    ours and CatKit's own) and uses ``bulk_structure`` exactly as given —
-    ``miller_index`` is then interpreted against that exact lattice. Use this
-    only when the supplied cell encodes site-level physics (e.g.
-    antiferromagnetic ordering, dopant/defect placement) that reduction could
-    silently collapse.
+    See ``generate_slab``'s ``standardize_bulk`` doc; ``standardize_bulk=False``
+    also disables CatKit's own reduction here.
     """
     from catkit.gen.surface import SlabGenerator as CatKitSlabGen
 
@@ -1135,11 +1131,9 @@ def _generate_via_pymatgen(
 ) -> list[SlabResult]:
     """Generate slabs using pymatgen SlabGenerator.
 
-    ``standardize_bulk=False`` skips the conventional/primitive reduction
-    below and slices ``bulk_structure`` exactly as given (``miller_index`` is
-    then interpreted against that exact lattice, and pymatgen's own
-    slab-level ``primitive`` reduction is also disabled so the result is not
-    silently shrunk back down after slicing).
+    See ``generate_slab``'s ``standardize_bulk`` doc; also disables
+    pymatgen's own slab-level ``primitive`` reduction so the result isn't
+    shrunk back down after slicing.
     """
     # Use primitive cell so the surface unit cell matches CatKit's starting cell.
     # CatKit internally standardizes to the primitive bulk (standardize_bulk=True),
@@ -1225,11 +1219,8 @@ def _generate_via_surfaxe(
     Must pass save_slabs=False to get a list of dicts back.
     Each dict has key 'slab' (pymatgen Slab) and metadata fields.
     The public API's n_layers is converted to surfaxe's Å-based thicknesses
-    argument before calling surfaxe.
-
-    ``standardize_bulk=False`` skips conventional/primitive reduction and
-    slices ``bulk_structure`` exactly as given; ``miller_index`` is then
-    interpreted against that exact lattice.
+    argument before calling surfaxe. See ``generate_slab``'s
+    ``standardize_bulk`` doc.
     """
     from surfaxe.generation import generate_slabs as sx_generate
 
@@ -1355,19 +1346,13 @@ def generate_slab(
                                slabs and 'trim' when intentionally enumerating
                                non-stoichiometric terminations.
         standardize_bulk:      When True (default), reduce ``bulk_structure`` to
-                               its conventional/primitive form before slicing —
-                               this is a pure symmetry-and-species analysis
-                               (spglib) that ignores per-site properties such as
-                               magmom. Set False to slice ``bulk_structure``
-                               exactly as given, with ``miller_index``
-                               interpreted against that exact lattice instead of
-                               a re-derived standard cell. Use False when the
-                               supplied cell encodes site-level physics that
-                               reduction could silently collapse or misassign —
-                               e.g. antiferromagnetic ordering (alternating
-                               magmom on otherwise-equivalent sites), a dopant
-                               supercell, or a defect cell — since spglib cannot
-                               tell those sites apart from a plain reduction.
+                               its conventional/primitive form (spglib) before
+                               slicing — geometry/species only, ignores magmom.
+                               Set False to slice it exactly as given, with
+                               ``miller_index`` against that exact lattice; use
+                               for cells encoding site-level physics (AFM
+                               ordering, dopant/defect cells) that reduction
+                               could collapse.
 
     Returns:
         List of SlabResult objects, one per unique termination.
@@ -1376,13 +1361,10 @@ def generate_slab(
         magmoms = _valid_site_property(bulk_structure, "magmom")
         if magmoms is not None and _uniform_site_property_by_species(bulk_structure, "magmom") is None:
             warnings.warn(
-                "bulk_structure has per-site magmom values that differ within "
-                "the same species (e.g. antiferromagnetic ordering). The "
-                "default standardize_bulk=True reduction only considers "
-                "geometry and species, not magmom, and can silently collapse "
-                "or misassign this ordering. Pass standardize_bulk=False to "
-                "slice the supplied cell exactly as given if this pattern "
-                "must be preserved.",
+                "bulk_structure has magmom values that differ within the same "
+                "species (e.g. AFM ordering). standardize_bulk=True (default) "
+                "ignores magmom and can collapse/misassign this pattern. Pass "
+                "standardize_bulk=False to preserve it.",
                 stacklevel=2,
             )
 

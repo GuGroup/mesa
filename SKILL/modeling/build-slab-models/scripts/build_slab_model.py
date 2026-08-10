@@ -219,32 +219,10 @@ def main() -> int:
     parser.add_argument("--supercell-na", type=int, help="Explicit diagonal supercell repeat along the first surface lattice vector.")
     parser.add_argument("--supercell-nb", type=int, help="Explicit diagonal supercell repeat along the second surface lattice vector.")
     parser.add_argument("--n-layers", type=int, help="Explicit layer count override for slab generation.")
-    parser.add_argument(
-        "--preserve-bulk-cell",
-        action="store_true",
-        help=(
-            "Skip conventional/primitive reduction and slice --bulk-file exactly as "
-            "given; --miller is then interpreted against that exact lattice. Use "
-            "only when the supplied cell encodes site-level physics (e.g. "
-            "antiferromagnetic ordering via per-site magmom, a dopant or defect "
-            "supercell) that the default reduction (spglib, geometry+species only) "
-            "could silently collapse or misassign."
-        ),
-    )
+    parser.add_argument("--preserve-bulk-cell", action="store_true", help="Skip conventional/primitive reduction; slice --bulk-file as given, --miller against its exact lattice. Use when the bulk encodes site-level physics (magmom/AFM ordering, dopant/defect cells) that reduction could collapse.")
     parser.add_argument("--fix-layers", type=int, help="Fix an explicit number of bottom layers (overrides --fix-ratio).")
     parser.add_argument("--fix-ratio", type=float, help="Fraction (0..1) of material thickness fixed from the bottom, c-axis fractional (default 0.48).")
-    parser.add_argument(
-        "--termination",
-        type=int,
-        default=None,
-        help=(
-            "Termination index to save when --all-terminations is not set. Defaults to "
-            "the recommended termination (lowest-penalty: nonpolar/dipole-safe, "
-            "symmetric top/bottom, stoichiometric) among ALL generated terminations "
-            "when omitted -- not a positional index-0 pick. Pass an explicit index to "
-            "override; overriding away from the recommendation triggers a review warning."
-        ),
-    )
+    parser.add_argument("--termination", type=int, default=None, help="Termination index to save when --all-terminations is not set. Defaults to the recommended (nonpolar, symmetric, stoichiometric) termination among all generated ones, not index 0.")
     parser.add_argument("--all-terminations", action="store_true", help="Advanced/diagnostic: save every generated termination instead of only --termination.")
     parser.add_argument("--allow-nonstoichiometric", action="store_true", help="Allow non-stoichiometric surface terminations such as O-rich or O-poor oxide slabs.")
     parser.add_argument("--write-extxyz", action="store_true", help="Also write extxyz files and POSCAR/extxyz index mapping metadata.")
@@ -272,9 +250,7 @@ def main() -> int:
     entry = types.SimpleNamespace(
         structure=structure,
         formula=structure.composition.reduced_formula,
-        # Distinguishes parallel bulk candidates in output filenames (see
-        # import-bulk-structure's output-naming rule: name bulk artifacts
-        # {formula}_{source_id}, never a generic stem like "POSCAR"/"bulk").
+        # Keeps parallel bulk candidates' output filenames from colliding.
         mpid=safe_name(bulk_path.stem),
         energy_above_hull=None,
     )
@@ -307,12 +283,10 @@ def main() -> int:
         raise SystemExit("slabuilder generated no slab terminations.")
     available_termination_count = len(slabs)
 
-    # Quality-preview every generated termination (cheap: no extra backend
-    # calls, just post-processing already-generated SlabResult objects), so
-    # the default save target -- and "what should have been picked" -- reflect
-    # everything slabuilder actually generated, not an arbitrary positional
-    # index. Dipole/symmetry safety (nonpolar, symmetric top/bottom) and
-    # stoichiometry drive the score; see termination_quality_record.
+    # Score every generated termination (cheap post-processing, no extra
+    # generation) so the default save target reflects all of them, not just
+    # index 0. See termination_quality_record for the nonpolar/symmetric/
+    # stoichiometric scoring.
     def _quality_preview(term_index: int, result: Any) -> dict[str, Any]:
         stoich = stoichiometry_record(result.ase_atoms, entry.formula)
         surface_summary = layer_summary_record(result.ase_atoms)
@@ -332,8 +306,7 @@ def main() -> int:
     if args.all_terminations:
         effective_termination = None
     else:
-        # Explicit --termination always wins; omitted defaults to the
-        # dipole/symmetry-safe recommendation instead of a positional index.
+        # Explicit --termination wins; omitted defaults to the recommendation.
         effective_termination = (
             args.termination if args.termination is not None else global_recommended_termination
         )
