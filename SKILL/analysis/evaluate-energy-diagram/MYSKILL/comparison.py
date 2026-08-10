@@ -20,7 +20,16 @@ def compare_experiment(results: dict[str, Any], experiment: Any, reaction_type: 
         if reaction_type == "HER":
             calculated = results[catalyst]["delta_g_h_ev"]
         else:
-            calculated = results[catalyst].get("eta_calc_v", results[catalyst].get("score", 0.0))
+            calculated = results[catalyst].get("eta_calc_v")
+            if not is_number(calculated):
+                calculated = results[catalyst].get("score")
+        if not is_number(calculated):
+            comparison[catalyst] = {
+                "error": "no comparable calculated overpotential/descriptor is available for this catalyst",
+                "experimental": experimental,
+            }
+            continue
+        calculated = float(calculated)
         comparison[catalyst] = {
             "calculated": calculated,
             "experimental": experimental,

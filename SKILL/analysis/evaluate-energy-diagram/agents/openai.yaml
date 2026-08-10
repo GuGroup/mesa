@@ -1,4 +1,4 @@
 interface:
   display_name: "Evaluate Energy Diagram"
-  short_description: "Evaluate reaction energy tables"
-  default_prompt: "Use $evaluate-energy-diagram to evaluate catalyst reaction energy tables and summarize thermodynamic performance."
+  short_description: "Evaluate energy tables and route unresolved rankings"
+  default_prompt: "Use $evaluate-energy-diagram to evaluate catalyst energy tables and route unresolved or tied comparative rankings to $plot-sabatier-volcano."

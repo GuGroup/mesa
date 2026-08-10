@@ -1,6 +1,6 @@
 ---
 name: evaluate-energy-diagram
-description: Modular MESA skill for extracting experimental context and evaluating DFT reaction-energy tables from CSV or dictionary input. Supports HER and OER algorithmic analysis plus schema-based naming/evaluation for NO3RR and related reactions.
+description: Evaluate DFT reaction-energy tables from CSV or dictionary input. When a multi-catalyst diagram does not identify one unique thermodynamic best catalyst, including mixed downhill/uphill or tied cases, hand off to SKILL/figure/plot-sabatier-volcano for Sabatier analysis.
 ---
 
 For MESA end-to-end use, read `SKILL/analysis/workflow.md` before applying this skill.
@@ -21,6 +21,31 @@ The deterministic Python modules should be used whenever possible. If an LLM is 
 
 This rule is also exposed in the output under `data.llm_guidance`.
 
+## Conditional handoff to `SKILL/figure/plot-sabatier-volcano`
+
+After running the deterministic evaluator, inspect `data.skill_handoff`.
+
+1. When `data.skill_handoff.triggered` is `true`, read
+   `MYSKILL/electrochemical.md` first.
+2. Then read `SKILL/figure/plot-sabatier-volcano/SKILL.md` and invoke the
+   skill declared there exactly once with `data.skill_handoff.handoff_payload`.
+   The directory-name fallback invocation is `$plot-sabatier-volcano`.
+3. Preserve any uphill-step/PDS screening evidence, but do not declare a unique
+   best catalyst before the downstream Sabatier analysis resolves or bounds it.
+4. Do not invoke `$plot-sabatier-volcano` automatically when
+   `data.skill_handoff.triggered` is `false`.
+5. Trigger only when at least two catalysts are evaluable and the thermodynamic
+   ranking is unresolved or its top score is tied within the configured energy
+   tolerance. Uphill steps do not suppress this trigger.
+6. Do not trigger when the evaluator identifies one unique thermodynamic best
+   catalyst, or when fewer than two catalyst rankings are evaluable.
+7. If the target skill is unavailable, preserve and return the handoff payload;
+   do not pretend that a volcano plot was generated.
+
+The Python module cannot activate a Codex skill by itself. It emits a
+machine-readable `next_action` with `recommendation: invoke_skill`; the Codex
+host follows the instruction above.
+
 ## What this skill does
 
 1. Extracts simple experimental context from `raw_text`, `materials`, `measurements`, `hypotheses`, `conditions`, and `targets`.
@@ -31,6 +56,8 @@ This rule is also exposed in the output under `data.llm_guidance`.
 6. Evaluates NO3RR, NO2RR, NRR, CO2RR, ORR, and generic reactions with deterministic schema/ranking logic.
 7. Separates electrochemical PDS-like steps from pure adsorption/desorption steps when possible.
 8. Produces ranking data and a Markdown report.
+9. Routes multi-catalyst comparisons without one unique thermodynamic best to
+   `SKILL/figure/plot-sabatier-volcano`, including mixed downhill/uphill cases.
 
 ## Main Python entry point
 
@@ -63,6 +90,7 @@ MYSKILL/
 ├── experimental.py                    # integrated TASK1-style context extraction
 ├── comparison.py                      # experiment comparison and competing reaction descriptors
 ├── reporting.py                       # markdown report generation
+├── routing.py                         # unresolved/tied-ranking handoff to plot-sabatier-volcano
 ├── llm_guidance.py                    # machine-readable LLM interpretation protocol
 ├── chemistry.py                       # label normalization and formula helpers
 ├── constants.py                       # reaction metadata and shared constants
@@ -82,3 +110,5 @@ MYSKILL/
 - OER ranking uses `max(ΔG1..ΔG4) - 1.23 V` by default.
 - Complex reactions such as NO3RR use reaction naming and schema rules documented in `references/reaction_nomenclature.md`.
 - The deterministic evaluator does not call external APIs or LLMs.
+- The deterministic evaluator does not directly execute another Codex skill;
+  it emits the exact conditional handoff for the host agent.

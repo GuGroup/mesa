@@ -35,6 +35,7 @@ SKILL/analysis/evaluate-energy-diagram/
 │   ├── experimental_information_extraction.py
 │   ├── comparison.py
 │   ├── reporting.py
+│   ├── routing.py
 │   ├── llm_guidance.py
 │   ├── chemistry.py
 │   ├── constants.py
@@ -134,10 +135,76 @@ The `data` field includes:
 - `llm_guidance`
 - `markdown_report`
 - `warnings`
+- `all_downhill_across_catalysts`
+- `unique_best_catalyst_identified`
+- `skill_handoff`
+
+## Unresolved-ranking routing
+
+After normalization and reaction-specific evaluation, the skill checks whether
+the diagram identifies exactly one thermodynamic best catalyst:
+
+1. Require at least two catalysts, numerical ranking rows, and evaluable
+   transitions.
+2. Treat the result as unresolved when reaction-specific ranking flags are
+   unresolved or multiple catalysts share the top score within the configured
+   tolerance.
+3. Request a handoff to `SKILL/figure/plot-sabatier-volcano` for unresolved or
+   tied comparisons, including mixed downhill/uphill profile sets.
+4. Keep common-basis downhill diagnostics and uphill-step/PDS screening in the
+   payload; these remain evidence but no longer gate the handoff.
+
+The deterministic Python program emits, but does not itself execute, the
+following orchestration result:
+
+```json
+{
+  "next_action": {
+    "recommendation": "invoke_skill",
+    "target_skill": "plot-sabatier-volcano",
+    "target_skill_path": "SKILL/figure/plot-sabatier-volcano",
+    "invocation": "$plot-sabatier-volcano",
+    "invocation_strategy": "read_target_skill_md_then_invoke_declared_name",
+    "condition": "comparative_thermodynamic_ranking_not_unique",
+    "handoff_payload": {}
+  }
+}
+```
+
+The handoff payload contains the normalized energy table in dictionary and CSV
+form, screening rankings, catalyst-level uphill/downhill diagnostics, optional
+descriptor hints, and explicit Sabatier constraints. It tells the downstream
+skill to preserve uphill evidence and not equate a steeper downhill slope with
+better activity.
+
+Relevant optional inputs:
+
+```json
+{
+  "enable_unresolved_volcano_handoff": true,
+  "downhill_trigger_scope": "all_steps",
+  "downhill_tolerance_ev": 1e-09,
+  "energy_reference_potential_v": 0.0,
+  "equilibrium_potential_v": -0.12,
+  "step_electron_counts": [0, 1, 1, 1],
+  "volcano_descriptor": null,
+  "volcano_activity_metric": null
+}
+```
+
+`downhill_trigger_scope` can be `all_steps` or `electrochemical`. The default
+`all_steps` applies uphill/downhill diagnostics to the full represented profile;
+these diagnostics do not by themselves decide whether the handoff triggers.
 
 ## LLM interpretation rule
 
 The deterministic evaluator does not call an LLM. If a future LLM layer is used for interpretation, it must read `MYSKILL/electrochemical.md` before making electrochemical claims. This is important because pure adsorption/desorption steps must not be described as overpotential.
+
+When `skill_handoff.triggered` is true, the host agent must also read that file,
+then read `SKILL/figure/plot-sabatier-volcano/SKILL.md`, before passing the payload
+to the skill declared there. The downstream analysis
+must apply the Sabatier principle and must not infer that stronger binding or a
+more negative overall energy is automatically superior.
 
 ## Run
 
@@ -161,3 +228,6 @@ example inputs.
 - Energies are assumed to be compatible corrected free energies in eV.
 - The PDS is a thermodynamic descriptor, not automatically the kinetic RDS.
 - Competing reaction descriptors are selectivity warnings, not final selectivity predictions.
+- With only two catalysts, the volcano skill may position the catalysts on an
+  established/model-derived curve, but two points alone should not be used to
+  fit a new empirical volcano relation.
