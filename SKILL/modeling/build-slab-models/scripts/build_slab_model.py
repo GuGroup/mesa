@@ -7,6 +7,7 @@ from collections import Counter
 import json
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
 
@@ -218,9 +219,32 @@ def main() -> int:
     parser.add_argument("--supercell-na", type=int, help="Explicit diagonal supercell repeat along the first surface lattice vector.")
     parser.add_argument("--supercell-nb", type=int, help="Explicit diagonal supercell repeat along the second surface lattice vector.")
     parser.add_argument("--n-layers", type=int, help="Explicit layer count override for slab generation.")
+    parser.add_argument(
+        "--preserve-bulk-cell",
+        action="store_true",
+        help=(
+            "Skip conventional/primitive reduction and slice --bulk-file exactly as "
+            "given; --miller is then interpreted against that exact lattice. Use "
+            "only when the supplied cell encodes site-level physics (e.g. "
+            "antiferromagnetic ordering via per-site magmom, a dopant or defect "
+            "supercell) that the default reduction (spglib, geometry+species only) "
+            "could silently collapse or misassign."
+        ),
+    )
     parser.add_argument("--fix-layers", type=int, help="Fix an explicit number of bottom layers (overrides --fix-ratio).")
     parser.add_argument("--fix-ratio", type=float, help="Fraction (0..1) of material thickness fixed from the bottom, c-axis fractional (default 0.48).")
-    parser.add_argument("--termination", type=int, default=0, help="Termination index to save when --all-terminations is not set.")
+    parser.add_argument(
+        "--termination",
+        type=int,
+        default=None,
+        help=(
+            "Termination index to save when --all-terminations is not set. Defaults to "
+            "the recommended termination (lowest-penalty: nonpolar/dipole-safe, "
+            "symmetric top/bottom, stoichiometric) among ALL generated terminations "
+            "when omitted -- not a positional index-0 pick. Pass an explicit index to "
+            "override; overriding away from the recommendation triggers a review warning."
+        ),
+    )
     parser.add_argument("--all-terminations", action="store_true", help="Advanced/diagnostic: save every generated termination instead of only --termination.")
     parser.add_argument("--allow-nonstoichiometric", action="store_true", help="Allow non-stoichiometric surface terminations such as O-rich or O-poor oxide slabs.")
     parser.add_argument("--write-extxyz", action="store_true", help="Also write extxyz files and POSCAR/extxyz index mapping metadata.")
@@ -248,7 +272,10 @@ def main() -> int:
     entry = types.SimpleNamespace(
         structure=structure,
         formula=structure.composition.reduced_formula,
-        mpid="local",
+        # Distinguishes parallel bulk candidates in output filenames (see
+        # import-bulk-structure's output-naming rule: name bulk artifacts
+        # {formula}_{source_id}, never a generic stem like "POSCAR"/"bulk").
+        mpid=safe_name(bulk_path.stem),
         energy_above_hull=None,
     )
     bulk_source = "optimized_bulk_file"
@@ -274,17 +301,53 @@ def main() -> int:
         supercell=supercell,
         n_layers_override=args.n_layers,
         catkit_layer_type="trim" if args.allow_nonstoichiometric else "stoich",
+        standardize_bulk=not args.preserve_bulk_cell,
     )
     if not slabs:
         raise SystemExit("slabuilder generated no slab terminations.")
     available_termination_count = len(slabs)
-    if not args.all_terminations and (args.termination < 0 or args.termination >= len(slabs)):
-        raise SystemExit(f"--termination {args.termination} out of range for {len(slabs)} terminations.")
+
+    # Quality-preview every generated termination (cheap: no extra backend
+    # calls, just post-processing already-generated SlabResult objects), so
+    # the default save target -- and "what should have been picked" -- reflect
+    # everything slabuilder actually generated, not an arbitrary positional
+    # index. Dipole/symmetry safety (nonpolar, symmetric top/bottom) and
+    # stoichiometry drive the score; see termination_quality_record.
+    def _quality_preview(term_index: int, result: Any) -> dict[str, Any]:
+        stoich = stoichiometry_record(result.ase_atoms, entry.formula)
+        surface_summary = layer_summary_record(result.ase_atoms)
+        quality = termination_quality_record(result, stoich, surface_summary, args.target_n_atoms)
+        return {"termination": int(term_index), "quality": quality}
+
+    all_quality = [_quality_preview(i, r) for i, r in enumerate(slabs)]
+    all_best_score = min(q["quality"]["score"] for q in all_quality)
+    global_recommended_candidates = [
+        q["termination"] for q in all_quality if q["quality"]["score"] == all_best_score
+    ]
+    global_recommended_termination = global_recommended_candidates[0] if global_recommended_candidates else None
+    global_has_safe_default = any(
+        q["quality"]["recommendation"] == "safe_default_candidate" for q in all_quality
+    )
+
+    if args.all_terminations:
+        effective_termination = None
+    else:
+        # Explicit --termination always wins; omitted defaults to the
+        # dipole/symmetry-safe recommendation instead of a positional index.
+        effective_termination = (
+            args.termination if args.termination is not None else global_recommended_termination
+        )
+        if effective_termination is None:
+            effective_termination = 0
+        if effective_termination < 0 or effective_termination >= available_termination_count:
+            raise SystemExit(
+                f"--termination {effective_termination} out of range for {available_termination_count} terminations."
+            )
 
     if args.all_terminations:
         chosen = list(enumerate(slabs))
     else:
-        chosen = [(args.termination, slabs[args.termination])]
+        chosen = [(effective_termination, slabs[effective_termination])]
     selected_termination_indices = [int(term_index) for term_index, _ in chosen]
 
     skipped_nonstoich: list[dict[str, Any]] = []
@@ -327,6 +390,7 @@ def main() -> int:
             "bulk_file": str(bulk_path) if args.bulk_file else None,
             "bulk_energy_above_hull": getattr(entry, "energy_above_hull", None),
             "miller": list(args.miller),
+            "standardize_bulk": bool(not args.preserve_bulk_cell),
             "termination": int(term_index),
             "available_termination_count": available_termination_count,
             "all_terminations_requested": bool(args.all_terminations),
@@ -368,12 +432,6 @@ def main() -> int:
             item["termination"],
         ),
     )
-    best_score = ranked_records[0]["termination_quality"]["score"] if ranked_records else None
-    recommended_candidates = [
-        record["termination"]
-        for record in ranked_records
-        if record["termination_quality"]["score"] == best_score
-    ]
     signature_counts: dict[str, dict[str, Any]] = {}
     for record in ranked_records:
         signature = record["surface_summary"]["termination_signature"]
@@ -392,15 +450,21 @@ def main() -> int:
     selection_warnings: list[str] = []
     if not args.all_terminations and available_termination_count > 1:
         selection_warnings.append(
-            f"{available_termination_count} terminations were generated, but this run saved only --termination {args.termination}; run --all-terminations before production."
+            f"{available_termination_count} terminations were generated, but this run saved only --termination {effective_termination}; run --all-terminations before production."
         )
-    if len(recommended_candidates) > 1:
+    if len(global_recommended_candidates) > 1:
         selection_warnings.append(
             "Multiple terminations have the same best heuristic score; choose explicitly."
         )
-    if not any(record["termination_quality"]["recommendation"] == "safe_default_candidate" for record in ranked_records):
+    if not global_has_safe_default:
         selection_warnings.append(
-            "No safe default candidate found; termination choice requires explicit review."
+            "No safe default candidate found among all generated terminations; termination choice requires explicit review."
+        )
+    elif global_recommended_termination not in selected_termination_indices:
+        selection_warnings.append(
+            f"A safe default candidate exists (termination {global_recommended_termination}) among all "
+            f"generated terminations, but it was not saved by this run (saved: {selected_termination_indices}); "
+            f"rerun with --termination {global_recommended_termination} or --all-terminations."
         )
     if any(not record["stoichiometry"]["is_stoichiometric"] for record in ranked_records):
         selection_warnings.append(
@@ -425,13 +489,14 @@ def main() -> int:
             "bulk_source": bulk_source,
         },
         "miller": list(args.miller),
+        "standardize_bulk": bool(not args.preserve_bulk_cell),
         "available_termination_count": available_termination_count,
         "selected_termination_indices": selected_termination_indices,
         "all_terminations_requested": bool(args.all_terminations),
         "allow_nonstoichiometric": bool(args.allow_nonstoichiometric),
         "skipped_nonstoichiometric": skipped_nonstoich,
-        "recommended_termination": ranked_records[0]["termination"] if ranked_records else None,
-        "recommended_termination_candidates": recommended_candidates,
+        "recommended_termination": global_recommended_termination,
+        "recommended_termination_candidates": global_recommended_candidates,
         "selection_warnings": selection_warnings,
         "unique_surface_signatures": list(signature_counts.values()),
         "ranked_terminations": [
@@ -467,6 +532,15 @@ def main() -> int:
         "selection_warnings": termination_summary["selection_warnings"],
         "generated": records,
     }
+
+    if selection_warnings:
+        print("=" * 70, file=sys.stderr)
+        print("WARNING: termination selection needs review", file=sys.stderr)
+        for msg in selection_warnings:
+            print(f"  - {msg}", file=sys.stderr)
+        print(f"  See {termination_summary_path} for full details.", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+
     print(json.dumps(summary, indent=2, default=json_default))
     return 0
 

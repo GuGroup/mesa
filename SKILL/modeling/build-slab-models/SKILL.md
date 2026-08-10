@@ -28,6 +28,14 @@ Slab generation must start from an accepted optimized bulk artifact.
 - Use `import-bulk-structure` first to import, register, or directly create the
   source bulk, then complete the required bulk optimization under the root
   calculation policy, then run this skill with the optimized bulk file.
+- If `import-bulk-structure` carried forward multiple unresolved MP candidates
+  (near-degenerate energy and no XRD match), run this skill once per optimized
+  candidate bulk file rather than picking one. Output naming keys on the
+  `--bulk-file` filename stem, so per-candidate slab sets do not collide as
+  long as `import-bulk-structure`'s output-naming rule was followed (source id
+  in the filename, never a generic stem). Return every candidate's slab set to
+  the recipe-backed execution plan for resolution — the same handling this
+  skill already uses for ambiguous terminations.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
@@ -51,8 +59,9 @@ Full option example:
 
 This example shows every common slab-generation option. Omit `--write-extxyz`
 for the default POSCAR-only output policy. Use `--all-terminations` only for
-deliberate enumeration; normal workflows choose one termination at a time with
-`--termination`.
+deliberate enumeration; normal workflows omit `--termination` and let it
+default to the recommended (dipole-safe/symmetric) termination, or pass an
+explicit index only to deliberately override that recommendation.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
@@ -92,15 +101,46 @@ mamba run -n modeling python scripts/build_slab_model.py \
 | `--supercell-na` | no | Explicit repeat along the first surface lattice vector. |
 | `--supercell-nb` | no | Explicit repeat along the second surface lattice vector. |
 | `--n-layers` | no | Explicit slab layer count override. |
+| `--preserve-bulk-cell` | no | Skip conventional/primitive reduction; slice `--bulk-file` exactly as given, with `--miller` interpreted against that exact lattice. See **Bulk Cell Standardization** below. |
 | `--fix-layers` | no | Explicit number of bottom layers to fix; overrides `--fix-ratio`. |
 | `--fix-ratio` | no | Fraction of material thickness fixed from the bottom. |
-| `--termination` | no | Termination index to save when `--all-terminations` is not used. |
+| `--termination` | no | Termination index to save when `--all-terminations` is not used. Defaults to the recommended (nonpolar/dipole-safe, symmetric, stoichiometric) termination among all generated ones when omitted — not a positional index-0 pick. |
 | `--all-terminations` | no | Advanced/diagnostic mode to save every generated termination. Prefer one termination per run. |
 | `--allow-nonstoichiometric` | no | Save O-rich/O-poor or otherwise non-stoichiometric terminations; without this flag, only terminations matching the bulk reduced formula are saved. |
 | `--write-extxyz` | no | Also write extxyz files and POSCAR/extxyz index mapping metadata. Off by default. |
 | `--max-atoms` | no | Validation limit for DFT-ready atom count. |
 | `--min-distance` | no | Validation threshold for too-close atoms in Angstrom. |
 | `--outdir` | no | Output directory for POSCAR and metadata files. |
+
+## Bulk Cell Standardization
+
+By default (`--preserve-bulk-cell` not set), `slabuilder` reduces `--bulk-file`
+to its conventional/primitive form (spglib symmetry analysis) before slicing,
+for every backend — including CatKit, which does this internally. This is a
+pure geometry-and-species analysis; it does not consider per-site properties
+such as `magmom`, so passing a large or intentionally-built supercell as
+`--bulk-file` has no effect by default — it is reduced back down before
+generation.
+
+Pass `--preserve-bulk-cell` when the supplied bulk encodes site-level physics
+that this reduction could silently collapse or misassign — e.g.
+antiferromagnetic ordering (alternating `magmom` on otherwise
+crystallographically-equivalent sites), a dopant supercell, or a defect cell.
+With this flag:
+
+- No conventional/primitive reduction is applied, by this skill or by CatKit.
+- `--miller H K L` is interpreted against the exact lattice vectors of
+  `--bulk-file`, not a re-derived standard cell — Miller indices are only
+  physically meaningful relative to the basis they are expressed in, so a
+  non-standard supercell needs indices re-expressed in its own basis.
+- `standardize_bulk` is recorded in the output metadata and
+  `termination_summary.json` for provenance.
+
+`generate_slab` also warns automatically when `--bulk-file` carries a
+`magmom` pattern that differs within the same species (a signal of AFM-like
+ordering) while `--preserve-bulk-cell` is not set — that is the risky default
+combination. Do not silence or ignore this warning; either confirm the
+reduction is safe for this material or rerun with `--preserve-bulk-cell`.
 
 ## Workflow
 
@@ -117,9 +157,11 @@ mamba run -n modeling python scripts/build_slab_model.py \
    here is a safety triage, not an energy ranking. When an ambiguous surface
    requires energy-based screening, return the top candidates to the
    recipe-backed execution plan; do not run that calculation in this skill.
-5. Save exactly one selected termination as `POSCAR` and JSON metadata once a
-   single safe candidate exists, recipe-backed energy screening has chosen one,
-   or `--termination N` is given.
+5. Save exactly one selected termination as `POSCAR` and JSON metadata:
+   omitting `--termination` saves the recommended (dipole-safe/symmetric)
+   termination automatically; pass `--termination N` only to deliberately
+   override it, e.g. when recipe-backed energy screening has chosen a
+   different one.
 6. Validate atom count, cell sanity, minimum distance, tags, and metadata.
 7. Report source bulk path, inherited source identifiers, Miller index,
    termination, backend, atom count, lateral lengths, slab thickness, vacuum,
@@ -145,11 +187,22 @@ mamba run -n modeling python scripts/build_slab_model.py \
   (tilt-safe, independent of added vacuum). Change the fraction with
   `--fix-ratio`, or pass `--fix-layers N` to fix an explicit layer count instead
   (overrides the ratio).
-- Save one termination with `--termination N` only after checking whether more
-  than one generated termination exists. For ambiguous surfaces, run
-  `--all-terminations` first and require an explicit choice when
-  `recommended_termination_candidates` has multiple values or
-  `selection_warnings` is non-empty.
+- Leave `--termination` unset by default. It then saves the recommended
+  termination — lowest-penalty among ALL generated terminations, favoring
+  nonpolar/dipole-safe, symmetric top/bottom, and stoichiometric — computed
+  from the full termination set even though only one is written to disk. This
+  is not a positional index-0 pick.
+- Pass `--termination N` only to deliberately override the recommendation
+  (e.g. recipe-backed energy screening chose a different one). An override
+  that differs from the recommendation, or a tie among equally-good
+  candidates, or no safe candidate existing at all, prints a `WARNING:`
+  banner to stderr in addition to `selection_warnings` in the JSON output —
+  do not treat a clean-looking stdout summary as sufficient without checking
+  stderr.
+- For ambiguous surfaces (see Workflow step 4), still run `--all-terminations`
+  and inspect `termination_summary.json` rather than trusting the single
+  auto-picked termination, since the heuristic score is a safety triage, not
+  an energy ranking.
 - Save POSCAR and metadata by default. Add `--write-extxyz` only when an extxyz
   artifact or POSCAR/extxyz index map is needed.
 - Save only stoichiometric terminations by default. In the CatKit backend this
@@ -158,6 +211,9 @@ mamba run -n modeling python scripts/build_slab_model.py \
   intentionally.
 - Prefer automatic layer selection. Use explicit `--n-layers`, `--supercell-na`,
   or `--supercell-nb` only when requested or needed.
+- Leave `--preserve-bulk-cell` unset unless the bulk carries site-level physics
+  (magnetic ordering, dopant/defect pattern) that reduction would erase; see
+  **Bulk Cell Standardization**.
 - Ask before generation when termination or atom-count policy is scientifically
   ambiguous.
 
