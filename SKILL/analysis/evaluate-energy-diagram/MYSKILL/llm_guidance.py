@@ -20,6 +20,14 @@ def llm_guidance_payload() -> dict[str, Any]:
         "must_read_reference_before_interpretation": ELECTROCHEMICAL_REFERENCE_PATH,
         "priority_rule": ELECTROCHEMICAL_REFERENCE_RULE,
         "forbidden_overclaim": "Do not label pure adsorption/desorption or other non-electrochemical step energies as overpotential.",
+        "unresolved_ranking_target_skill_path": "SKILL/figure/plot-sabatier-volcano",
+        "unresolved_ranking_rule": (
+            "When data.skill_handoff.triggered is true, the energy diagram did not identify one unique thermodynamic best catalyst. "
+            "Read electrochemical.md first, then read SKILL/figure/plot-sabatier-volcano/SKILL.md and invoke the declared skill exactly once with the emitted handoff_payload."
+        ),
+        "volcano_non_trigger_rule": (
+            "Do not automatically invoke $plot-sabatier-volcano when one unique thermodynamic best catalyst is resolved or fewer than two catalyst rankings are evaluable."
+        ),
     }
 
 

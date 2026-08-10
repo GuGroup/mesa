@@ -13,6 +13,7 @@ from .llm_guidance import llm_guidance_payload
 from .nomenclature import detect_reaction_type
 from .output import standard_output
 from .reporting import markdown_report
+from .routing import build_volcano_handoff
 from .utils import resolve_path, safe_string
 
 
@@ -27,10 +28,27 @@ def evaluate_energy_table(input_data: dict[str, Any], context: dict[str, Any] | 
     elif reaction_type == "OER":
         evaluated, ranking, eval_warnings = evaluate_oer(catalysts, steps, values, reaction_metadata, input_data)
     elif reaction_type in {"NO3RR", "NO2RR", "NRR", "CO2RR", "ORR"} or reaction_metadata.get("reaction_class") == "reduction":
-        evaluated, ranking, eval_warnings = evaluate_schema_reduction(catalysts, steps, values, reaction_metadata)
+        evaluated, ranking, eval_warnings = evaluate_schema_reduction(catalysts, steps, values, reaction_metadata, input_data)
     else:
-        evaluated, ranking, eval_warnings = evaluate_generic(catalysts, steps, values, reaction_metadata)
+        evaluated, ranking, eval_warnings = evaluate_generic(catalysts, steps, values, reaction_metadata, input_data)
     warnings.extend(eval_warnings)
+
+    ranking_statuses = {row.get("ranking_status", "standard_descriptor_ranking") for row in ranking}
+    ranking_status = next(iter(ranking_statuses)) if len(ranking_statuses) == 1 else "mixed_ranking_basis"
+    thermodynamic_ranking_resolved = bool(ranking) and all(
+        row.get("thermodynamic_ranking_resolved", True) for row in ranking
+    )
+
+    skill_handoff = build_volcano_handoff(
+        input_data=input_data,
+        reaction_type=reaction_type,
+        reaction_metadata=reaction_metadata,
+        steps=steps,
+        catalysts=catalysts,
+        values=values,
+        results=evaluated,
+        ranking=ranking,
+    )
 
     data = {
         "reaction_type": reaction_type,
@@ -40,6 +58,12 @@ def evaluate_energy_table(input_data: dict[str, Any], context: dict[str, Any] | 
         "catalysts": catalysts,
         "values": values if input_data.get("include_values_in_output", False) else None,
         "ranking": ranking,
+        "ranking_status": ranking_status,
+        "thermodynamic_ranking_resolved": thermodynamic_ranking_resolved,
+        "performance_ranking_definitive": False,
+        "all_downhill_across_catalysts": skill_handoff["all_downhill_across_catalysts"],
+        "unique_best_catalyst_identified": skill_handoff["unique_best_catalyst_identified"],
+        "skill_handoff": skill_handoff,
         "results": evaluated,
         "experiment_comparison": compare_experiment(evaluated, input_data.get("experiment"), reaction_type),
         "competing_reaction_summary": evaluate_competing_reactions(input_data, evaluated),
@@ -74,10 +98,32 @@ def run(input_data: dict, context: dict | None = None) -> dict:
         evaluation_data["markdown_report"] = markdown_report(evaluation_data)
 
         result["data"] = evaluation_data
-        result["messages"].append(
-            f"Evaluated {len(evaluation_data['catalysts'])} catalyst(s) for {evaluation_data['reaction_type']}; "
-            f"best catalyst: {evaluation_data['ranking'][0]['catalyst'] if evaluation_data['ranking'] else 'none'}."
-        )
+        handoff = evaluation_data.get("skill_handoff") or {}
+        if handoff.get("triggered"):
+            result["messages"].append(
+                f"The {evaluation_data['reaction_type']} energy diagram did not identify one unique "
+                f"thermodynamic best catalyst ({handoff['ranking_resolution']['reason_code']}). "
+                "Route the normalized comparison to SKILL/figure/plot-sabatier-volcano."
+            )
+        elif (
+            evaluation_data["ranking"]
+            and evaluation_data.get("thermodynamic_ranking_resolved")
+            and evaluation_data.get("unique_best_catalyst_identified")
+        ):
+            result["messages"].append(
+                f"Evaluated {len(evaluation_data['catalysts'])} catalyst(s) for {evaluation_data['reaction_type']}; "
+                f"lowest thermodynamic descriptor: {evaluation_data['ranking'][0]['catalyst']}. "
+                "This is not a definitive kinetic/selectivity ranking."
+            )
+        elif evaluation_data["ranking"]:
+            result["messages"].append(
+                f"Evaluated {len(evaluation_data['catalysts'])} catalyst(s) for {evaluation_data['reaction_type']}; "
+                "a screening order was generated, but the available thermodynamic metadata do not support a definitive best catalyst."
+            )
+        else:
+            result["messages"].append(
+                f"Evaluated {len(evaluation_data['catalysts'])} catalyst(s) for {evaluation_data['reaction_type']}; no ranking was generated."
+            )
         result["messages"].append(
             f"Integrated experimental context extraction found {len(experiment_context['materials'])} material(s), "
             f"{len(experiment_context['measurements'])} measurement(s), and {len(experiment_context['hypotheses'])} hypothesis record(s)."
@@ -96,7 +142,20 @@ def run(input_data: dict, context: dict | None = None) -> dict:
             result["artifacts"].append(artifact)
             result["provenance"]["generated_files"].append(artifact)
 
-        if evaluation_data.get("warnings") or experiment_context.get("uncertainties"):
+        if handoff.get("triggered"):
+            result["status"] = "partial"
+            result["next_action"] = {
+                "recommendation": "invoke_skill",
+                "target_skill": handoff["target_skill"],
+                "target_skill_display_name": handoff.get("target_skill_display_name"),
+                "target_skill_path": handoff["target_skill_path"],
+                "invocation": handoff["invocation"],
+                "invocation_strategy": handoff.get("invocation_strategy"),
+                "condition": handoff["condition"],
+                "reason": handoff["reason"],
+                "handoff_payload": handoff["handoff_payload"],
+            }
+        elif evaluation_data.get("warnings") or experiment_context.get("uncertainties"):
             result["status"] = "partial"
             result["next_action"] = {
                 "recommendation": "continue",
