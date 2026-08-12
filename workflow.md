@@ -287,21 +287,3 @@ when recipe-local manifests preserve exact provenance.
   positive trend.
 - Do not proceed to the next strategy before manuscript/result artifact
   creation and strategy update.
-
-# Logging
-
-For MESA scientific workflow tasks only, append one entry per MESA skill call
-or project-local script to `project/<project_name>/skill_call_log.md`.
-
-Do not read, rewrite, reorder, or deduplicate the existing log unless the user
-explicitly asks for a log audit. Create the parent directory if needed, then
-append with shell redirection (`>>`) using this fixed block format:
-
-```md
-## YYYY-MM-DDTHH:MM:SS+TZ - <skill-or-script-name>
-- reason:
-- inputs:
-- outputs:
-- validation:
-- boundary:
-```
