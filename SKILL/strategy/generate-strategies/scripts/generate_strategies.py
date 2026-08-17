@@ -47,6 +47,14 @@ STRATEGY_PROMPT = """You are generating computational chemistry strategies for a
 * Classify each component as directly testable, partially testable, or not testable using the supported computational capabilities.
 * Generate strategies only for directly or partially testable components. For partial tests, state exactly what is evaluated and do not present a descriptor, thermodynamic tendency, or necessary condition as proof of the complete claim.
 * Explicitly skip components that require experiments or unsupported calculations. Do not invent a proxy strategy for them, and if no component is computationally testable, generate no strategy.
+* Identify the claim-defining variables: the material, structural, compositional, or mechanistic variables whose
+presence, variation, or relationship is necessary to evaluate the selected claim component.
+* Every standalone strategy must explicitly model and isolate all computationally addressable claim-defining
+variables relevant to its decision_target using appropriate matched comparisons.
+* A calculation that omits a relevant claim-defining variable may be included only as a prerequisite or control
+within a complete strategy; do not emit or prioritize it as an independent claim-supporting strategy.
+* Claim components outside the supported computational capabilities may remain explicitly out of scope and do
+not invalidate an otherwise claim-relevant strategy.
 
 
 4. Supported Computational Capabilities
@@ -92,7 +100,7 @@ Unsupported requirements:
 
 6. Definition of a Complete Strategy
 
-Each strategy must be a self-contained claim-supporting workflow.
+Each strategy must be a self-contained claim-supporting workflow by itself.
 
 A complete strategy must contain:
 
@@ -106,12 +114,12 @@ A complete strategy must contain:
 6. An ordered sequence of supported calculations.
 7. The computational observables and comparisons to be obtained.
 8. And requested fields on following python dictionary structure.
+9.  
 9. Free-energy diagram about complete reaction pathway. Full reaction pathway free-energy diagram is always required.
 
 Completeness rules:
 
-* Model construction, adsorption-site enumeration, geometry relaxation, intermediate enumeration, or adsorption-energy calculation alone is not a complete strategy.
-* Model construction, adsorption-energy analysis, and free-energy analysis are calculation stages, not automatically separate strategies.
+* Model construction, adsorption-site enumeration, geometry relaxation, intermediate enumeration, or adsorption-energy calculation are calculation stages not a complete strategy.
 * If two proposed strategies must be combined to reach one primary claim-level conclusion, merge them into one strategy.
 * Every strategy must independently produce an interpretable result concerning the authoritative claim.
 
