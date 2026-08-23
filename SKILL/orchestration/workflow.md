@@ -34,8 +34,8 @@ Recommended command:
 
 ```bash
 python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
-  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
-  --out project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --strategy project/<project_name>/strategy_execution/strategy_selection/<run_id>.json \
+  --out project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 Required output shape:
@@ -69,7 +69,7 @@ After recipe generation and realization, run:
 
 ```bash
 python3 SKILL/orchestration/plan-recipe-execution/scripts/plan_recipe_execution.py \
-  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 The skill writes `execution_plan.json` without modifying recipes. It uses one
@@ -86,9 +86,9 @@ exists.
 # Delegate Planned Strategy Execution
 
 After `execution_plan.json` exists, use `delegate-strategy-execution`. The
-parent spawns one fresh sub-agent for the active strategy-execution attempt,
-passes only the project, profile, strategy, recipe-root, plan, and explicit
-execution-constraint paths, and does not perform the delegated work itself.
+parent assigns one sub-agent to the strategy lineage and passes only the
+project, profile, lineage, strategy, recipe-root, plan, and explicit execution
+constraints. Reuse that agent for resumed or bounded revised execution.
 
 The worker follows the execution graph, loads domain workflows only for the
 active E unit, and applies `manage-execution-unit`, `record-missing-evidence`,
@@ -96,8 +96,8 @@ active E unit, and applies `manage-execution-unit`, `record-missing-evidence`,
 are the checkpoint; do not create a wrapper state file.
 
 The worker stops before S-level scientific evaluation. The parent owns user
-interaction, returned-path validation, sequential continuation after
-`resume_required`, and all strategy-outcome decisions.
+interaction, returned-path validation, continuation after `resume_required`,
+the strategy-agent pool, and all strategy-outcome decisions.
 
 Codex may perform minor repairs during execution using its own judgment.
 

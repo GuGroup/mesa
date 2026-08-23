@@ -37,9 +37,9 @@ Before executing research steps:
 1. Read `project/<project_name>/project_profile.md` and root `workflow.md`.
    Treat the profile as the active project policy source and root `workflow.md`
    as the reusable execution contract.
-2. Verify the project profile's calculation policy before calculation work. If
-   the policy is missing or ambiguous, return to `initialize-project` instead of
-   assuming a backend.
+2. Verify the backend and positive `max_active_strategy_agents`. For UMA,
+   verify the GPU allocation mode, eligible physical devices, and inventory
+   path. Return incomplete policy to `initialize-project`.
 3. Record the current filesystem/session access state. Full filesystem access
    such as `danger-full-access`, unrestricted filesystem access, or an equivalent
    full-access profile is recommended for autonomous calculation and manuscript
@@ -101,9 +101,8 @@ calculation policy itself.
 
 Keep `<calculation_policy_sentence>` short but explicit. Examples:
 
-- `UMA/MLIP backend; do not create or submit VASP jobs.`
+- `UMA/MLIP backend; local CUDA execution.`
 - `VASP backend; submission mode: sge-submission.`
-- `VASP backend; submission mode: local-node-runner.`
 
 ## Source Package Handling
 
@@ -141,8 +140,8 @@ User-facing clarification and QA may use the user's preferred language.
 
 After the startup checks pass, choose exactly one starting point:
 
-- If the active project has a current strategy artifact, enter the
-  Per-Strategy Execution Loop at `select-next-strategy`.
+- If the active project has a current strategy artifact, fill available
+  strategy-execution slots at `select-next-strategy`.
 - If the source package contains an existing manuscript or gap/weakness-repair
   instruction, extract the claim/gap context first, then generate or update
   computational strategies.

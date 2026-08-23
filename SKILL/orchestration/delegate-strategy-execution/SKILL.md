@@ -1,21 +1,20 @@
 ---
 name: delegate-strategy-execution
 description: >-
-  Delegate one planned MESA strategy execution to a fresh, bounded sub-agent
-  while keeping raw modeling, calculation, analysis, and repair context outside
-  the parent thread. Use after an explicit recipe root and execution_plan.json
-  exist, when the strategy must run through terminal E-, C-, and P-level
-  execution handling before returning to the parent for S-level evaluation.
+  Delegate one planned MESA strategy lineage to its bounded execution
+  sub-agent while keeping raw modeling, calculation, analysis, and repair
+  context outside the parent thread. Use after an explicit recipe root and
+  execution_plan.json exist, and reuse the assigned agent for resume, fix, or
+  bounded same-lineage revision through terminal E-, C-, and P-level handling.
 ---
 
 # Delegate Strategy Execution
 
 ## Purpose
 
-Keep strategy-execution context outside the parent thread. Delegate one
-strategy's recipe-backed execution graph to one fresh sub-agent, use existing
-E/C/P records as durable checkpoints, and stop before scientific S-level
-evaluation.
+Keep strategy-execution context outside the parent thread. Assign one agent to
+one strategy lineage, use existing E/C/P records as durable checkpoints, and
+stop before scientific S-level evaluation.
 
 This skill coordinates existing workflows and skills. It does not replace
 their contracts or create a second execution state.
@@ -25,8 +24,9 @@ their contracts or create a second execution state.
 Require:
 
 - one active project path;
+- one lineage ID and its recorded agent ID;
 - one strategy ID;
-- its `<strategy_id>_explicit_recipe/` root;
+- one run ID and its `<run_id>_explicit_recipe/` root;
 - `recipe_index.json`;
 - `execution_plan.json`;
 - every indexed `procedure.json`, `mapping.json`, and `recipe.json`;
@@ -43,34 +43,38 @@ missing or inconsistent, report the exact paths and stop.
 2. Resolve the entry paths and confirm that exactly one strategy is in scope.
 3. Inspect only enough existing E/C/P records to determine whether execution is
    new, resumable, or already terminal.
-4. Spawn exactly one fresh sub-agent for the active execution attempt. Use no
-   inherited conversation context when the environment supports that option. A
-   suitable task name is
-   `strategy_execution_<strategy_id>` using lowercase letters, digits, and
-   underscores.
+4. Spawn one fresh sub-agent when the lineage first becomes active. Use no
+   inherited conversation context when supported. Use a stable task name based
+   on the lineage ID.
 5. Pass only the bounded delegation input below.
-6. Wait for the terminal response and validate its returned paths without
+6. Return to pool filling while another configured slot is open. Process each
+   terminal response when it arrives and validate returned paths without
    loading raw calculation or repair detail into the parent context.
-7. For `resume_required`, start one new sequential sub-agent from the same
-   artifact checkpoint only after the previous worker has ended.
+7. For `resume_required`, send a `followup_task` to the recorded agent with the
+   same artifact checkpoint. Record a replacement reason before assigning a
+   different agent when the original is unavailable.
 
 Do not perform delegated execution in the parent. Do not run two workers for
 the same strategy concurrently. If sub-agents are unavailable, report the
 boundary instead of silently executing in the parent.
 
 Keep user interaction, returned-path validation, and all S-level evaluation in
-the parent.
+the parent. Manage active lineage responses independently.
 
 ## Delegation Input
 
 Pass:
 
 ```text
-project_path: <exact project/<project_name> path>
-project_profile: <exact path>
+project_path: <project/<project_name> path>
+project_profile: <path>
+lineage_id: <root strategy lineage ID>
+agent_id: <assigned agent ID>
 strategy_id: <S###>
-recipe_root: <exact explicit-recipe root>
-execution_plan: <exact execution_plan.json path>
+run_id: <lineage-local run ID>
+recipe_root: <explicit-recipe root>
+execution_plan: <execution_plan.json path>
+uma_gpu_assignment: <leased physical CUDA index or none>
 user_execution_constraints: <explicit constraints or none>
 ```
 
@@ -109,7 +113,7 @@ Include these instructions in every delegated task:
 Treat existing recipe-local artifacts as the only durable execution checkpoint.
 Do not create a wrapper state, progress index, or delegation report.
 
-On every fresh or resumed run:
+On every initial or resumed run:
 
 1. Read `execution_plan.json`.
 2. Inspect existing E attempt chains through `manage-execution-unit`.
@@ -130,8 +134,8 @@ Repeat:
    another E.
 2. Identify E units whose dependencies are terminal and whose required input
    artifacts are available.
-3. When several E units are ready, process them sequentially in execution-plan
-   order.
+3. When several E units are ready, use the execution backend and available
+   resources to process them while preserving dependency and plan order.
 4. Load each ready E's source recipe and consumer recipes. Select the narrowest
    matching domain skill; use an appropriate project-local method only when no
    matching skill applies.
@@ -176,7 +180,8 @@ excluded, or missing evidence and must not be interpreted as scientific
 strategy success.
 
 Before returning `resume_required`, finish and persist the current artifact
-stage so a fresh worker can resume without reconstructing unsaved reasoning.
+stage so the assigned agent can continue without reconstructing unsaved
+reasoning.
 
 ## Compact Handoff
 
@@ -184,7 +189,9 @@ Return only:
 
 ```text
 status: <complete | blocked | resume_required>
+lineage_id: <root strategy lineage ID>
 strategy_id: <S###>
+run_id: <lineage-local run ID>
 recipe_root: <exact path>
 terminal_procedure_diagnoses: <exact paths or none>
 missing_evidence_records: <exact paths or none>

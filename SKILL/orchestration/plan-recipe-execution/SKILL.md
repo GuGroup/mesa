@@ -9,7 +9,7 @@ Create the execution graph:
 
 ```bash
 python3 SKILL/orchestration/plan-recipe-execution/scripts/plan_recipe_execution.py \
-  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 The script reads `recipe_index.json` and every indexed `recipe.json` in one LLM
@@ -19,7 +19,7 @@ recipe, rejects cycles and unknown references, topologically orders the units,
 assigns `E###` IDs, and writes:
 
 ```text
-<strategy_id>_explicit_recipe/execution_plan.json
+<run_id>_explicit_recipe/execution_plan.json
 ```
 
 Single-consumer units receive paths under that C recipe:

@@ -40,7 +40,7 @@ P###/calculations/C###/execution/units/E###/
 ```
 
 Write a shared original attempt under
-`<strategy_id>_explicit_recipe/shared_execution/E###/`. Use sibling leaf
+`<run_id>_explicit_recipe/shared_execution/E###/`. Use sibling leaf
 directories for repairs. For example:
 
 ```text

@@ -55,6 +55,8 @@ Critical requirements:
 * If the manuscript contradicts the original plan, say what is contradicted and revise priorities accordingly.
 * If the manuscript is too weak to justify a direction change, maintain or repair rather than inventing a new direction.
 * The "experiment" object in every updated strategy must contain computational experiments only.
+* Every updated strategy must include decision_target and author_claim_support_if_successful. Preserve them for the same lineage unless evidence narrows the boundary; define a bounded evidence-backed contract for a new direction.
+* Keep the original strategy_id for repair_completed_strategy and other bounded revisions of the same central hypothesis. Execution attempts use separate run identifiers outside this strategy artifact.
 
 Reference schema:
 {
@@ -141,6 +143,7 @@ updated_strategy_plan = {
         {
             "strategy_id": "S2",
             "title": "...",
+            "decision_target": "...",
             "origin": "unchanged_from_original | revised_from_original | reprioritized_from_original | new_direction | repair_completed_strategy",
             "supersedes": "...",
             "revision_reason": "...",
@@ -237,6 +240,11 @@ updated_strategy_plan = {
                 "design_principle": "...",
                 "scope_or_limitations": "...",
                 "references": []
+            },
+            "author_claim_support_if_successful": {
+                "expected_strength": "...",
+                "maximum_supported_conclusion": "...",
+                "out_of_scope": ["..."]
             },
             "decision_trace": [
                 {

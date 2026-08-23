@@ -1,4 +1,4 @@
 interface:
   display_name: "Initialize Project"
-  short_description: "Create a MESA project profile"
-  default_prompt: "Use $initialize-project to interview for project settings and write the active project profile. Treat $start-research as an optional explicit next step."
+  short_description: "Configure a portable MESA project profile"
+  default_prompt: "Use $initialize-project to record project sources, backend policy, strategy concurrency, and UMA GPU allocation."

@@ -1,10 +1,7 @@
 # Strategy Domain Workflow
 
-Use this manual for strategy generation, one-strategy selection, and strategy
-updates after manuscript or bounded-result artifacts.
-
-Strategy work controls the queue. It does not run modeling, calculations,
-figures, or manuscript writing.
+Use this manual for strategy generation, bounded concurrent selection,
+strategy-outcome classification, and evidence-backed revision.
 
 # Skills
 
@@ -15,104 +12,83 @@ figures, or manuscript writing.
 
 # Generate Strategies
 
-Use `generate-strategies` after the literature and experimental evidence inputs
-are ready.
+Generate multiple computational proof strategies after literature and
+experimental evidence are ready. Preserve the decompose-style structure,
+inherited references, explicit computational procedures, claim boundary, and
+`prioritization.recommended_order`. In strategy artifacts, `experiment` means
+computational experiment.
 
-Generate multiple computational chemistry proof strategies. Keep the strategy
-structure compatible with the decompose-style schema:
+# Strategy Pool
 
-- `problem`
-- `axioms`
-- `hypothesis`
-- `experiment`
-- `results`
-- `conclusion`
+Read `strategy_execution.max_active_strategy_agents` from the project profile.
+Fill open slots by calling `select-next-strategy` once per lineage. The limit
+applies to active strategy-execution agents; recipe-authorized calculation
+count remains governed by dependencies and the calculation backend.
 
-Rules:
+A lineage starts from one generated strategy and keeps one agent, one active
+slot, and one UMA GPU lease through bounded revisions. A change to the central
+hypothesis or direction terminates the current lineage and enters the queue as
+a complete new strategy contract.
 
-- In strategy artifacts, `experiment` means computational experiment.
-- Do not write wet-lab plans unless the user explicitly requests them.
-- Preserve source references inherited from literature and extraction outputs.
-- Include explicit computational procedures that can later be translated into
-  recipes.
-- Treat `prioritization.recommended_order` as the default execution queue.
+Keep the scientific strategy ID for `extend_strategy`. Use a unique `run_id`
+and recipe root for each bounded revision so `next_run.target_strategy_id`
+continues to match the strategy contract.
+Use the strategy ID as the initial run ID.
 
-Save the generated strategy artifact under the project folder.
+Each slot is non-preemptive:
 
-# Select One Strategy
+1. select one strategy for an open slot;
+2. generate recipes and an execution plan;
+3. assign resources, spawn its agent, and activate the lineage;
+4. delegate execution and reuse that agent for resume and repair;
+5. classify the terminal E/C/P evidence;
+6. revise the same lineage or mark it terminal;
+7. fill the released slot when strategy launch remains open.
 
-Use `select-next-strategy` before recipe generation, modeling, calculation, or
-manuscript work.
+# Result Report
 
-Selection rules:
-
-- Select exactly one strategy from the current authoritative strategy artifact.
-- Use `updated_prioritization.recommended_order` from the latest
-  `update-strategies-from-manuscript` artifact when it is the current plan.
-- Otherwise use `prioritization.recommended_order` from the original generated
-  strategy artifact.
-- Select the first strategy in the current recommended order unless it is
-  completed, retired, blocked, or explicitly superseded.
-- Do not select from memory, title order, local preference, or strategy ID
-  order.
-- Do not override the queue without an explicit logged reason.
-
-The selected-strategy artifact must record:
-
-- the selected strategy ID and source artifact;
-- what the selected strategy can prove;
-- what it cannot prove;
-- inherited references and constraints;
-- queue or blocker rationale.
-
-Save the selected-strategy artifact under:
+After classification, write one compact English report under:
 
 ```text
-project/<project_name>/strategy_execution/strategy_selection/
+project/<project_name>/strategy_execution/strategy_results/<run_id>.md
 ```
 
-# Strategy As Contract
+Record the decision target, recipe coverage, accepted evidence, missing or
+excluded evidence, bounded conclusion, classification, and exact source paths.
+This internal report is the updater input and candidate-comparison artifact;
+it is not a full manuscript.
 
-After selection, the selected strategy's computational procedures are the
-contract for execution. The next required step is explicit recipe generation
-with `generate-explicit-calculation-recipe`; do not jump directly into model
-building or calculations.
+# Outcome Routes
 
-# Classify Strategy Outcome
+- `manuscript_ready`: mark the lineage terminal and stop new strategy
+  launches.
+- `extend_strategy`: feed the result report to
+  `update-strategies-from-manuscript`, bind the revised artifact and recipe to
+  the same lineage through selection's continuation mode, and continue with
+  the same agent.
+- `prerequisite`: mark the lineage terminal and preserve its enabling evidence
+  for the target strategy.
+- `replace_strategy`: mark the lineage terminal; update or reprioritize the
+  queue when its evidence changes the next direction.
+- `blocked`: mark the lineage terminal with its external or evidentiary
+  blocker.
 
-Use `classify-strategy-outcome` after terminal P-level diagnoses and their
-referenced scientific outputs exist. Assemble one bounded input, then classify
-the current strategy as `manuscript_ready`, `extend_strategy`,
-`prerequisite`, `replace_strategy`, or `blocked`.
+Use the existing updater when evidence calls for revision or reprioritization.
+Its output remains the current strategy plan. Updated same-lineage strategies
+inherit classification-boundary fields from their declared original source;
+new directions carry a complete evidence-backed claim-boundary contract.
 
-This classification assumes E/P execution repair is already complete and
-records the next route. It does not extend a strategy, write manuscript text,
-or update the strategy queue.
+# Early Stop And Winner
 
-# Update Strategy Plan
+The first `manuscript_ready` result closes strategy launch. Let already-active
+lineages reach a terminal outcome, compare all manuscript-ready candidates,
+and record exactly one `winning_strategy.json`. With one active slot, the first
+manuscript-ready lineage is the winner.
 
-Use `update-strategies-from-manuscript` after a manuscript-like result artifact
-or full manuscript exists for the selected strategy.
+Use only the winning strategy's computational evidence for the full
+manuscript. Retain other reports as internal project records. Literature and
+general background citations remain available across the project source
+library.
 
-Inputs should include:
-
-- selected strategy artifact;
-- explicit recipe coverage;
-- accepted calculation and analysis outputs;
-- missing-evidence records;
-- manuscript or bounded-result artifact;
-- caveats, blockers, unsupported claims, and excluded claims.
-
-The update must compare the result against the original strategy and the
-explicit recipe coverage. It should decide whether to:
-
-- stop or finalize;
-- maintain the queue;
-- revise a strategy;
-- reprioritize the sequence;
-- repair or repeat the current strategy;
-- retire, block, or supersede a strategy;
-- add a new computational direction.
-
-Treat `updated_prioritization.recommended_order` as the next execution queue.
-Only after this update may the workflow proceed to another strategy.
+When no lineage is manuscript-ready, finish with terminal reports and
+unresolved evidence rather than opening the manuscript workflow.

@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
-SKIP_STATUSES = {"completed", "retired", "blocked", "superseded"}
+SKIP_STATUSES = {"active", "completed", "retired", "blocked", "superseded"}
+POOL_FILE = "_strategy_pool.json"
 
 
 class SelectionError(RuntimeError):
@@ -24,7 +25,15 @@ def main() -> int:
     )
     parser.add_argument("--strategy-artifact", required=True, help="Python or JSON strategy artifact.")
     parser.add_argument("--status-dir", required=True, help="Directory with optional per-strategy status JSON files.")
-    parser.add_argument("--output", required=True, help="Path for selected_strategy.json.")
+    parser.add_argument("--output", required=True, help="Path for the selected strategy JSON.")
+    parser.add_argument(
+        "--max-active-strategies",
+        type=int,
+        default=1,
+        help="Maximum active strategy lineages. Defaults to 1.",
+    )
+    parser.add_argument("--continue-lineage", help="Active lineage ID for a bounded revision.")
+    parser.add_argument("--strategy-id", help="Exact revised strategy ID to materialize.")
     args = parser.parse_args()
 
     artifact_path = Path(args.strategy_artifact)
@@ -35,8 +44,34 @@ def main() -> int:
         artifact = load_artifact(artifact_path)
         queue_key, recommended_order = resolve_queue(artifact)
         strategy_lookup = collect_strategies(artifact)
-        statuses = load_statuses(status_dir)
-        selected, skipped = select_strategy(recommended_order, strategy_lookup, statuses)
+        if args.max_active_strategies < 1:
+            raise SelectionError("--max-active-strategies must be at least 1.")
+        statuses, records = load_statuses(status_dir)
+        pool = load_pool(status_dir)
+        active_count = sum(
+            1 for record in records if str(record.get("status", "not_started")) == "active"
+        )
+        if bool(args.continue_lineage) != bool(args.strategy_id):
+            raise SelectionError("--continue-lineage and --strategy-id must be supplied together.")
+        if args.continue_lineage:
+            selected = select_lineage_continuation(
+                args.continue_lineage,
+                args.strategy_id,
+                strategy_lookup,
+                statuses,
+            )
+            skipped, result_status = [], "success"
+            selection_mode = "lineage_continuation"
+        elif pool.get("launch_state") == "stopped":
+            selected, skipped, result_status = None, [], "launch_stopped"
+            selection_mode = "new_lineage"
+        elif active_count >= args.max_active_strategies:
+            selected, skipped, result_status = None, [], "at_capacity"
+            selection_mode = "new_lineage"
+        else:
+            selected, skipped = select_strategy(recommended_order, strategy_lookup, statuses)
+            result_status = "success" if selected else "no_selectable_strategy"
+            selection_mode = "new_lineage"
     except SelectionError as exc:
         payload = failure_payload(artifact_path, str(exc))
         write_json(output_path, payload)
@@ -47,7 +82,7 @@ def main() -> int:
     selected_strategy = selected["strategy"] if selected else None
 
     output = {
-        "status": "success" if selected_strategy_id else "no_selectable_strategy",
+        "status": result_status,
         "source_strategy_artifact": str(artifact_path),
         "selected_queue_key": queue_key,
         "recommended_order": recommended_order,
@@ -55,9 +90,17 @@ def main() -> int:
         "selected_strategy_id": selected_strategy_id,
         "selected_strategy_title": strategy_title(selected_strategy) if selected_strategy else None,
         "selected_strategy": selected_strategy,
+        "selection_mode": selection_mode,
+        "lineage_id": args.continue_lineage or selected_strategy_id,
+        "max_active_strategies": args.max_active_strategies,
+        "active_strategy_lineages": active_count,
+        "available_strategy_slots": max(args.max_active_strategies - active_count, 0),
+        "strategy_pool": pool,
         "selection_rule": (
-            "Selected the first strategy in the current recommended_order whose "
-            "status is not completed, retired, blocked, or superseded."
+            "Materialized the requested bounded revision for its active lineage."
+            if selection_mode == "lineage_continuation"
+            else "Selected the first strategy in the current recommended_order whose "
+            "status is not active, completed, retired, blocked, or superseded."
         ),
         "can_prove": extract_claim_field(selected_strategy, "can_prove") if selected_strategy else None,
         "cannot_prove": extract_claim_field(selected_strategy, "cannot_prove") if selected_strategy else None,
@@ -66,17 +109,38 @@ def main() -> int:
             "recommendation": (
                 "generate_explicit_calculation_recipe"
                 if selected_strategy_id
-                else "needs_strategy_update"
+                else (
+                    "continue_active_lineages"
+                    if result_status == "at_capacity"
+                    else "finish_active_lineages"
+                    if result_status == "launch_stopped"
+                    else "needs_strategy_update"
+                )
             ),
             "reason": (
-                f"Generate an explicit calculation recipe only for strategy {selected_strategy_id} next."
+                (
+                    f"Generate the revised explicit calculation recipe for active lineage {args.continue_lineage}."
+                    if selection_mode == "lineage_continuation"
+                    else f"Generate the explicit recipe and plan for strategy {selected_strategy_id}, then activate its lineage."
+                )
                 if selected_strategy_id
-                else "Every strategy in recommended_order is completed, retired, blocked, or superseded."
+                else (
+                    "The configured strategy-agent capacity is occupied."
+                    if result_status == "at_capacity"
+                    else "A manuscript-ready result stopped new strategy launches."
+                    if result_status == "launch_stopped"
+                    else "Every strategy in recommended_order is active or terminal."
+                )
             ),
         },
     }
     write_json(output_path, output)
-    return 0 if selected_strategy_id else 3
+    return {
+        "success": 0,
+        "no_selectable_strategy": 3,
+        "at_capacity": 0,
+        "launch_stopped": 0,
+    }[result_status]
 
 
 def load_artifact(path: Path) -> Any:
@@ -159,6 +223,8 @@ def normalize_order(queue: Any) -> list[str]:
                 raise SelectionError(f"recommended_order item lacks strategy_id/id: {item!r}")
         else:
             raise SelectionError(f"Unsupported recommended_order item: {item!r}")
+    if len(order) != len(set(order)):
+        raise SelectionError("recommended_order contains duplicate strategy IDs.")
     return order
 
 
@@ -178,7 +244,9 @@ def collect_strategies(data: Any) -> dict[str, dict[str, Any]]:
         if isinstance(obj, dict):
             sid = obj.get("strategy_id") or obj.get("id")
             if isinstance(sid, str) and looks_like_strategy(obj):
-                strategies.setdefault(sid, obj)
+                if sid in strategies and strategies[sid] is not obj:
+                    raise SelectionError(f"Duplicate strategy_id in artifact: {sid}")
+                strategies[sid] = obj
             for value in obj.values():
                 walk(value)
         elif isinstance(obj, list):
@@ -207,20 +275,54 @@ def looks_like_strategy(obj: dict[str, Any]) -> bool:
     return bool(strategy_keys.intersection(obj))
 
 
-def load_statuses(status_dir: Path) -> dict[str, dict[str, Any]]:
+def load_statuses(
+    status_dir: Path,
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     statuses: dict[str, dict[str, Any]] = {}
+    records: list[dict[str, Any]] = []
     if not status_dir.exists():
-        return statuses
+        return statuses, records
     if not status_dir.is_dir():
         raise SelectionError(f"Status path is not a directory: {status_dir}")
     for path in sorted(status_dir.glob("*.json")):
+        if path.name == POOL_FILE:
+            continue
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:
             raise SelectionError(f"Invalid status JSON {path}: {exc}") from exc
-        sid = str(data.get("strategy_id") or path.stem)
-        statuses[sid] = data
-    return statuses
+        if not isinstance(data, dict):
+            raise SelectionError(f"Strategy status must be an object: {path}")
+        records.append(data)
+        identifiers = {
+            data.get("lineage_id"),
+            data.get("root_strategy_id"),
+            data.get("current_strategy_id"),
+            data.get("strategy_id"),
+        }
+        for raw_identifier in identifiers:
+            if raw_identifier is None:
+                continue
+            identifier = str(raw_identifier)
+            if identifier in statuses and statuses[identifier] is not data:
+                raise SelectionError(f"Duplicate strategy status mapping: {identifier}")
+            statuses[identifier] = data
+    return statuses, records
+
+
+def load_pool(status_dir: Path) -> dict[str, Any]:
+    path = status_dir / POOL_FILE
+    if not path.exists():
+        return {"launch_state": "open", "manuscript_ready_candidates": []}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise SelectionError(f"Invalid strategy pool JSON {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise SelectionError(f"Strategy pool must be an object: {path}")
+    if data.get("launch_state", "open") not in {"open", "stopped"}:
+        raise SelectionError(f"Invalid launch_state in {path}")
+    return data
 
 
 def select_strategy(
@@ -235,9 +337,34 @@ def select_strategy(
         if status in SKIP_STATUSES:
             skipped.append({"strategy_id": sid, "status": status, "reason": f"status is {status}"})
             continue
-        strategy = strategy_lookup.get(sid, {"strategy_id": sid})
+        strategy = strategy_lookup.get(sid)
+        if strategy is None:
+            raise SelectionError(f"recommended_order references unknown strategy: {sid}")
         return {"strategy_id": sid, "status": status, "strategy": strategy}, skipped
     return None, skipped
+
+
+def select_lineage_continuation(
+    lineage_id: str,
+    strategy_id: str,
+    strategy_lookup: dict[str, dict[str, Any]],
+    statuses: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    status = statuses.get(lineage_id)
+    if not status or status.get("status") != "active":
+        raise SelectionError(f"Lineage is not active: {lineage_id}")
+    strategy = strategy_lookup.get(strategy_id)
+    if strategy is None:
+        raise SelectionError(f"Revised strategy is absent from the current plan: {strategy_id}")
+    current_id = str(status.get("current_strategy_id") or lineage_id)
+    valid_sources = {lineage_id, current_id}
+    if strategy.get("origin") == "new_direction":
+        raise SelectionError(f"Strategy {strategy_id} starts a new lineage")
+    if strategy_id not in valid_sources and str(strategy.get("supersedes")) not in valid_sources:
+        raise SelectionError(
+            f"Strategy {strategy_id} is not a declared continuation of lineage {lineage_id}"
+        )
+    return {"strategy_id": strategy_id, "status": "active", "strategy": strategy}
 
 
 def strategy_title(strategy: dict[str, Any] | None) -> Any:

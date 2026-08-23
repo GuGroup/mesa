@@ -88,6 +88,12 @@ SKILL/**/tests/
 !SKILL/calculation/analyze-relaxation-results/tests/**
 !SKILL/orchestration/generate-explicit-calculation-recipe/tests/
 !SKILL/orchestration/generate-explicit-calculation-recipe/tests/**
+!SKILL/init/initialize-project/tests/
+!SKILL/init/initialize-project/tests/**
+!SKILL/strategy/select-next-strategy/tests/
+!SKILL/strategy/select-next-strategy/tests/**
+!SKILL/strategy/classify-strategy-outcome/tests/
+!SKILL/strategy/classify-strategy-outcome/tests/**
 !SKILL/manuscript/tests/
 !SKILL/manuscript/tests/**
 SKILL/**/tests/__pycache__/

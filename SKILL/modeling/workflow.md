@@ -106,7 +106,7 @@ Save model artifacts under the execution unit's assigned `execution_dir`.
 Single-consumer units use:
 
 ```text
-project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
+project/<project_name>/strategy_execution/<run_id>_explicit_recipe/
   P###/
     calculations/
       C###/
@@ -116,7 +116,7 @@ project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
 ```
 
 Multi-consumer units use the plan-assigned
-`<strategy_id>_explicit_recipe/shared_execution/E###/` directory. Each
+`<run_id>_explicit_recipe/shared_execution/E###/` directory. Each
 consumer's recipe-local `execution_manifest.json` must link the exact subset
 used. Each E attempt directory must also contain its own
 `execution_manifest.json`.
@@ -136,8 +136,8 @@ model without rereading raw files:
 
 # Boundaries
 
-- Do not model for a later strategy before the current selected strategy has
-  passed through result writing and strategy update.
+- Work only within the assigned active lineage, run, and recipe root; the
+  parent strategy pool coordinates other lineages.
 - Do not create proxy models unless the recipe, user, or logged execution plan
   explicitly permits a bounded proxy.
 - Do not mark a recipe satisfied by a model that lacks required metadata or

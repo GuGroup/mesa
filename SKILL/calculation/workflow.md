@@ -25,6 +25,17 @@ submission policy.
 Prepare VASP-compatible files only when the project profile's backend is
 `VASP`; otherwise use UMA skills and do not create VASP job folders.
 
+UMA project runs use local CUDA execution. The parent reserves one physical
+device per active strategy lineage according to the profile's fixed or dynamic
+allocation policy and records the lease in strategy status. Dynamic allocation
+uses a fresh device-availability check at activation time. The initialization
+inventory remains a stable hardware and visibility snapshot.
+
+Pass the leased physical index in the delegation input. Run UMA commands with
+that index as `CUDA_VISIBLE_DEVICES` and `MESA_UMA_DEVICE=cuda`, verify CUDA is
+visible inside the configured runtime, and record the assignment in execution
+provenance. Release the lease when the lineage becomes terminal.
+
 # Entry Requirements
 
 Before running a calculation, confirm:
@@ -43,6 +54,8 @@ Do not interpret strategy procedures ad hoc when a recipe exists.
 Use `relax-uma-trajectory` for UMA-backed relaxation or trajectory tasks
 requested by a recipe.
 
+Use local execution mode with the lineage's CUDA lease for project runs.
+
 Select the skill or script at execution time, but use the execution unit's
 assigned `execution_dir` as its work directory. Never invent or substitute
 another output root. Process `execution_units` in their listed topological order
@@ -57,7 +70,7 @@ P###/calculations/C###/execution/units/E###/
 Multi-consumer units use:
 
 ```text
-<strategy_id>_explicit_recipe/shared_execution/E###/
+<run_id>_explicit_recipe/shared_execution/E###/
 ```
 
 Include relaxed structures, trajectories, logs, inputs, generated
@@ -68,6 +81,8 @@ them, and manifest entries.
 
 Use `calculate-uma-vibrational-frequencies` for recipe-backed vibrational
 frequency or thermochemical correction tasks.
+
+Use the same lineage CUDA lease and local execution mode.
 
 Record:
 
@@ -132,7 +147,7 @@ C###/execution/units/E###/execution_manifest.json
 ```
 
 For multi-consumer units, place the E-level manifest at
-`<strategy_id>_explicit_recipe/shared_execution/E###/execution_manifest.json`.
+`<run_id>_explicit_recipe/shared_execution/E###/execution_manifest.json`.
 Repair attempts use sibling `E###-R1/` and `E###-R2/` directories. Keep the
 C-level manifest as the factual aggregation of terminal E attempts.
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -34,7 +35,7 @@ def load_json(path: Path) -> Any:
         raise AssemblyError(f"Invalid JSON in {path}: {exc}") from exc
 
 
-def load_generated_strategies(path: Path) -> dict[str, Any]:
+def load_strategy_literal(path: Path) -> tuple[str, dict[str, Any]]:
     try:
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
@@ -46,28 +47,164 @@ def load_generated_strategies(path: Path) -> dict[str, Any]:
             module = ast.parse(text, filename=str(path))
         except SyntaxError as exc:
             raise AssemblyError(f"Invalid strategy artifact {path}: {exc}") from exc
-        value = None
+        assignments: dict[str, Any] = {}
         for node in module.body:
             if not isinstance(node, (ast.Assign, ast.AnnAssign)):
                 continue
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if not any(
-                isinstance(target, ast.Name) and target.id == "generated_strategies"
-                for target in targets
-            ):
-                continue
             try:
-                value = ast.literal_eval(node.value)
+                literal = ast.literal_eval(node.value)
             except (TypeError, ValueError, SyntaxError) as exc:
-                raise AssemblyError(
-                    "generated_strategies must be a literal dictionary"
-                ) from exc
-            break
-        if value is None:
-            raise AssemblyError(f"No generated_strategies assignment in {path}")
+                named_targets = [target.id for target in targets if isinstance(target, ast.Name)]
+                if set(named_targets).intersection({"generated_strategies", "updated_strategy_plan"}):
+                    raise AssemblyError("Strategy assignment must be a literal dictionary") from exc
+                continue
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    assignments[target.id] = literal
+        for name in ("updated_strategy_plan", "generated_strategies", "strategy_plan"):
+            if name in assignments:
+                value = assignments[name]
+                break
+        else:
+            raise AssemblyError(f"No supported strategy assignment in {path}")
     if not isinstance(value, dict):
-        raise AssemblyError("generated_strategies must be a dictionary")
+        raise AssemblyError("Strategy artifact must be a dictionary")
+
+    if "updated_strategies" in value or "updated_prioritization" in value:
+        return "updated_strategy_plan", value
+    if "strategies" in value or "prioritization" in value:
+        return "generated_strategies", value
+    if len(value) == 1:
+        for name in ("updated_strategy_plan", "generated_strategies", "strategy_plan"):
+            nested = value.get(name)
+            if isinstance(nested, dict):
+                resolved_name = "updated_strategy_plan" if name == "updated_strategy_plan" else "generated_strategies"
+                return resolved_name, nested
+    raise AssemblyError(f"Unsupported strategy artifact schema: {path}")
+
+
+def load_generated_strategies(path: Path) -> dict[str, Any]:
+    kind, value = load_strategy_literal(path)
+    if kind != "generated_strategies":
+        raise AssemblyError(f"Expected generated strategies: {path}")
     return value
+
+
+def resolve_original_strategy_path(
+    raw_path: str,
+    updated_path: Path,
+    project_root: Path,
+) -> Path:
+    raw = Path(raw_path)
+    candidates = [raw] if raw.is_absolute() else [project_root / raw, updated_path.parent / raw]
+    for candidate in candidates:
+        try:
+            resolved = bounded_path(candidate, project_root)
+        except AssemblyError:
+            continue
+        if resolved.is_file():
+            return resolved
+    raise AssemblyError(f"Original strategy artifact is unavailable: {raw_path}")
+
+
+def normalized_order(value: Any, label: str) -> list[str]:
+    order = []
+    for index, item in enumerate(require_list(value, label)):
+        if isinstance(item, str):
+            order.append(require_string(item, f"{label}[{index}]"))
+            continue
+        entry = require_dict(item, f"{label}[{index}]")
+        order.append(
+            require_string(
+                entry.get("strategy_id") or entry.get("id"),
+                f"{label}[{index}].strategy_id",
+            )
+        )
+    return order
+
+
+def overlay_updated_plan(
+    updated: dict[str, Any],
+    original: dict[str, Any],
+    strategy_id: str,
+) -> dict[str, Any]:
+    original_items = require_list(original.get("strategies"), "original strategies")
+    original_by_id: dict[str, dict[str, Any]] = {}
+    for index, raw_item in enumerate(original_items):
+        item = require_dict(raw_item, f"original strategies[{index}]")
+        item_id = require_string(item.get("strategy_id"), f"original strategies[{index}].strategy_id")
+        if item_id in original_by_id:
+            raise AssemblyError(f"Duplicate original strategy_id: {item_id}")
+        original_by_id[item_id] = item
+
+    merged_by_id: dict[str, dict[str, Any]] = {}
+    for index, raw_item in enumerate(
+        require_list(updated.get("updated_strategies"), "updated_strategies")
+    ):
+        item = copy.deepcopy(require_dict(raw_item, f"updated_strategies[{index}]"))
+        item_id = require_string(item.get("strategy_id"), f"updated_strategies[{index}].strategy_id")
+        if item_id in merged_by_id:
+            raise AssemblyError(f"Duplicate updated strategy_id: {item_id}")
+        source_id = item_id if item_id in original_by_id else item.get("supersedes")
+        source = original_by_id.get(str(source_id)) if source_id else None
+        inherited_fields = ("decision_target", "author_claim_support_if_successful")
+        missing_fields = [field for field in inherited_fields if item.get(field) in (None, "", [], {})]
+        if missing_fields:
+            if item.get("origin") == "new_direction" or source is None:
+                raise AssemblyError(
+                    f"Updated strategy {item_id} needs a complete generated-strategy contract "
+                    f"before classification; missing {missing_fields}"
+                )
+            for field in missing_fields:
+                item[field] = copy.deepcopy(source.get(field))
+        merged_by_id[item_id] = item
+
+    updated_prioritization = require_dict(
+        updated.get("updated_prioritization"), "updated_prioritization"
+    )
+    order = normalized_order(
+        updated_prioritization.get("recommended_order"),
+        "updated_prioritization.recommended_order",
+    )
+    for item_id in [*order, strategy_id]:
+        if item_id in merged_by_id:
+            continue
+        if item_id in original_by_id:
+            merged_by_id[item_id] = copy.deepcopy(original_by_id[item_id])
+            continue
+        raise AssemblyError(f"Updated strategy plan references unknown strategy: {item_id}")
+
+    original_prioritization = require_dict(original.get("prioritization"), "prioritization")
+    rationale = updated_prioritization.get("rationale")
+    if rationale is None:
+        rationale = original_prioritization.get("rationale")
+    return {
+        "target_task": copy.deepcopy(original.get("target_task")),
+        "strategies": list(merged_by_id.values()),
+        "prioritization": {
+            "recommended_order": order,
+            "rationale": copy.deepcopy(rationale),
+        },
+    }
+
+
+def load_strategy_context_data(
+    path: Path,
+    project_root: Path,
+    strategy_id: str,
+) -> tuple[dict[str, Any], Path | None]:
+    kind, value = load_strategy_literal(path)
+    if kind == "generated_strategies":
+        return value, None
+    revision = require_dict(value.get("revision_context"), "revision_context")
+    original_text = require_string(
+        revision.get("original_strategies_artifact"),
+        "revision_context.original_strategies_artifact",
+    )
+    original_path = resolve_original_strategy_path(original_text, path, project_root)
+    original = load_generated_strategies(original_path)
+    return overlay_updated_plan(value, original, strategy_id), original_path
 
 
 def require_dict(value: Any, label: str) -> dict[str, Any]:
@@ -328,7 +465,9 @@ def assemble(args: argparse.Namespace) -> dict[str, Any]:
     recipe_root = bounded_path(args.recipe_root, project_root)
     recipe_index_path = bounded_path(recipe_root / "recipe_index.json", project_root)
 
-    generated = load_generated_strategies(strategy_path)
+    generated, original_strategy_path = load_strategy_context_data(
+        strategy_path, project_root, args.strategy_id
+    )
     context = extract_strategy_context(generated, args.strategy_id)
     recipe_index = require_dict(load_json(recipe_index_path), str(recipe_index_path))
     indexed_strategy = recipe_index.get("strategy_id")
@@ -400,6 +539,11 @@ def assemble(args: argparse.Namespace) -> dict[str, Any]:
         "current_strategy_id": args.strategy_id,
         "sources": {
             "strategy_artifact": display_path(strategy_path, project_root),
+            **(
+                {"original_strategy_artifact": display_path(original_strategy_path, project_root)}
+                if original_strategy_path
+                else {}
+            ),
             "recipe_index": display_path(recipe_index_path, project_root),
         },
         "strategy_context": context,

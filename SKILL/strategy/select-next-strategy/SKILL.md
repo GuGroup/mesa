@@ -1,84 +1,120 @@
 ---
 name: select-next-strategy
-description: Select the next MESA per-strategy execution item from a generated strategy artifact. Use when starting workflow.md "Per-Strategy Execution Loop" step 1, when checking prioritization.recommended_order or updated_prioritization.recommended_order, when a completed/blocked/retired strategy status must be skipped, or whenever Codex needs to record which computational chemistry strategy is allowed to run next.
+description: Select and track the next MESA strategy lineage from the authoritative recommended queue. Use when filling configured strategy-agent slots, recording stable agent ownership, preserving a lineage across revisions, stopping new launches after a manuscript-ready result, or recording the single winning strategy.
 ---
 
-For MESA end-to-end use, read `SKILL/strategy/workflow.md` before applying this skill.
+For MESA work, read `SKILL/strategy/workflow.md` first.
 
 # Select Next Strategy
 
-## Purpose
+Use the current strategy artifact and project status records to fill one
+available strategy-agent slot per call.
 
-Select exactly one strategy before any modeling or calculation begins. The
-selection must come from the current strategy artifact's execution queue:
-
-1. `updated_prioritization.recommended_order` from the latest
-   `update-strategies-from-manuscript` artifact, if present and explicitly used
-   as the current artifact.
-2. Otherwise `prioritization.recommended_order` from the generated strategy
-   artifact.
-
-Do not select a strategy from memory, title order, strategy ID order, or local
-preference.
-
-## Required Inputs
-
-- `strategy_artifact`: Python or JSON artifact containing `generated_strategies`,
-  `updated_strategy_plan`, or an equivalent top-level strategy dictionary.
-- `status_dir`: directory containing optional per-strategy status JSON files.
-- `output`: path for the selected strategy record.
-
-Status JSON files may be named `S3.json`, `S1.json`, etc. A strategy is skipped
-only if its `status` is one of:
-
-- `completed`
-- `retired`
-- `blocked`
-- `superseded`
-
-Missing status means `not_started`.
-
-## Command
-
-Run the bundled script:
+## Select
 
 ```bash
 python3 SKILL/strategy/select-next-strategy/scripts/select_next_strategy.py \
-  --strategy-artifact project/<project_name>/strategy/generated_or_updated_strategy.py \
+  --strategy-artifact project/<project_name>/strategy/current_strategy_plan.py \
   --status-dir project/<project_name>/strategy_execution/status \
-  --output project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json
+  --max-active-strategies <profile_value> \
+  --output project/<project_name>/strategy_execution/strategy_selection/<strategy_id>.json
 ```
 
-## Workflow
+The selector uses `updated_prioritization.recommended_order` when present,
+otherwise `prioritization.recommended_order`. It skips `active`, `completed`,
+`retired`, `blocked`, and `superseded` strategies. Repeat selection only while
+the output reports an available strategy and another configured slot exists.
 
-1. Read this `SKILL.md` completely.
-2. Identify the current authoritative strategy artifact.
-3. Run `scripts/select_next_strategy.py`.
-4. Read the emitted `selected_strategy.json`.
-5. Record the skill call and reason in the project log required by `AGENTS.md`.
-6. Start modeling only for `selected_strategy_id`.
+Selection returns `at_capacity` when all slots are occupied and
+`launch_stopped` after an early-stop trigger. Both preserve active work.
 
-## Output Contract
+Materialize a bounded revision without consuming another slot:
 
-The output JSON records:
+```bash
+python3 SKILL/strategy/select-next-strategy/scripts/select_next_strategy.py \
+  --strategy-artifact project/<project_name>/strategy/updated_strategy_plan.py \
+  --status-dir project/<project_name>/strategy_execution/status \
+  --max-active-strategies <profile_value> \
+  --continue-lineage <root_strategy_id> \
+  --strategy-id <current_strategy_id> \
+  --output project/<project_name>/strategy_execution/strategy_selection/<run_id>.json
+```
 
-- source strategy artifact
-- selected queue key
-- recommended order
-- skipped strategies and statuses
-- selected strategy ID and title
-- selection rule
-- what the selected strategy can prove
-- what it cannot prove
-- MESA-style `next_action`
+Prefer the current scientific strategy ID for a bounded revision. Legacy
+revisions may declare the active lineage or current revision in `supersedes`.
+Continuation remains available while new launches are stopped.
 
-Treat missing or empty recommended order as a hard failure. Stop and repair the
-strategy artifact instead of selecting manually.
+## Activate A Lineage
 
-## Boundaries
+After the recipe and execution plan exist, assign resources, spawn one
+execution agent, and record its ownership:
 
-- Do not run chemistry calculations.
-- Do not update strategy status after completion; use the manuscript/update
-  strategy workflow for that decision.
-- Do not override `recommended_order` unless the user explicitly instructs it
-  and the override is logged before modeling.
+```bash
+python3 SKILL/strategy/select-next-strategy/scripts/manage_strategy_status.py activate \
+  --status-dir project/<project_name>/strategy_execution/status \
+  --lineage-id <root_strategy_id> \
+  --strategy-id <current_strategy_id> \
+  --run-id <current_run_id> \
+  --strategy-artifact project/<project_name>/strategy_execution/strategy_selection/<run_id>.json \
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe \
+  --agent-id <agent_id> \
+  --max-active <profile_value>
+```
+
+For UMA, include `--gpu-index <physical_index>` after creating the project
+policy lease. Keep the lease and agent for the lineage until terminal status.
+Use the same command to bind a revised strategy artifact to the active lineage.
+Supply `--agent-replacement-reason` only when the recorded agent is no longer
+available.
+
+## Record Outcome
+
+Keep the scientific strategy ID for a bounded same-lineage revision and assign
+a unique run ID such as `S1-R1` to its selected artifact, recipe root, and
+report. Write one compact English report at:
+
+```text
+project/<project_name>/strategy_execution/strategy_results/<run_id>.md
+```
+
+Record its classification:
+
+```bash
+python3 SKILL/strategy/select-next-strategy/scripts/manage_strategy_status.py record-outcome \
+  --status-dir project/<project_name>/strategy_execution/status \
+  --lineage-id <root_strategy_id> \
+  --strategy-id <current_strategy_id> \
+  --run-id <current_run_id> \
+  --classification <classification> \
+  --report project/<project_name>/strategy_execution/strategy_results/<run_id>.md \
+  --agent-id <agent_id>
+```
+
+`extend_strategy` keeps the lineage, agent, slot, and GPU lease active. Bind
+the updated strategy and recipe with the optional `--next-*` arguments.
+`manuscript_ready`, `prerequisite`, `replace_strategy`, and `blocked` terminate
+the lineage. `manuscript_ready` also stops new strategy launches.
+
+## Record The Winner
+
+After all already-active lineages become terminal, compare manuscript-ready
+candidates and record exactly one winner:
+
+```bash
+python3 SKILL/strategy/select-next-strategy/scripts/manage_strategy_status.py record-winner \
+  --status-dir project/<project_name>/strategy_execution/status \
+  --lineage-id <winning_lineage_id> \
+  --reason "<concise evidence-based reason>" \
+  --evidence-source project/<project_name>/strategy_execution/strategy_results/<run_id>.md \
+  --output project/<project_name>/strategy_execution/winning_strategy.json
+```
+
+Repeat `--evidence-source` for every manuscript-ready candidate report.
+Use `winning_strategy.json` as the sole computational strategy input to the
+full manuscript workflow.
+
+## Output Boundary
+
+Selection records source artifact, queue, skipped states, capacity, selected
+strategy, claim scope, and next action. Status files remain under
+`strategy_execution/status/`; recipe artifacts remain independent.
