@@ -23,8 +23,8 @@ It retains every normalized LLM figure intent in `figure_info.json`.
 
 ```bash
 python3 SKILL/manuscript/figure/map-strategy-figures/scripts/map_strategy_figures.py \
-  --strategy project/<project>/strategy_execution/strategy_selection/selected_strategy.json \
-  --recipe-root project/<project>/strategy_execution/<strategy_id>_explicit_recipe
+  --strategy project/<project>/strategy_execution/strategy_selection/<run_id>.json \
+  --recipe-root project/<project>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 Use `--intent-json` for a saved intent response, or `--dry-run` to inspect the

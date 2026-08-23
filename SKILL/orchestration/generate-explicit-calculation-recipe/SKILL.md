@@ -9,31 +9,31 @@ Create procedure folders:
 
 ```bash
 python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/generate_explicit_recipe.py \
-  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
-  --out project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --strategy project/<project_name>/strategy_execution/strategy_selection/<run_id>.json \
+  --out project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 Map strategy information:
 
 ```bash
 python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/map_strategy_to_procedures.py \
-  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
-  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --strategy project/<project_name>/strategy_execution/strategy_selection/<run_id>.json \
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 Classify P information into C recipes:
 
 ```bash
 python3 SKILL/orchestration/generate-explicit-calculation-recipe/scripts/classify_procedure_information.py \
-  --strategy project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json \
-  --recipe-root project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe
+  --strategy project/<project_name>/strategy_execution/strategy_selection/<run_id>.json \
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe
 ```
 
 For a classified next run, add this same option to both mapping and
 classification commands:
 
 ```bash
---next-run project/<project_name>/strategy_execution/<prior_strategy_id>_explicit_recipe/strategy_outcome_classification.json
+--next-run project/<project_name>/strategy_execution/<prior_run_id>_explicit_recipe/strategy_outcome_classification.json
 ```
 
 Omit the option for an ordinary strategy run. When supplied, it must be a

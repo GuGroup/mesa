@@ -20,11 +20,11 @@ Run:
 ```bash
 python3 SKILL/strategy/classify-strategy-outcome/scripts/prepare_strategy_outcome_input.py \
   --project-root . \
-  --strategy-artifact project/<project_name>/strategy/generated_strategies.py \
+  --strategy-artifact project/<project_name>/strategy/current_strategy_plan.py \
   --strategy-id S1 \
-  --recipe-root project/<project_name>/strategy_execution/S1_explicit_recipe \
+  --recipe-root project/<project_name>/strategy_execution/<run_id>_explicit_recipe \
   --missing-evidence project/<project_name>/path/to/missing_evidence.json \
-  --output project/<project_name>/strategy_execution/S1_explicit_recipe/strategy_outcome_input.json
+  --output project/<project_name>/strategy_execution/<run_id>_explicit_recipe/strategy_outcome_input.json
 ```
 
 Repeat `--missing-evidence` when needed. Omit it when no missing-evidence record
@@ -32,8 +32,12 @@ exists.
 
 The script:
 
+- accepts original `generated_strategies` or an `updated_strategy_plan` linked
+  to its original artifact through `revision_context`;
 - extracts only the agreed claim, strategy, and prioritization fields, including
   each strategy's `decision_target` and `author_claim_support_if_successful`;
+- inherits those two classification-boundary fields only for a revision tied
+  to an existing strategy or its declared `supersedes` lineage;
 - uses `recipe_index.json` only to require one terminal diagnosis for every
   procedure;
 - validates that each `-R1` or `-R2` diagnosis was authorized by the preceding
@@ -55,6 +59,9 @@ Fail on missing procedures, malformed diagnoses, missing references,
 non-JSON referenced outputs, invalid or incomplete P-level repair chains,
 duplicate strategy IDs, or an unknown current strategy.
 
+A `new_direction` requires a complete claim-boundary contract. The assembler
+fails when those fields are absent.
+
 `recipe_index.json` and source files are validation inputs; their unrestricted
 contents are not copied into the LLM input.
 
@@ -64,14 +71,18 @@ Run:
 
 ```bash
 python3 SKILL/strategy/classify-strategy-outcome/scripts/classify_strategy_outcome.py \
-  --input project/<project_name>/strategy_execution/S1_explicit_recipe/strategy_outcome_input.json \
-  --output project/<project_name>/strategy_execution/S1_explicit_recipe/strategy_outcome_classification.json
+  --input project/<project_name>/strategy_execution/<run_id>_explicit_recipe/strategy_outcome_input.json \
+  --output project/<project_name>/strategy_execution/<run_id>_explicit_recipe/strategy_outcome_classification.json
 ```
 
 The script calls the OpenAI Responses API, requests one class, and validates
 the returned JSON. It reads `OPENAI_API_KEY` from the environment, `.env`, or
 `DEPENDENCY/.env`. Use `--dry-run` to validate the assembled input without an
 API call.
+
+An individual scientific output above 250,000 bytes remains validated in the
+assembled artifact but is omitted from the LLM prompt and listed as unavailable
+in its prompt scope.
 
 Apply an epistemic gate first: use `blocked` when external conditions or
 insufficient records prevent a reliable judgment. Otherwise apply this order:

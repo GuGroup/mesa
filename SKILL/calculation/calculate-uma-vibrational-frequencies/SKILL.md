@@ -55,6 +55,8 @@ The required input is only a POSCAR path:
 The controller may accept execution context such as `workdir`, `execution_mode`,
 or `dry_run`, but scientific UMA and vibration settings are controller-owned
 decisions.
+For a MESA project run, pass the profile-assigned device through
+`CUDA_VISIBLE_DEVICES`, set `MESA_UMA_DEVICE=cuda`, and use local execution.
 
 ## Commands
 

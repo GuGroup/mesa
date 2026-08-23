@@ -1,4 +1,4 @@
 interface:
   display_name: "Delegate Strategy Execution"
   short_description: "Delegate one planned strategy execution"
-  default_prompt: "Use $delegate-strategy-execution to run one planned strategy through terminal E, C, and P execution handling in a fresh sub-agent."
+  default_prompt: "Use $delegate-strategy-execution to continue one strategy lineage with its assigned agent through terminal E, C, and P handling."

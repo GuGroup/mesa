@@ -31,6 +31,7 @@ OUTPUT_KEYS = {
     "next_run",
     "blocker",
 }
+MAX_PROMPT_SCIENTIFIC_OUTPUT_BYTES = 250_000
 
 
 class ClassificationError(RuntimeError):
@@ -243,7 +244,6 @@ def build_prompt(data: dict[str, Any]) -> str:
                 "replace_strategy | blocked"
             ),
             "reason": "<one concise evidence-based reason>",
-            "support_strength": "strong | moderate | weak",
             "evidence_sources": ["<exact supplied source>"],
             "next_run": {
                 "mode": "extend_strategy | prerequisite | replace_strategy",
@@ -266,9 +266,26 @@ def build_prompt(data: dict[str, Any]) -> str:
         ],
         "response_rule": "Return exactly one JSON object and no Markdown.",
     }
+    prompt_data = dict(data)
+    included_outputs = []
+    omitted_sources = []
+    for item in data.get("scientific_outputs", []):
+        encoded = json.dumps(item, separators=(",", ":"), ensure_ascii=False)
+        if len(encoded.encode("utf-8")) > MAX_PROMPT_SCIENTIFIC_OUTPUT_BYTES:
+            omitted_sources.append(item.get("source"))
+        else:
+            included_outputs.append(item)
+    prompt_data["scientific_outputs"] = included_outputs
+    contract["prompt_scope"] = {
+        "omitted_large_scientific_outputs": omitted_sources,
+        "rule": (
+            "Treat omitted sources as unavailable for this classification; "
+            "cite and infer only from included bounded outputs."
+        ),
+    }
     return json.dumps(
-        {"contract": contract, "strategy_outcome_input": data},
-        indent=2,
+        {"contract": contract, "strategy_outcome_input": prompt_data},
+        separators=(",", ":"),
         ensure_ascii=False,
     )
 

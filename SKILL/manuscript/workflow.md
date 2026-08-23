@@ -14,10 +14,11 @@ other machine-readable calculation data.
 
 # Manuscript Entry Gate
 
-Before writing manuscript prose, read `SKILL/analysis/workflow.md` and
-`SKILL/figure/workflow.md`, then finish evidence organization and figure
-readiness for the selected strategy. Do not start Results, Methods, abstract,
-conclusion, or DOCX assembly until:
+Before writing manuscript prose, require
+`project/<project_name>/strategy_execution/winning_strategy.json`, then read
+`SKILL/analysis/workflow.md` and `SKILL/figure/workflow.md`. Finish evidence
+organization and figure readiness for that strategy before prose or DOCX
+assembly:
 
 - accepted, caveated, failed, excluded, and missing evidence are separated;
 - required or defensible figures are mapped, realized or explicitly blocked,
@@ -50,16 +51,23 @@ conclusion, or DOCX assembly until:
 
 Required inputs for a full manuscript run:
 
-- selected strategy:
-  `project/<project_name>/strategy_execution/strategy_selection/selected_strategy.json`;
-- accepted calculation and analysis artifacts under the completed strategy
-  execution folders;
+- `project/<project_name>/strategy_execution/winning_strategy.json`;
+- the strategy artifact and result report referenced by that winner record;
+- accepted calculation and analysis artifacts from the winning lineage;
 - recipe coverage and missing-evidence records;
 - realized or realizable figure inputs;
 - citation source library from local project papers;
 - manuscript skeleton DOCX, usually under `RESOURCE/`;
 - optional project writing profile:
   `project/<project_name>/manuscript_writing_profile.json`.
+
+Use computational evidence from the winning lineage only. Keep other strategy
+reports internal. Use the full project literature library for background and
+citations.
+
+Resolve the winner record's `strategy_artifact` and pass it explicitly to each
+figure, Methods, Results, and Introduction collector. Use `--strategy` or
+`--selected-strategy` as supported by that skill.
 
 The writing profile stores project-specific narrative roles and vocabulary.
 Reusable writing skills must remain general. If a study needs HER, MoS2, Ni,
@@ -497,9 +505,7 @@ scientific approval by itself.
 
 # 18. Manuscript-To-Strategy Feedback
 
-Use `update-strategies-from-manuscript` after the manuscript or bounded result
-artifact is complete.
-
-Feed final claims, caveats, blockers, missing procedure coverage, unsupported
-claims, and excluded claims back into the strategy plan. This step is mandatory
-before selecting or calculating the next strategy.
+Use `update-strategies-from-manuscript` after the final manuscript only when the
+user requests another research cycle or the manuscript reveals a new strategy
+decision. Feed final claims, caveats, blockers, missing coverage, unsupported
+claims, and exclusions into that optional update.

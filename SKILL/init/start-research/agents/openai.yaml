@@ -1,6 +1,6 @@
 interface:
   display_name: "Start Research"
   short_description: "Optional MESA research startup"
-  default_prompt: "Use $start-research only when explicitly asked to start the MESA research loop, verify project profile and runtime readiness, and optionally manage goal or full-access startup checks."
+  default_prompt: "Use $start-research to verify the project profile, strategy concurrency, GPU policy, and workflow entry point."
 policy:
   allow_implicit_invocation: false

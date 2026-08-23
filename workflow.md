@@ -16,8 +16,8 @@ that skill unless it would violate this root workflow.
 
 - `SKILL/literature/workflow.md`: experimental-data extraction, paper search,
   strategy-paper extraction, general-insight extraction.
-- `SKILL/strategy/workflow.md`: strategy generation, one-strategy selection,
-  and strategy updates from manuscript/result artifacts.
+- `SKILL/strategy/workflow.md`: strategy generation, bounded pool selection,
+  outcome routing, and strategy updates from result artifacts.
 - `SKILL/orchestration/workflow.md`: explicit calculation recipes, execution
   provenance, diagnosis, repair, and missing-evidence records.
 - `SKILL/modeling/workflow.md`: slab, gas-phase, surface, and adsorbate model
@@ -43,11 +43,11 @@ Codex goal setup and full-access session checks are helpful for autonomous
 manuscript-producing runs, but they are optional automation controls and should
 only be enforced when the requested run depends on them.
 
-This workflow is a loop. It is not a linear checklist and it is not valid to
-move directly from one strategy calculation into the next strategy calculation.
+This workflow runs bounded strategy lineages through a shared parent-managed
+pool. Each lineage reaches a scientific terminal state before its slot advances.
 
 If strategy generation artifacts already exist under the active
-project folder, start from the Per-Strategy Execution Loop using the latest
+project folder, start from the Strategy Execution Pool using the latest
 `generated_strategies` artifact. Do not regenerate strategies unless the user
 asks or the existing strategy artifact is missing, invalid, or superseded.
 
@@ -62,14 +62,14 @@ after the returned artifact paths are validated. Read
 ```text
 literature preparation when source evidence is missing
 -> strategy generation
--> select one strategy
--> generate explicit calculation recipes from the selected strategy
--> plan execution from those recipes
--> delegate recipe-backed E/C/P execution
--> analyze evidence readiness
--> write manuscript/result artifact
--> update strategy plan from manuscript/result
--> stop/finalize, repair, or select the next revised strategy
+-> fill configured strategy-agent slots
+-> generate one recipe and execution plan per active lineage
+-> delegate each lineage to its stable execution agent
+-> classify terminal E/C/P evidence and write a strategy result report
+-> extend the lineage or release its slot
+-> stop new launches at the first manuscript-ready result
+-> finish already-active lineages and select one winner
+-> write one final manuscript from the winning strategy
 ```
 
 The central rule is: the selected strategy's computational procedures are the
@@ -138,12 +138,14 @@ and submission policy. If the profile is missing or ambiguous, stop and return
 to `initialize-project` or `start-research` instead of assuming UMA, VASP, or a
 test policy.
 
-# Per-Strategy Execution Loop
+# Strategy Execution Pool
 
-Repeat this loop for one selected strategy at a time.
+Read `max_active_strategy_agents` from the project profile. This value limits
+active strategy lineages, not recipe-authorized calculations. Repeat selection
+until the pool reaches capacity or launch is stopped.
 
-1. Select exactly one strategy with `select-next-strategy`.
-   Read `SKILL/strategy/workflow.md`.
+1. Select one strategy for an open slot with `select-next-strategy`. Complete
+   its activation before selecting another slot. Read `SKILL/strategy/workflow.md`.
 
 2. Generate explicit calculation recipes with
    `generate-explicit-calculation-recipe`.
@@ -153,9 +155,10 @@ Repeat this loop for one selected strategy at a time.
    The plan defines execution units, dependencies, consumers, and paths without
    selecting skills, commands, backends, feasibility, or status.
 
-4. Delegate the planned strategy execution with
-   `delegate-strategy-execution`. The parent must spawn one fresh sub-agent for
-   the active execution attempt and must not execute the delegated work itself.
+4. Assign backend resources, spawn one agent for the lineage, record ownership,
+   and delegate the planned strategy execution with
+   `delegate-strategy-execution`. The parent assigns one agent to the lineage
+   and keeps delegated work outside the parent.
    The worker:
    - builds models only from recipe artifacts;
    - executes only recipe-backed E units in plan-assigned paths;
@@ -164,9 +167,11 @@ Repeat this loop for one selected strategy at a time.
    - uses `manage-execution-unit`, `record-missing-evidence`,
      `manage-calculation`, and `manage-procedure` in order;
    - stops before S-level evaluation and returns the skill's compact handoff.
-   The parent validates returned paths. For `resume_required`, start a fresh
-   sequential worker from existing artifacts; never run concurrent workers for
-   the same strategy.
+   The parent validates returned paths. For `resume_required`, continue from
+   existing artifacts with `followup_task` on the same agent. A recorded
+   replacement is used only when that agent is unavailable.
+   After dispatch, fill another open slot without waiting for this lineage;
+   process active-lineage responses as they arrive.
 
 5. Validate evidence readiness, carry terminal missing-evidence records
    forward, and separate accepted, caveated, exploratory, failed, and excluded
@@ -174,19 +179,29 @@ Repeat this loop for one selected strategy at a time.
    Read `SKILL/analysis/workflow.md` and
    `SKILL/orchestration/workflow.md`.
 
-6. Write a manuscript-like result artifact or full manuscript from accepted
-   evidence only.
-   Read `SKILL/manuscript/workflow.md`.
+6. Classify the outcome and write a compact `strategy_result_report` from
+   accepted evidence, caveats, coverage, and missing evidence.
 
-7. Update the strategy plan with `update-strategies-from-manuscript`.
-   Only after this update may the workflow proceed to the next strategy.
+7. Route the lineage:
+   - `extend_strategy`: update the strategy from its report, generate the
+     revised recipe and plan under a new run ID while retaining the strategy
+     ID, then continue with the same agent and slot;
+   - `manuscript_ready`, `prerequisite`, `replace_strategy`, or `blocked`:
+     record terminal status and release its resources;
+   - update or reprioritize the queue when terminal evidence changes the next
+     strategy decision.
+
+8. On the first `manuscript_ready` result, stop launching new strategies. Let
+   already-active lineages finish, select one manuscript-ready winner, and use
+   only that strategy's computational evidence for the full manuscript. Read
+   `SKILL/manuscript/workflow.md`.
 
 # Recipe And Execution Contract
 
 The explicit recipe output is the bridge between strategy and execution:
 
 ```text
-project/<project_name>/strategy_execution/<strategy_id>_explicit_recipe/
+project/<project_name>/strategy_execution/<run_id>_explicit_recipe/
   recipe_index.json
   execution_plan.json
   shared_execution/
@@ -249,7 +264,7 @@ caveats, exclusions, and repair decisions in separate artifacts.
 
 Single-consumer execution units must use their plan-assigned
 `P###/calculations/C###/execution/units/E###/` directory. Multi-consumer units
-must use their plan-assigned `<strategy_id>_explicit_recipe/shared_execution/E###/`
+must use their plan-assigned `<run_id>_explicit_recipe/shared_execution/E###/`
 directory. The E directory must contain its attempt manifest. Every
 corresponding `C###/execution/execution_manifest.json` must link the exact
 artifacts used for that recipe. Legacy sibling shared roots remain valid only
@@ -257,10 +272,11 @@ when recipe-local manifests preserve exact provenance.
 
 # Decision Rules
 
-- If the completed manuscript resolves the original target task and has no
-  blocking computational gaps, stop or finalize.
-- If the manuscript resolves only a subclaim, continue the loop with a revised
-  next strategy.
+- Treat direct support for the exact target with sufficient coverage as
+  `manuscript_ready` and close new strategy launch.
+- Keep a bounded localized gap in the same hypothesis under `extend_strategy`.
+- Terminate the lineage when recovery changes its central hypothesis or
+  direction.
 - If completed calculations do not match the selected strategy procedures,
   repair or repeat the completed strategy before moving on.
 - If the explicit recipe contains required outputs that were not produced, the
@@ -271,11 +287,13 @@ when recipe-local manifests preserve exact provenance.
   `updated_prioritization.recommended_order` as the default queue. Do not skip
   ahead without a recorded blocker, retirement, supersession, or explicit user
   instruction.
+- Produce the full manuscript only after `winning_strategy.json` exists. Finish
+  with terminal reports when no strategy is manuscript-ready.
 - If the target task is alkaline HER, `Delta G_H` evidence alone is
   descriptor-level support, not a complete alkaline mechanism, unless the
   target was explicitly narrowed to H adsorption only.
 
-# Forbidden Shortcuts
+# Integrity Rules
 
 - Do not start modeling immediately after strategy selection. Generate explicit
   calculation recipes first.
@@ -285,5 +303,6 @@ when recipe-local manifests preserve exact provenance.
   charged electrochemical states with neutral gas references.
 - Do not mark a strategy complete merely because a bounded proxy produced a
   positive trend.
-- Do not proceed to the next strategy before manuscript/result artifact
-  creation and strategy update.
+- Advance a released slot only after its strategy result report and terminal
+  status exist. Apply a strategy update when the evidence changes the active
+  lineage or queue.

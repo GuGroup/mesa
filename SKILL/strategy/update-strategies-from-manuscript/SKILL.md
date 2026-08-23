@@ -83,6 +83,7 @@ updated_strategy_plan = {
     "updated_strategies": [
         {
             "strategy_id": "S2",
+            "decision_target": "...",
             "origin": "unchanged_from_original | revised_from_original | reprioritized_from_original | new_direction | repair_completed_strategy",
             "supersedes": "...",
             "revision_reason": "...",
@@ -92,6 +93,11 @@ updated_strategy_plan = {
             "experiment": {...},
             "results": {...},
             "conclusion": {...},
+            "author_claim_support_if_successful": {
+                "expected_strength": "...",
+                "maximum_supported_conclusion": "...",
+                "out_of_scope": ["..."]
+            },
             "decision_trace": [...]
         }
     ],
@@ -102,6 +108,12 @@ updated_strategy_plan = {
 ```
 
 Each updated strategy must keep the decompose-style structure. `experiment` means computational experiment only. Do not propose synthesis, characterization, electrochemical tests, or wet-lab validation as a next strategy.
+
+Preserve `decision_target` and `author_claim_support_if_successful` for a
+same-lineage revision unless evidence narrows them. Define both fields from
+explicit evidence for a new direction.
+Keep the original `strategy_id` for bounded revisions of the same central
+hypothesis; execution status assigns separate run IDs.
 
 Reference objects must identify whether support came from the original strategy plan, the manuscript result, or a supporting artifact:
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Select Next Strategy"
-  short_description: "Follow the strategy execution queue"
-  default_prompt: "Use $select-next-strategy to choose the next computational strategy from recommended_order and status records."
+  short_description: "Manage strategy slots and lineage state"
+  default_prompt: "Use $select-next-strategy to fill available strategy slots, track lineage ownership, and record the winning strategy."
