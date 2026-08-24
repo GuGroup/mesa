@@ -104,3 +104,7 @@ ENVIRONMENT/paper_search/docs/
 ENVIRONMENT/paper_search/tests/
 !ENVIRONMENT/paper_search/docs/
 !ENVIRONMENT/paper_search/docs/**
+
+#Zone.Identifier
+*Zone.Identifier
+
