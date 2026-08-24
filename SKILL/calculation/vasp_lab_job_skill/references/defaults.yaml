@@ -1,0 +1,238 @@
+# Source of truth for the vasp-lab-job skill.
+#
+# Parameter-source policy:
+# 1. User-provided overrides always win.
+# 2. Literature profiles with an explicit citation/DOI should be preferred for a
+#    specific material/system when available.
+# 3. Lab fallback profiles below are derived from the uploaded lab Python scripts
+#    and the user's workflow notes. Do not describe them as literature-derived
+#    unless a paper profile is supplied.
+#
+# All VASP parameters are ASE Vasp keyword names.
+
+pseudo:
+  vasp_pp_path: /home/shared/programs/vasp/vasp_pp
+  setups:
+    base: recommended
+
+submit:
+  default_cores: 64
+  standard:
+    64: submit_vasp_64.sh
+    48: submit_vasp_48.sh
+  gamma:
+    64: submit_vasp_gam_64.sh
+    48: submit_vasp_gam_48.sh
+  policy:
+    submit_with_qsub_even_if_nodes_are_full: true
+    gas_uses_standard_submit_even_for_k111: true
+    nongas_k111_uses_gamma_submit: true
+
+convergence:
+  kpoint_series:
+    - [1, 1, 1]
+    - [2, 2, 1]
+    - [3, 3, 1]
+    - [4, 4, 1]
+    - [5, 5, 1]
+    - [6, 6, 1]
+  encut_series: [400, 450, 500, 550, 600]
+  default_tolerance_eV: 0.02
+
+profile_map:
+  gas: gas_lab_standard
+  bulk: bulk_lab_encut600
+  slab-kconv: slab_relax_base
+  slab-encut: slab_relax_base
+  slab-final: slab_relax_base
+  ads: ads_relax_base
+  oxide-ads: oxide_ads_uploaded_co_ni_luj_unverified
+  freq: freq_adsorbate_base
+
+profiles:
+  gas_lab_standard:
+    source:
+      kind: uploaded_lab_script
+      file: MakeGasCalc.py
+      status: lab_fallback_not_literature_verified
+    vasp:
+      encut: 400
+      xc: pbe
+      algo: fast
+      prec: Normal
+      ismear: 0
+      sigma: 0.01
+      ediff: 1.0e-5
+      ispin: 2
+      nupdown: 0
+      kpts: [1, 1, 1]
+      ibrion: 1
+      potim: 0.1
+      ediffg: -0.01
+      isif: 0
+      nsw: 200
+      nwrite: 1
+      lcharg: false
+      lwave: false
+      lvtot: false
+      istart: 0
+      lreal: auto
+      npar: 4
+
+  bulk_lab_encut600:
+    source:
+      kind: uploaded_lab_script_plus_user_override
+      file: MakeBulkCalc.py
+      user_override: ENCUT changed to 600 for bulk calculations.
+      status: lab_fallback_not_literature_verified
+    vasp:
+      encut: 500
+      xc: pbe
+      algo: fast
+      prec: high
+      ismear: 0
+      ediff: 1.0e-8
+      ispin: 2
+      kpts: [7, 7, 7]
+      ibrion: 1
+      potim: 0.1
+      ediffg: -0.01
+      isif: 6
+      nsw: 500
+      nelm: 300
+      nwrite: 1
+      lcharg: false
+      lwave: false
+      lvtot: false
+      istart: 0
+      lreal: auto
+      npar: 4
+
+  slab_relax_base:
+    source:
+      kind: uploaded_lab_script_fixed
+      file: MakeSlabCalc.py
+      fixes: k-point loop bug fixed; each convergence point written to its own directory.
+      status: lab_fallback_not_literature_verified
+    vasp:
+      encut: 400
+      xc: pbe
+      algo: fast
+      prec: Normal
+      ismear: 1
+      sigma: 0.1
+      ediff: 1.0e-5
+      ispin: 2
+      ibrion: 2
+      potim: 0.1
+      ediffg: -0.05
+      isif: 0
+      nsw: 500
+      nelm: 300
+      nwrite: 1
+      lcharg: false
+      lwave: false
+      lvtot: false
+      istart: 0
+      lreal: auto
+      npar: 4
+
+  ads_relax_base:
+    source:
+      kind: workflow_default
+      note: Uses selected slab k-points and ENCUT rather than hard-coded adsorbate values.
+      status: lab_fallback_not_literature_verified
+    vasp:
+      xc: pbe
+      algo: fast
+      prec: Normal
+      ismear: 1
+      sigma: 0.1
+      ediff: 1.0e-5
+      ispin: 2
+      ibrion: 2
+      potim: 0.1
+      ediffg: -0.05
+      isif: 0
+      nsw: 400
+      nelm: 100
+      nwrite: 1
+      lcharg: false
+      lwave: false
+      lvtot: false
+      istart: 0
+      lreal: auto
+      npar: 4
+
+  freq_adsorbate_base:
+    source:
+      kind: user_workflow_note
+      status: lab_fallback_not_literature_verified
+    vasp:
+      xc: pbe
+      algo: Normal
+      prec: Normal
+      ismear: 1
+      sigma: 0.1
+      ediff: 1.0e-6
+      ispin: 2
+      ibrion: 5
+      potim: 0.015
+      nfree: 2
+      nsw: 1
+      isif: 0
+      nwrite: 1
+      lcharg: false
+      lwave: false
+      lvtot: false
+      istart: 0
+      lreal: auto
+      npar: 4
+
+  oxide_ads_uploaded_co_ni_luj_unverified:
+    source:
+      kind: uploaded_lab_script
+      file: MakeOxideSlabAd.py
+      status: needs_literature_verification_before_publication_use
+      warning: These Co/Ni LDA+U and magnetic-moment rules were copied from the uploaded script, not from a cited paper in this package.
+    vasp:
+      kpts: [2, 2, 1]
+      encut: 500
+      potim: 0.1
+      ediff: 1.0e-6
+      ediffg: -5.0e-2
+      algo: Fast
+      prec: high
+      xc: pbe
+      nsw: 2000
+      nelm: 1000
+      ibrion: 2
+      isif: 0
+      ismear: 0
+      istart: 0
+      ispin: 2
+      ivdw: 11
+      nwrite: 1
+      lcharg: false
+      lvtot: false
+      lwave: false
+      lreal: false
+      npar: 4
+      ldau_luj:
+        Co: {L: 2, U: 3.3, J: 0.0}
+        Ni: {L: 2, U: 6.4, J: 0.0}
+        O:  {L: -1, U: 0.0, J: 0.0}
+        N:  {L: -1, U: 0.0, J: 0.0}
+        H:  {L: -1, U: 0.0, J: 0.0}
+    magmom_rules:
+      ordered_counts:
+        Co:
+          first: {count: 11, value: 4.0}
+          rest: -4.0
+        Ni:
+          first: {count: 4, value: 2.0}
+          rest: -2.0
+      default_by_element:
+        O: 0.0
+        N: 0.0
+        H: 0.0
