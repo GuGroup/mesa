@@ -124,7 +124,9 @@ setup may use these as initial magnetic moments.
    `POSCAR`, `bulk`) — `build-slab-models` derives its own output naming from
    this file's stem, so a generic name causes parallel candidates (see step 6
    above) to silently collide downstream.
-5. Hand the artifact to the calculation workflow for bulk optimization under
+5. Run `scripts/validate_bulk_structure.py` on every saved source bulk. Keep
+   the JSON result and stop if it is rejected.
+6. Hand the accepted artifact to the calculation workflow for bulk optimization under
    the active project profile's calculation policy.
 
 ## Direct Bulk Creation
@@ -132,6 +134,18 @@ setup may use these as initial magnetic moments.
 Create a bulk cell directly only when the recipe provides enough
 crystallographic detail to make the structure deterministic. Record the exact
 inputs used and label the source type `direct_created`.
+
+Run direct-creation generators within this skill, record the command, and
+validate the output:
+
+```bash
+mamba run -n modeling python scripts/validate_bulk_structure.py \
+  --structure structures/CoRe_direct.vasp \
+  --output structures/CoRe_direct.bulk_validation.json
+```
+
+The validator requires a finite, nonempty 3D periodic cell, minimum distance
+`>= 0.5 Å`, and longest/shortest cell-vector ratio `<= 5.0`.
 
 Do not use direct creation to fill scientific gaps: if a recipe names only a
 composition with no lattice/prototype/site information and does not authorize
@@ -150,12 +164,14 @@ Before handing the bulk to optimization, provide:
   list every parallel bulk artifact path with the shared candidate-selection
   record instead of a single winner;
 - direct-creation inputs and generator provenance when applicable;
+- passed validation report bound to the structure by SHA-256;
 - preserved site metadata such as `initial_magmoms` when present;
 - caveats or unsupported source metadata.
 
 ## Boundaries
 
 - Do not run bulk optimization, build a slab, or place adsorbates here.
+- Do not hand off a source bulk with a missing or rejected validation result.
 - Do not fetch Materials Project structures from `build-slab-models`.
 - Do not choose a calculation backend here; inherit the active calculation
   policy from the project profile during the later calculation step.

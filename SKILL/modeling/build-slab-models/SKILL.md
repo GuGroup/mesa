@@ -28,6 +28,7 @@ Slab generation must start from an accepted optimized bulk artifact.
 - Use `import-bulk-structure` first to import, register, or directly create the
   source bulk, then complete the required bulk optimization under the root
   calculation policy, then run this skill with the optimized bulk file.
+- Require a passed source-bulk validation result from `import-bulk-structure`.
 - If `import-bulk-structure` carried forward multiple unresolved MP candidates
   (near-degenerate energy and no XRD match), run this skill once per optimized
   candidate bulk file rather than picking one. Output naming keys on the
