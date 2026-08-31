@@ -36,6 +36,7 @@ modeling/calculation handoff in this order:
 
 ```text
 bulk create/import
+-> source-bulk validation
 -> bulk optimization
 -> slab build
 -> clean slab optimization
@@ -49,6 +50,9 @@ enough crystallographic information to construct one. Preserve source metadata,
 including Materials Project initial magnetic moments (`initial_magmoms`) when
 present, in sidecar metadata and handoff notes.
 
+Run any bulk generator through `import-bulk-structure`, then validate its output
+before optimization.
+
 Resolve the source bulk in this order:
 
 1. import an authorized Materials Project source when the recipe identifies or
@@ -57,9 +61,10 @@ Resolve the source bulk in this order:
 3. create the bulk unit cell directly when no import/register source exists and
    the recipe specifies enough composition, lattice, prototype, Wyckoff/site, or
    structure-generation instructions;
-4. stop when the recipe lacks enough information to import, register, or create
-   the bulk; record and diagnose the failed E attempt before any terminal
-   missing-evidence record.
+4. validate the saved source bulk;
+5. stop when the recipe lacks enough information to import, register, create,
+   or validate the bulk; record and diagnose the failed E attempt before any
+   terminal missing-evidence record.
 
 Bulk optimization and clean slab optimization belong to the calculation domain
 and inherit the active backend policy from
@@ -68,7 +73,8 @@ calculation backend on their own.
 
 Use `build-slab-models` only after an accepted optimized bulk artifact exists.
 Pass that optimized artifact through `--bulk-file`; do not let slab generation
-fetch a fresh Materials Project or formula-derived bulk directly.
+fetch a fresh Materials Project or formula-derived bulk directly. Preserve the
+source validation result in the handoff.
 
 Use a recipe-authorized adsorbate-placement skill only after an accepted
 optimized clean slab artifact exists. AdsorbDiff is one available placement
