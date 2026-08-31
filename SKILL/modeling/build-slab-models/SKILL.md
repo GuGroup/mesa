@@ -30,6 +30,7 @@ Slab generation must start from an accepted optimized bulk artifact.
   calculation policy, then run this skill with the optimized bulk file.
 - For VASP-backed optimized bulk inputs, prefer volume-scan/EOS-derived cells
   when practical; accept other backend-authorized optimized bulk artifacts.
+- Require a passed source-bulk validation result from `import-bulk-structure`.
 - If `import-bulk-structure` carried forward multiple unresolved MP candidates
   (near-degenerate energy and no XRD match), run this skill once per optimized
   candidate bulk file rather than picking one. Output naming keys on the
