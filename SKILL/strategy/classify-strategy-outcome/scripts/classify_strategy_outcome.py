@@ -14,6 +14,11 @@ from typing import Any
 
 
 API_URL = "https://api.openai.com/v1/responses"
+FALLBACK_API_URL = os.environ.get(
+    "OPENAI_FALLBACK_API_URL", "http://127.0.0.1:10531/v1/responses"
+)
+FALLBACK_API_KEY = os.environ.get("OPENAI_FALLBACK_API_KEY", "openai-oauth-local")
+RETRYABLE_STATUS_CODES = {408, 500, 502, 503, 504}
 DEFAULT_MODEL = "gpt-5.6-sol"
 CLASSES = {
     "manuscript_ready",
@@ -286,23 +291,36 @@ def build_payload(data: dict[str, Any], model: str) -> dict[str, Any]:
 
 
 def call_openai(payload: dict[str, Any], api_key: str) -> dict[str, Any]:
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=600) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise ClassificationError(f"OpenAI API HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise ClassificationError(f"OpenAI API request failed: {exc.reason}") from exc
+    body = json.dumps(payload).encode("utf-8")
+    for api_url, endpoint_key in (
+        (API_URL, api_key),
+        (
+            os.environ.get("OPENAI_FALLBACK_API_URL", FALLBACK_API_URL),
+            os.environ.get("OPENAI_FALLBACK_API_KEY", FALLBACK_API_KEY),
+        ),
+    ):
+        request = urllib.request.Request(
+            api_url,
+            data=body,
+            method="POST",
+            headers={
+                "Authorization": f"Bearer {endpoint_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=600) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if api_url == API_URL and exc.code in RETRYABLE_STATUS_CODES:
+                continue
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise ClassificationError(f"OpenAI API HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if api_url == API_URL:
+                continue
+            raise ClassificationError(f"OpenAI API request failed: {exc}") from exc
+    raise ClassificationError("OpenAI API request failed: all endpoints unavailable")
 
 
 def output_text(response: dict[str, Any]) -> str:
