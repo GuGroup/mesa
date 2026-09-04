@@ -11,6 +11,14 @@ from generate_explicit_recipe import attach_next_run, load_json
 from map_strategy_to_procedures import load_env, response_text
 
 
+API_URL = "https://api.openai.com/v1/responses"
+FALLBACK_API_URL = os.environ.get(
+    "OPENAI_FALLBACK_API_URL", "http://127.0.0.1:10531/v1/responses"
+)
+FALLBACK_API_KEY = os.environ.get("OPENAI_FALLBACK_API_KEY", "openai-oauth-local")
+RETRYABLE_STATUS_CODES = {408, 500, 502, 503, 504}
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", required=True, type=Path)
@@ -76,19 +84,34 @@ def classify_with_llm(item, model):
         "source_text": item["source_text"],
         "mapped_sources": item["sources"],
     }
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps({"model": model, "input": json.dumps(prompt, ensure_ascii=False)}).encode(),
-        method="POST",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=600) as response:
-            result = json.loads(response.read().decode())
-    except urllib.error.HTTPError as exc:
-        raise SystemExit(f"OpenAI API HTTP {exc.code}: {exc.read().decode(errors='replace')}") from exc
-    except urllib.error.URLError as exc:
-        raise SystemExit(f"OpenAI API request failed: {exc.reason}") from exc
+    body = json.dumps({"model": model, "input": json.dumps(prompt, ensure_ascii=False)}).encode()
+    for api_url, endpoint_key in (
+        (API_URL, api_key),
+        (
+            os.environ.get("OPENAI_FALLBACK_API_URL", FALLBACK_API_URL),
+            os.environ.get("OPENAI_FALLBACK_API_KEY", FALLBACK_API_KEY),
+        ),
+    ):
+        request = urllib.request.Request(
+            api_url,
+            data=body,
+            method="POST",
+            headers={"Authorization": f"Bearer {endpoint_key}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=600) as response:
+                result = json.loads(response.read().decode())
+                break
+        except urllib.error.HTTPError as exc:
+            if api_url == API_URL and exc.code in RETRYABLE_STATUS_CODES:
+                continue
+            raise SystemExit(f"OpenAI API HTTP {exc.code}: {exc.read().decode(errors='replace')}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if api_url == API_URL:
+                continue
+            raise SystemExit(f"OpenAI API request failed: {exc}") from exc
+    else:
+        raise SystemExit("OpenAI API request failed: all endpoints unavailable")
     text = re.sub(r"^```(?:json)?\s*|\s*```$", "", response_text(result).strip())
     try:
         return json.loads(text)
