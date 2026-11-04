@@ -52,3 +52,10 @@ It asks once for anything still missing, such as the target reaction, then runs 
 Everything, including the manuscript, is saved under `project/<name>/`.
 
 Skills live in [`SKILL/`](SKILL); the full process contract is [`workflow.md`](workflow.md).
+
+## Citation
+
+The MESA paper is in preparation. A citation will be added here on publication.
+
+<!-- TODO(citation): add the BibTeX entry here and a CITATION.cff at the repo root once the paper is published. -->
+<!-- TODO(license): add a LICENSE file (MIT or Apache-2.0, pending PI/KENTECH decision) and a License section. -->
