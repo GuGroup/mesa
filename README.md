@@ -1,45 +1,54 @@
 <p align="center">
-  <img src="assets/mesa-hero.png" alt="MESA computational chemistry agent overview" width="78%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/logo-dark.png">
+    <img src="assets/2d.png" width="343" alt="MESA">
+  </picture>
 </p>
-
-<h1 align="center">MESA: End-to-End Autonomous DFT Agent</h1>
 
 <p align="center">
-  A Codex-native research agent for computational chemistry, designed to carry
-  an investigation from literature understanding and hypothesis generation to
-  DFT calculations, evidence validation, and manuscript-ready scientific writing.
+  A Codex agent that proves catalyst claims with computational chemistry,<br>
+  from an experimental paper to DFT evidence and a manuscript draft.
 </p>
 
----
+<p align="center">
+  <img src="assets/readme/workflow.gif" width="100%" alt="The MESA robot hops from paper to literature, strategy, calculation, and analysis. Strategy 1 leaves the experimental observation unsupported, so it returns for the next strategy, builds a doped slab, finds the observation supported, and writes the manuscript">
+</p>
 
-MESA is an end-to-end agent for catalyst discovery and mechanistic analysis.
-It connects literature understanding, atomistic modeling, calculation planning,
-result analysis, figure generation, and paper drafting into one agent-driven loop.
+## Setup
 
-In practice, MESA is meant to move from a research question to a
-publication-ready quality computational chemistry manuscript, with every claim
-grounded in explicit calculations and reviewable evidence.
+Open [Codex](https://github.com/openai/codex) and ask it to run `initialize-mesa`, the MESA setup skill:
 
-Our direction is simple: build an agent that can do research better than a PhD
-student. That is what we are working toward.
-
-## Fresh Clone Setup
-
-Clone the repository, then expose only the initialization skill to Codex:
-
-```bash
-git clone https://github.com/GuGroup/mesa.git
-cd mesa
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -sfn "$PWD/SKILL/init/initialize-mesa" \
-  "${CODEX_HOME:-$HOME/.codex}/skills/initialize-mesa"
+```text
+Clone https://github.com/GuGroup/mesa.git, link SKILL/init/initialize-mesa
+into my Codex skills, and run initialize-mesa with the core runtimes.
 ```
 
-Then open Codex in this checkout and run `initialize-mesa`. The skill runs the
-repository setup checks and links the remaining MESA skills. After that, run
-`initialize-project` to create `project/<project_name>/project_profile.md`.
+It installs `uv` and the core runtimes, checks API keys, and links the MESA skills into Codex.
+Put your `OPENAI_API_KEY` and `MP_API_KEY` in `DEPENDENCY/.env` when it reports them missing.
 
-Explicit start is the default. Full filesystem access and a Codex goal can be
-helpful for long autonomous research runs, but they are not required for project
-profile creation or ordinary manual startup. If you want automated startup of
-the research loop, explicitly ask Codex to use the `start-research` skill.
+## Run
+
+MESA runs fully autonomously. Start Codex inside `mesa/` with full access:
+
+```bash
+codex --yolo
+```
+
+**1. Create a project.** Point it at your source and pick a backend (`UMA` or `VASP`).
+
+```text
+Use initialize-project. Name: nicop-her. Source: ~/papers/nicop_her.pdf. Backend: UMA.
+```
+
+**2. Start the autonomous run.**
+
+```text
+Use start-research in full autonomous mode. Repeat strategies until the
+experimental claim "Ni doping lowers the HER overpotential of CoP" is
+supported by calculations, then write the manuscript.
+```
+
+It asks once for anything still missing, such as the target reaction, then runs on its own.
+Everything, including the manuscript, is saved under `project/<name>/`.
+
+Skills live in [`SKILL/`](SKILL); the full process contract is [`workflow.md`](workflow.md).
