@@ -118,10 +118,12 @@ run together:
 
 ```
 
-## mesa-llm-wiki 연결
+## Wiki updates (internal use only)
 
-이 프로젝트는 `/home/codex/work/project-mesa/mesa-llm-wiki` (GuGroup/mesa-llm-wiki) 에 `entities/mesa.md` 로 등록돼 있다.
-의미 있는 진행(설계 결정, 마일스톤, 실측 결과)이 생기면 세션 마무리에 위키를 갱신한다:
-`cd /home/codex/work/project-mesa/mesa-llm-wiki && git pull --rebase` → `entities/mesa.md` 상태 append + `updated` bump
-→ `log.md` 기록 → `python3 tools/lint.py` 0 errors → commit + push.
-위키의 `raw/` 는 불변. 코드·데이터는 위키로 복사 금지 — 경로·repo 링크로 참조 (living reference).
+After design decisions, milestones, or measured results, update `GuGroup/mesa-llm-wiki` before ending the session:
+
+1. Run `git pull --rebase` in the wiki repository.
+2. Append to `entities/mesa.md`, update its `updated` field, and add an entry to `log.md`.
+3. Run `python3 tools/lint.py` with zero errors, then commit and push.
+
+Do not modify `raw/` or copy code or data into the wiki. Reference them by path or repository link.
