@@ -7,7 +7,6 @@ Combined file:
 ```json
 {
   "schema_version": 1,
-  "strategy_id": "S1",
   "source_manuscript_docx": "project/.../manuscript.docx",
   "si_large_content_title": "1. Supplementary figures",
   "si_large_content_text": "Short SI figure overview.",

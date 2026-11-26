@@ -23,9 +23,8 @@ uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --recipes
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py check mesa-modeling
 ```
 
-Opt-in setup and project artifact commands. Project artifact commands require
-exactly one active `project_profile.md`; otherwise pass an explicit real
-initialization directory:
+Opt-in runtime setup commands. Local runtime diagnostics are saved under
+`.cache/mesa-runtime/` by default.
 
 ```bash
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap --install-mamba
@@ -45,7 +44,7 @@ users do not need to install Python manually before bootstrapping.
 
 Secret and checkpoint access policy:
 
-- `OPENAI_API_KEY` and `MP_API_KEY`/`PMG_MAPI_KEY` are checked as core keys.
+- `OPENAI_API_KEY` and `MP_API_KEY`/`PMG_MAPI_KEY` are checked for the tools that need them.
 - `HF_TOKEN` is checked as optional checkpoint access for gated/private
   Hugging Face downloads.
 - `HF_HOME` is checked as optional Hugging Face token/cache location.
@@ -68,8 +67,7 @@ Mamba policy:
 Core dependency recipe:
 
 - `bootstrap --install-core` dry-runs the first-install recipe for
-  `mesa-general`, `paper-search-mcp`, `mesa-paper-search`, `mesa-modeling`, and
-  `mesa-manuscript`.
+  `mesa-general`, `mesa-modeling`, and `mesa-manuscript`.
 - `bootstrap --install-mamba --install-core --yes` executes that recipe.
 - During execution, each runtime is smoke-tested first. Healthy runtimes are
   skipped; unhealthy runtimes are installed and smoke-tested again.
@@ -114,7 +112,5 @@ Runtime policy:
 - Use `mesa-modeling` for structures, slabs, adsorbates, trajectories, and ASE.
 - Use `mesa-manuscript` for manuscript work, figure export, Pandoc, and
   publication plotting.
-- Keep `mesa-paper-search` and `paper-search-mcp` separate because they expose
-  similar commands but are different packages.
 - Keep UMA, AdsorbDiff, and VASP isolated because their runtime assumptions are
   machine-specific.

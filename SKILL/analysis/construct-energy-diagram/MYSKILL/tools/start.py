@@ -1,15 +1,17 @@
 # YTK
 # YTK
 
+import argparse
+import json
 from pathlib import Path
 
-import json
 from ase.io import read
 
 from .calculate_vib import get_frequencies, get_zpe_ts
 
 
 def run(reaction: dict, mapping: dict) -> dict[str, float]:
+    slab_G = None
     for m in mapping['entries']:
         if m['species'] == "slab":
             outcar = read(m['outcar'], index='-1')
@@ -41,7 +43,7 @@ def run(reaction: dict, mapping: dict) -> dict[str, float]:
                     E = outcar.get_potential_energy()
 
                 elif m['calc_mode'] == 'vib':
-                    frequencies = get_frequencies(Path(m['outcar']).parent)
+                    frequencies = get_frequencies(Path(m['outcar']))
                     if species_ref['phase'] == "GAS":
                         if "thermo" not in m:
                             raise ValueError(f"missing thermo metadat for GAS vib: {species_ref}")
@@ -65,7 +67,10 @@ def run(reaction: dict, mapping: dict) -> dict[str, float]:
             species_G = species_ref['coefficient'] * species_G
             state_G += species_G
         
-        state_G += slab_count * slab_G
+        if slab_count:
+            if slab_G is None:
+                raise ValueError(f"missing slab energy for {label}")
+            state_G += slab_count * slab_G
         all_G[label] = state_G
     
     reference_G = all_G[reference_label]
@@ -75,22 +80,23 @@ def run(reaction: dict, mapping: dict) -> dict[str, float]:
     return all_G
 
 
-import matplotlib.pyplot as plt
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Compute relative reaction energies.")
+    parser.add_argument("--reaction", required=True, type=Path)
+    parser.add_argument("--mapping", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args(argv)
 
-# reaction is general for one task
-reaction = json.load(open("/Users/ytkim/MLwork/agent/mesa_ytk/results/TASK2/CoNiCuRu_NO3RR/reaction.json", "r"))
-# mapping is specific for each metal
-mapping = json.load(open("/Users/ytkim/MLwork/agent/mesa_ytk/results/TASK2/CoNiCuRu_NO3RR/map.json", "r"))
-# both are crucial information.
+    reaction = json.loads(args.reaction.read_text(encoding="utf-8"))
+    mapping = json.loads(args.mapping.read_text(encoding="utf-8"))
+    for entry in mapping["entries"]:
+        entry["outcar"] = str(args.mapping.parent / entry["outcar"])
 
-all_G = run(reaction, mapping)
-ll = []
-gg = []
-for l, g in all_G.items():
-    ll.append(l)
-    gg.append(g)
+    energies = run(reaction, mapping)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(energies, indent=2) + "\n", encoding="utf-8")
+    return 0
 
-plt.scatter(ll,gg)
-plt.show()
-            
-                    
+
+if __name__ == "__main__":
+    raise SystemExit(main())

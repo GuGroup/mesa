@@ -35,8 +35,9 @@ mamba run -n modeling python -m MYSKILL.tools.start \
   --output ../../../project/<project_name>/analysis/relative_free_energies.json
 ```
 
-The runner reads only the two supplied JSON files and the OUTCAR paths declared
-inside `map.json`; it has no built-in author-local data paths.
+The runner reads the two supplied JSON files and the OUTCAR paths declared
+inside `map.json`. Relative OUTCAR paths are resolved from the mapping file's
+directory.
 
 ⸻
 

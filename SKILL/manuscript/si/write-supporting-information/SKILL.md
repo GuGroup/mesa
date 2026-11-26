@@ -34,14 +34,13 @@ Run:
 
 ```bash
 python SKILL/manuscript/si/write-supporting-information/scripts/write_supporting_information.py \
-  --manuscript-docx project/<project>/manuscript/<strategy>/<manuscript>.docx \
-  --strategy-id <strategy>
+  --manuscript-docx project/<project>/manuscript.docx
 ```
 
 Default output:
 
 ```text
-project/<project>/strategy_execution/<strategy_id>_si/text/
+supporting-information/
   supporting_information_text.json
   supporting_information_text.md
   si_large_content_title_section_text.json

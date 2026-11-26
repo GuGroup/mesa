@@ -25,7 +25,6 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     status = max(status, check_platform())
     status = max(status, check_bootstrap_tools())
     status = max(status, check_secret_readiness())
-    status = max(status, check_project_codex_config())
     status = max(status, check_conda_manager(args.install_mamba))
 
     if args.install_core:
@@ -51,10 +50,6 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         print("\nCore dependency recipe")
         print("  not requested")
         print_core_install_help()
-
-    print("\nProject-scoped initialization artifacts")
-    print("  not handled by bootstrap")
-    print("  run initialize-project before analyzer, handoff, status, or runtime-plan artifacts")
 
     print("\nRuntime next checks")
     print("  uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py list --skills")
@@ -244,7 +239,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Directory for machine_profile.json and dependency_handoff.md. Defaults to the "
-            "unique active project profile's initialization directory."
+            "repository's .cache/mesa-runtime directory."
         ),
     )
     p_handoff.add_argument(
@@ -266,7 +261,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Directory for nondeterministic_profile.json and nondeterministic_profile.md. "
-            "Defaults to the unique active project profile's initialization directory."
+            "Defaults to the repository's .cache/mesa-runtime directory."
         ),
     )
     p_nd.add_argument(
@@ -288,8 +283,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Initialization artifact directory for initialize_status.md and "
-            "initialize_events.jsonl. Defaults to the unique active project profile's "
-            "initialization directory."
+            "initialize_events.jsonl. Defaults to .cache/mesa-runtime."
         ),
     )
     p_notify.add_argument(
@@ -341,7 +335,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Initialization artifact directory for status/event artifacts. Defaults to the "
-            "unique active project profile's initialization directory."
+            "repository's .cache/mesa-runtime directory."
         ),
     )
     p_plan.add_argument(
@@ -369,7 +363,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Initialization artifact directory for status/event artifacts. Defaults to the "
-            "unique active project profile's initialization directory."
+            "repository's .cache/mesa-runtime directory."
         ),
     )
     p_execute.set_defaults(func=cmd_execute_runtime_plan)

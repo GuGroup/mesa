@@ -1,1 +1,0 @@
-"""Manuscript workflow regression tests."""

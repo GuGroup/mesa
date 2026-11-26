@@ -1,6 +1,6 @@
 ---
 name: initialize-mesa
-description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, repo-local .codex/config.toml, paper_search MCP setup, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, vasp-job uv-tool readiness, and skill-specific environment readiness.
+description: Check and report fresh-clone readiness for this MESA Codex repository. Use when Codex or a user needs to initialize, bootstrap, audit, install core dependencies, synchronize repo skills into CODEX_HOME skills via symlinks, or diagnose the repo before running skills, including Linux/macOS/Windows OS support, uv-first bootstrapping, DEPENDENCY runtime mappings and recipes, DEPENDENCY/.env/API-key presence, optional Hugging Face checkpoint token/cache readiness, repo-local mamba/micromamba setup, vasp-job uv-tool readiness, and skill-specific environment readiness.
 ---
 
 For MESA repository setup use, read `workflow.md` before applying this skill.
@@ -10,13 +10,13 @@ For MESA repository setup use, read `workflow.md` before applying this skill.
 ## Overview
 
 Use this skill as the first gate after cloning the repository or after changing
-dependency, API-key, Codex config, or MCP setup. Bootstrap is `uv`-first:
+dependencies or API-key setup. Bootstrap is `uv`-first:
 check the OS, check/install `uv`, then use `uv` to provide Python and run the
 deterministic checker. Keep all non-uv runtime installs opt-in.
 
 Default initialization is a lightweight repository and environment readiness
 check. Do not run install, update, smoke-test-all, or `doctor --all` unless the
-user explicitly asks for setup changes or the active project requires that
+user explicitly asks for setup changes or the current task requires that
 specific runtime now. Already-installed environments should be treated as
 reusable; do not re-prove every runtime on every initialization.
 
@@ -95,9 +95,7 @@ python3 DEPENDENCY/tools/mesa_env.py bootstrap
 uv run --python 3.11 python DEPENDENCY/tools/mesa_env.py bootstrap
 ```
 
-This is the normal environment-readiness path. After this command, report
-repository readiness and direct project-profile creation to
-`initialize-project` when no active project profile exists.
+After this command, report repository and runtime readiness.
 
 5. Synchronize repository skills into Codex discovery. First dry-run, then
 apply. Existing non-symlink paths are reported as `SKIP` by the script and must
@@ -156,24 +154,21 @@ Treat these as the standard init checks:
 
 - `DEPENDENCY/runtimes.yaml` parses and lists skill-to-runtime mappings.
 - `DEPENDENCY/runtimes.yaml` defines `recipes.core` with exactly:
-  `mesa-general`, `paper-search-mcp`, `mesa-paper-search`, `mesa-modeling`,
-  and `mesa-manuscript`.
+  `mesa-general`, `mesa-modeling`, and `mesa-manuscript`.
 - `DEPENDENCY/non_deterministic_runtimes.yaml` parses and records analyzer
   output names, deterministic facts, and Codex decision points for `mesa-uma`
   and `mesa-adsorbdiff`.
 - `DEPENDENCY/sync_codex_skills.sh` exists and can symlink remaining repository
   skill folders containing `SKILL.md` into `$CODEX_HOME/skills` or
   `~/.codex/skills` after the user has linked `initialize-mesa`.
-- Project profile creation is intentionally out of scope. If no active profile
-  exists, tell the user to run `initialize-project`.
 - The OS is Linux, macOS, or Windows.
 - `uv` is installed or can be installed with the OS-specific standalone
   installer. Treat `uv` as the first required dependency.
 - `DEPENDENCY/.env.example` exists.
 - `DEPENDENCY/.env` exists when the user expects local secrets. A repo-root
   `.env` is only a backward-compatible fallback.
-- Core keys are present when needed:
-  - `OPENAI_API_KEY` for OpenAI-backed PDF and strategy skills.
+- Check keys for the tools in use:
+  - `OPENAI_API_KEY` for tools that explicitly call the OpenAI API.
   - `MP_API_KEY` or `PMG_MAPI_KEY` for Materials Project slab fetching.
 - Optional Hugging Face checkpoint access is reported without failing
   bootstrap:
@@ -190,18 +185,6 @@ Treat these as the standard init checks:
   - Hugging Face tokens: `https://huggingface.co/settings/tokens`
   - Hugging Face Hub quickstart:
     `https://huggingface.co/docs/huggingface_hub/en/quick-start`
-- `.codex/config.toml` exists, parses, and defines `mcp_servers.paper_search`.
-  Inspect this file read-only during initialization. Do not add, rewrite, or
-  normalize `.codex/config.toml` unless the user explicitly asks for a Codex
-  config edit.
-- If `codex` is available on PATH, prefer `codex mcp get paper_search` as the
-  readiness check for the project TOML and paper-search MCP registration.
-- `.codex/config.toml` does not contain literal API keys, tokens, or secrets.
-- External MCP package files exist under `EXTERNAL/paper-search-mcp`, including
-  `pyproject.toml`, `uv.lock`, and `paper_search_mcp/server.py`.
-- If `codex` is available on PATH, `codex mcp get paper_search` sees the same
-  server. If it does not, tell the user to trust the repository and restart
-  Codex or open a new session.
 - `$CODEX_HOME/skills` or `~/.codex/skills` symlinks point to this repository's
   current `SKILL/` folders after initialization. Existing non-symlink paths
   must not be overwritten.
@@ -216,9 +199,6 @@ Treat these as the standard init checks:
   `bootstrap --install-core --yes` executes it. During execution, smoke-test
   each runtime first, skip it if healthy, otherwise install and smoke-test
   again.
-- Project-scoped initialization artifacts, non-deterministic analyzer outputs,
-  dependency handoff files, status ledgers, and runtime plans are outside this
-  skill. Create/select the project with `initialize-project` first.
 - Python readiness is reported, but system Python is not a first dependency
   because `uv` can provide Python. `qsub` is not fatal unless the requested
   workflow needs it.
@@ -257,20 +237,8 @@ Report in this order:
 1. Platform and `uv` bootstrap readiness.
 2. Secret/API-key readiness, with no values and official setup links when
    missing.
-3. Codex/project TOML and paper-search MCP readiness.
-4. Active project profile status:
-   - if exactly one profile exists, report its path and active calculation
-     policy;
-   - if none exists, report that project setup is pending and run
-     `initialize-project` next;
-   - if multiple profiles exist, ask which project is active.
-5. Codex skill symlink dry-run/apply status for the remaining MESA skills.
-6. `vasp-job` uv-tool readiness when VASP workflows are in scope.
-7. Mamba/micromamba readiness and exact local install command if missing.
-8. Core dependency recipe dry-run or execution status, if requested.
-9. Runtime registry and requested skill runtime, if applicable.
-10. Exact next commands for missing setup.
-
-If the user explicitly changed `.codex/config.toml`, remind them that Codex
-loads project config only after the repository is trusted and may need a
-restart or new session before MCP servers appear.
+3. Codex skill symlink dry-run/apply status.
+4. `vasp-job` readiness when VASP is in scope.
+5. Mamba/micromamba readiness and the install command if needed.
+6. Core dependency recipe dry-run or execution status, if requested.
+7. Requested runtime checks and any remaining setup steps.

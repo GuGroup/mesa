@@ -51,8 +51,8 @@ split row.
 ```bash
 python SKILL/manuscript/general/insert-section-into-docx/scripts/insert_section_docx.py \
   --template RESOURCE/manuscript_skeleton_polished.docx \
-  --section-json project/<project>/strategy_execution/<strategy>_methods/text/methods_section_text.json \
-  --output project/<project>/manuscript/<strategy>/<strategy>_manuscript_with_methods.docx
+  --section-json project/<project>/methods_section_text.json \
+  --output project/<project>/<strategy>_manuscript_with_methods.docx
 ```
 
 Defaults are tuned for Methods insertion:

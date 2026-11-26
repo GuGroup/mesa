@@ -5,7 +5,6 @@ The writer emits a combined file:
 ```json
 {
   "schema_version": 1,
-  "strategy_id": "S1",
   "source_manuscript_docx": "project/.../manuscript.docx",
   "section_source": "llm",
   "title": {"text": "Manuscript title"},

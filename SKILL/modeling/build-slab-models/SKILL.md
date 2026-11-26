@@ -26,8 +26,8 @@ Slab generation must start from an accepted optimized bulk artifact.
 
 - Use `--bulk-file <POSCAR|CIF|extxyz>` for the optimized bulk handoff.
 - Use `import-bulk-structure` first to import, register, or directly create the
-  source bulk, then complete the required bulk optimization under the root
-  calculation policy, then run this skill with the optimized bulk file.
+  source bulk, then complete the required bulk optimization with the requested
+  backend, then run this skill with the optimized bulk file.
 - Require a passed source-bulk validation result from `import-bulk-structure`.
 - If `import-bulk-structure` carried forward multiple unresolved MP candidates
   (near-degenerate energy and no XRD match), run this skill once per optimized
@@ -35,8 +35,7 @@ Slab generation must start from an accepted optimized bulk artifact.
   `--bulk-file` filename stem, so per-candidate slab sets do not collide as
   long as `import-bulk-structure`'s output-naming rule was followed (source id
   in the filename, never a generic stem). Return every candidate's slab set to
-  the recipe-backed execution plan for resolution — the same handling this
-  skill already uses for ambiguous terminations.
+  the caller with the source bulk ID and any unresolved ambiguity.
 
 ```bash
 mamba run -n modeling python scripts/build_slab_model.py \
@@ -145,7 +144,7 @@ reduction is safe for this material or rerun with `--preserve-bulk-cell`.
 
 ## Workflow
 
-1. Confirm the recipe-authorized optimized bulk artifact, Miller index, and
+1. Confirm the optimized bulk artifact, Miller index, and
    handoff metadata.
 2. Start from the optimized bulk artifact with `--bulk-file`. Preserve inherited
    source metadata such as MP id and initial magnetic moments in sidecar
@@ -156,12 +155,11 @@ reduction is safe for this material or rerun with `--preserve-bulk-cell`.
    chemically ambiguous. Use `--all-terminations` and inspect
    `termination_summary.json`. The heuristic `score`/`recommended_termination`
    here is a safety triage, not an energy ranking. When an ambiguous surface
-   requires energy-based screening, return the top candidates to the
-   recipe-backed execution plan; do not run that calculation in this skill.
+   requires energy-based screening, report the candidate terminations for separate calculation.
 5. Save exactly one selected termination as `POSCAR` and JSON metadata:
    omitting `--termination` saves the recommended (dipole-safe/symmetric)
    termination automatically; pass `--termination N` only to deliberately
-   override it, e.g. when recipe-backed energy screening has chosen a
+   override it, e.g. when energy screening has chosen a
    different one.
 6. Validate atom count, cell sanity, minimum distance, tags, and metadata.
 7. Report source bulk path, inherited source identifiers, Miller index,
@@ -194,7 +192,7 @@ reduction is safe for this material or rerun with `--preserve-bulk-cell`.
   from the full termination set even though only one is written to disk. This
   is not a positional index-0 pick.
 - Pass `--termination N` only to deliberately override the recommendation
-  (e.g. recipe-backed energy screening chose a different one). An override
+  (e.g. energy screening chose a different one). An override
   that differs from the recommendation, or a tie among equally-good
   candidates, or no safe candidate existing at all, prints a `WARNING:`
   banner to stderr in addition to `selection_warnings` in the JSON output —

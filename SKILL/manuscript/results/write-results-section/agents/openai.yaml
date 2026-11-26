@@ -1,4 +1,4 @@
 interface:
   display_name: "Results Section Writer"
-  short_description: "Write Results from evidence."
-  default_prompt: "Write Results and Discussion from a results evidence digest and manuscript context."
+  short_description: "Write Results and Discussion"
+  default_prompt: "Draft Results and Discussion from the calculation outputs, tables, and figures."

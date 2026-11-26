@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 import platform
-import re
 import shlex
 import shutil
 import subprocess
@@ -21,9 +20,7 @@ import urllib.request
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY = REPO_ROOT / "DEPENDENCY" / "runtimes.yaml"
 DEFAULT_HANDOFF_CONTRACT = REPO_ROOT / "DEPENDENCY" / "non_deterministic_runtimes.yaml"
-PROJECT_ROOT = REPO_ROOT / "project"
-PROJECT_PROFILE_FILENAME = "project_profile.md"
-INITIALIZATION_DIR_NAME = "initialization"
+DEFAULT_RUNTIME_SETUP_DIR = REPO_ROOT / ".cache" / "mesa-runtime"
 DEPENDENCY_ENV = REPO_ROOT / "DEPENDENCY" / ".env"
 ENV_EXAMPLE = REPO_ROOT / "DEPENDENCY" / ".env.example"
 LEGACY_ROOT_ENV = REPO_ROOT / ".env"
@@ -31,14 +28,7 @@ LOCAL_BIN = REPO_ROOT / "DEPENDENCY" / "bin"
 MAMBA_ROOT_PREFIX = REPO_ROOT / "DEPENDENCY" / ".micromamba"
 LOCAL_MICROMAMBA = LOCAL_BIN / ("micromamba.exe" if platform.system() == "Windows" else "micromamba")
 LOCAL_MAMBA = LOCAL_BIN / ("mamba.cmd" if platform.system() == "Windows" else "mamba")
-EXPECTED_PAPER_SEARCH_CWD = REPO_ROOT / "EXTERNAL" / "paper-search-mcp"
-EXPECTED_PAPER_SEARCH_ENV_FILE = "../../DEPENDENCY/.env"
-EXPECTED_PAPER_SEARCH_ARGS = ["run", "--frozen", "-m", "paper_search_mcp.server"]
-SECRET_PATTERNS = [
-    re.compile(r"sk-[A-Za-z0-9_-]{12,}"),
-    re.compile(r"sk-proj-[A-Za-z0-9_-]{12,}"),
-    re.compile(r"[A-Z0-9_]*(?:API_KEY|TOKEN|SECRET)\s*=\s*['\"][^'\"]{8,}['\"]"),
-]
+
 def load_yaml_mapping(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     try:
@@ -194,28 +184,10 @@ def display_path(path: Path) -> str:
     except ValueError:
         return str(path)
 
-def discover_project_profiles() -> list[Path]:
-    if not PROJECT_ROOT.is_dir():
-        return []
-    return sorted(path for path in PROJECT_ROOT.glob(f"*/{PROJECT_PROFILE_FILENAME}") if path.is_file())
-
-def active_project_initialization_dir() -> Path:
-    profiles = discover_project_profiles()
-    if len(profiles) == 1:
-        return profiles[0].parent / INITIALIZATION_DIR_NAME
-    if not profiles:
-        raise SystemExit(
-            "No active MESA project profile found. Run initialize-project to "
-            "create one, or provide an explicit initialization directory."
-        )
-    choices = "\n".join(f"  - {display_path(path.parent / INITIALIZATION_DIR_NAME)}" for path in profiles)
-    raise SystemExit("Multiple MESA project profiles found. Provide an explicit initialization directory:\n" + choices)
-
 def initialization_dir(path_value: Path | str | None) -> Path:
-    resolved = repo_path(path_value)
-    if resolved is not None:
-        return resolved
-    return active_project_initialization_dir()
+    return repo_path(path_value) or DEFAULT_RUNTIME_SETUP_DIR
+
+
 def command_tool(command: str) -> str | None:
     try:
         parts = shlex.split(command)

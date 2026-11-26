@@ -1,4 +1,4 @@
 interface:
   display_name: "Write Introduction Section"
-  short_description: "Write citation-free Introduction prose"
-  default_prompt: "Use $write-introduction-section to write the Introduction section from the collected evidence digest."
+  short_description: "Write an Introduction"
+  default_prompt: "Draft the Introduction from the supplied research context and references."

@@ -5,8 +5,6 @@ recipes:
     description: CPU/runtime-managed first-install stack; excludes CUDA, UMA, AdsorbDiff, qsub-dependent submission, and checkpoint-managed runtimes.
     runtimes:
       - mesa-general
-      - paper-search-mcp
-      - mesa-paper-search
       - mesa-modeling
       - mesa-manuscript
 
@@ -64,65 +62,6 @@ runtimes:
       - pandoc
     smoke:
       - mamba run -n mesa-manuscript python -c "import numpy, scipy, matplotlib, ase; print('mesa-manuscript ok')"
-
-  mesa-paper-search:
-    kind: uv-project
-    description: Local SearchAgent LangGraph and PaperQA literature workflow runtime.
-    cwd: ENVIRONMENT/paper_search
-    spec: ENVIRONMENT/paper_search/pyproject.toml
-    lock: ENVIRONMENT/paper_search/uv.lock
-    run_prefix: uv run --frozen
-    install:
-      - uv sync --frozen --extra mcp --extra local-embeddings
-    update:
-      - uv sync --extra mcp --extra local-embeddings
-    check_tools:
-      - uv
-      - python
-    smoke:
-      - uv run --frozen python -c "import paper_search, langgraph; print('mesa-paper-search ok')"
-    env_optional:
-      - PAPER_SEARCH_EMAIL
-      - PAPER_SEARCH_PROVIDER
-      - PAPER_SEARCH_MODEL
-      - OPENAI_API_KEY
-      - OPENAI_BASE_URL
-      - OPENAI_EMBEDDING_KEY
-      - ANTHROPIC_API_KEY
-      - SEMANTIC_SCHOLAR_API_KEY
-      - ELSEVIER_API_KEY
-      - ELSEVIER_INSTTOKEN
-      - PAPER_SEARCH_GROBID_URL
-      - PAPER_SEARCH_GROBID_START_CMD
-      - PAPER_SEARCH_OPENDATALOADER_CMD
-
-  paper-search-mcp:
-    kind: uv-project
-    description: External paper-search MCP server/client runtime, kept separate from mesa-paper-search to avoid command and dependency collisions.
-    cwd: EXTERNAL/paper-search-mcp
-    spec: EXTERNAL/paper-search-mcp/pyproject.toml
-    lock: EXTERNAL/paper-search-mcp/uv.lock
-    run_prefix: uv run
-    install:
-      - uv sync --frozen
-    update:
-      - uv sync
-    check_tools:
-      - uv
-      - python
-    smoke:
-      - uv run python -c "import paper_search_mcp; print('paper-search-mcp ok')"
-    env_optional:
-      - PAPER_SEARCH_MCP_UNPAYWALL_EMAIL
-      - PAPER_SEARCH_MCP_CORE_API_KEY
-      - PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY
-      - PAPER_SEARCH_MCP_GOOGLE_SCHOLAR_PROXY_URL
-      - PAPER_SEARCH_MCP_DOAJ_API_KEY
-      - PAPER_SEARCH_MCP_ZENODO_ACCESS_TOKEN
-      - PAPER_SEARCH_MCP_OPENAIRE_API_KEY
-      - PAPER_SEARCH_MCP_CITESEERX_API_KEY
-      - PAPER_SEARCH_MCP_IEEE_API_KEY
-      - PAPER_SEARCH_MCP_ACM_API_KEY
 
   mesa-vasp-submit:
     kind: uv-tool
@@ -182,26 +121,12 @@ runtimes:
 
   no-runtime:
     kind: instruction-only
-    description: Text-only or orchestration skills that do not own a Python runtime.
+    description: Skills that use written guidance without a separate runtime.
     run_prefix: none
     install:
       - No runtime install required.
 
 skills:
-  delegate-literature-workflow: no-runtime
-  delegate-strategy-execution: no-runtime
-  extract-data-from-experiment: mesa-general
-  extract-strategy-paper: mesa-general
-  extract-general-insights-paper: mesa-general
-  generate-strategies: mesa-general
-  select-next-strategy: mesa-general
-  classify-strategy-outcome: mesa-general
-  update-strategies-from-manuscript: mesa-general
-  generate-explicit-calculation-recipe: mesa-general
-  manage-execution-unit: mesa-general
-  manage-calculation: mesa-general
-  manage-procedure: mesa-general
-  record-missing-evidence: mesa-general
   balance-reaction-pathway: mesa-general
   evaluate-energy-diagram: mesa-general
   assemble-alkaline-her-descriptors: mesa-general
@@ -212,8 +137,6 @@ skills:
   analyze-relaxation-results: mesa-modeling
   construct-energy-diagram: mesa-modeling
   place-adsorbates-with-adsorbdiff: mesa-adsorbdiff
-  propose-surface-models-from-literature: mesa-paper-search
-  search-papers-with-mcp: paper-search-mcp
   manage-vasp-jobs: mesa-vasp-submit
   relax-uma-trajectory: mesa-uma
   calculate-uma-vibrational-frequencies: mesa-uma
@@ -222,19 +145,9 @@ skills:
   plot-sabatier-volcano: mesa-manuscript
   render-adsorbate-structure-grid: mesa-modeling
   create-nature-figure: mesa-manuscript
-  map-strategy-figures: mesa-manuscript
-  realize-strategy-figures: mesa-manuscript
-  caption-strategy-figures: mesa-manuscript
-  insert-strategy-figures-into-docx: mesa-manuscript
-  collect-methods-evidence: mesa-manuscript
-  write-methods-sections: mesa-manuscript
-  collect-results-evidence: mesa-manuscript
-  write-results-section: mesa-manuscript
-  collect-introduction-evidence: mesa-manuscript
-  write-introduction-section: mesa-manuscript
-  extract-citation-sources: mesa-manuscript
-  select-citations: mesa-manuscript
-  insert-citations: mesa-manuscript
+  write-methods-sections: no-runtime
+  write-results-section: no-runtime
+  write-introduction-section: no-runtime
   insert-section-into-docx: mesa-manuscript
   write-title-abstract-keywords-conclusion: mesa-manuscript
   write-supporting-information: mesa-manuscript
@@ -246,5 +159,3 @@ skills:
   number-manuscript-equations: mesa-manuscript
   nature-reviewer: no-runtime
   initialize-mesa: no-runtime
-  initialize-project: no-runtime
-  start-research: no-runtime

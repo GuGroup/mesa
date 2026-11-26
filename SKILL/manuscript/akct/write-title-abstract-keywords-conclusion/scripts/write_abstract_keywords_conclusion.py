@@ -533,7 +533,6 @@ def deterministic_akc(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def section_payload(
-    strategy_id: str,
     manuscript_docx: Path,
     placeholder_key: str,
     section_id: str,
@@ -552,7 +551,6 @@ def section_payload(
         section["paragraph_style"] = {"bold": True, "font_size_pt": 14}
     return {
         "schema_version": SCHEMA_VERSION,
-        "strategy_id": strategy_id,
         "source_manuscript_docx": str(manuscript_docx),
         "target_placeholders": {"text": TARGET_PLACEHOLDERS[placeholder_key]},
         "sections": [section],
@@ -560,16 +558,14 @@ def section_payload(
     }
 
 
-def write_section_jsons(outdir: Path, strategy_id: str, manuscript_docx: Path, akc: dict[str, Any]) -> dict[str, str]:
+def write_section_jsons(outdir: Path, manuscript_docx: Path, akc: dict[str, Any]) -> dict[str, str]:
     title_payload = section_payload(
-        strategy_id,
         manuscript_docx,
         "title",
         "title",
         [akc["title"]["text"]],
     )
     abstract_payload = section_payload(
-        strategy_id,
         manuscript_docx,
         "abstract",
         "abstract",
@@ -577,14 +573,12 @@ def write_section_jsons(outdir: Path, strategy_id: str, manuscript_docx: Path, a
     )
     keywords_text = "; ".join(akc["keywords"])
     keywords_payload = section_payload(
-        strategy_id,
         manuscript_docx,
         "keywords",
         "keywords",
         [keywords_text],
     )
     conclusion_payload = section_payload(
-        strategy_id,
         manuscript_docx,
         "conclusion",
         "conclusion",
@@ -603,20 +597,11 @@ def write_section_jsons(outdir: Path, strategy_id: str, manuscript_docx: Path, a
     return paths
 
 
-def default_outdir(manuscript_docx: Path, strategy_id: str) -> Path:
-    project_root = None
-    parts = list(manuscript_docx.parts)
-    for idx, part in enumerate(parts):
-        if part == "project" and idx + 1 < len(parts):
-            project_root = Path(*parts[: idx + 2])
-            break
-    if project_root is not None:
-        return project_root / "strategy_execution" / f"{strategy_id}_akctitle" / "text"
-    return manuscript_docx.parent / f"{strategy_id}_akctitle" / "text"
+def default_outdir(manuscript_docx: Path) -> Path:
+    return manuscript_docx.parent / "abstract-and-conclusion"
 
 
 def assemble_output(
-    strategy_id: str,
     manuscript_docx: Path,
     source: str,
     akc: dict[str, Any],
@@ -625,7 +610,6 @@ def assemble_output(
 ) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
-        "strategy_id": strategy_id,
         "source_manuscript_docx": str(manuscript_docx),
         "section_source": source,
         "target_placeholders": TARGET_PLACEHOLDERS,
@@ -659,8 +643,7 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     manuscript_docx = Path(args.manuscript_docx)
-    strategy_id = args.strategy_id
-    outdir = Path(args.outdir) if args.outdir else default_outdir(manuscript_docx, strategy_id)
+    outdir = Path(args.outdir) if args.outdir else default_outdir(manuscript_docx)
     context = extract_docx_context(manuscript_docx)
     write_json(outdir / "manuscript_context.json", context)
     write_context_markdown(outdir / "manuscript_context.md", context)
@@ -681,8 +664,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         source = "llm"
 
     validation = validate_akc(akc)
-    section_paths = write_section_jsons(outdir, strategy_id, manuscript_docx, akc)
-    payload = assemble_output(strategy_id, manuscript_docx, source, akc, section_paths, validation)
+    section_paths = write_section_jsons(outdir, manuscript_docx, akc)
+    payload = assemble_output(manuscript_docx, source, akc, section_paths, validation)
     write_json(outdir / "title_abstract_keywords_conclusion_text.json", payload)
     write_markdown(outdir / "title_abstract_keywords_conclusion_text.md", payload)
     if not validation["ok"]:
@@ -693,8 +676,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manuscript-docx", required=True, help="Assembled manuscript DOCX.")
-    parser.add_argument("--strategy-id", default="S1", help="Strategy id used for output naming.")
-    parser.add_argument("--outdir", default="", help="Output directory. Defaults to project/<project>/strategy_execution/<strategy>_akctitle/text.")
+    parser.add_argument("--outdir", default="", help="Output directory. Defaults to abstract-and-conclusion/ beside the manuscript.")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help=f"OpenAI model. Defaults to OPENAI_MODEL or {DEFAULT_MODEL}.")
     parser.add_argument("--no-llm", action="store_true", help="Write deterministic smoke-test output without calling OpenAI.")
     return parser.parse_args()
@@ -703,7 +685,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     payload = run(args)
-    outdir = Path(args.outdir) if args.outdir else default_outdir(Path(args.manuscript_docx), args.strategy_id)
+    outdir = Path(args.outdir) if args.outdir else default_outdir(Path(args.manuscript_docx))
     print(f"Wrote {outdir / 'title_abstract_keywords_conclusion_text.json'}")
     print(f"Wrote {outdir / 'title_section_text.json'}")
     print(f"Wrote {outdir / 'abstract_section_text.json'}")

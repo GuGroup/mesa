@@ -1,4 +1,0 @@
-interface:
-  display_name: "Collect Introduction Evidence"
-  short_description: "Collect compact literature-led evidence"
-  default_prompt: "Use $collect-introduction-evidence to collect Introduction evidence for the selected project and strategy."

@@ -61,12 +61,8 @@ def extract_paragraphs(path: Path) -> list[dict[str, Any]]:
     return paragraphs
 
 
-def default_outdir(manuscript_docx: Path, strategy_id: str) -> Path:
-    parts = list(manuscript_docx.parts)
-    for idx, part in enumerate(parts):
-        if part == "project" and idx + 1 < len(parts):
-            return Path(*parts[: idx + 2]) / "strategy_execution" / f"{strategy_id}_si" / "text"
-    return manuscript_docx.parent / f"{strategy_id}_si" / "text"
+def default_outdir(manuscript_docx: Path) -> Path:
+    return manuscript_docx.parent / "supporting-information"
 
 
 def extract_si_captions(paragraphs: list[dict[str, Any]]) -> list[str]:
@@ -90,11 +86,10 @@ def extract_geometry_details(paragraphs: list[dict[str, Any]]) -> list[str]:
     return details
 
 
-def section_payload(strategy_id: str, manuscript_docx: Path, placeholder_key: str, section_id: str, paragraphs: list[str]) -> dict[str, Any]:
+def section_payload(manuscript_docx: Path, placeholder_key: str, section_id: str, paragraphs: list[str]) -> dict[str, Any]:
     blocks = [{"type": "paragraph", "text": format_numeric_precision(text)} for text in paragraphs if compact_text(text)]
     return {
         "schema_version": SCHEMA_VERSION,
-        "strategy_id": strategy_id,
         "source_manuscript_docx": str(manuscript_docx),
         "target_placeholders": {"text": TARGET_PLACEHOLDERS[placeholder_key]},
         "sections": [
@@ -169,8 +164,7 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     manuscript_docx = Path(args.manuscript_docx)
-    strategy_id = args.strategy_id
-    outdir = Path(args.outdir) if args.outdir else default_outdir(manuscript_docx, strategy_id)
+    outdir = Path(args.outdir) if args.outdir else default_outdir(manuscript_docx)
     si = build_si(extract_paragraphs(manuscript_docx))
     validation = validate_si(si)
     section_paths = {
@@ -181,17 +175,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "dft_calculation_details": "dft_calculation_details_section_text.json",
     }
     payloads = {
-        "si_large_content_title": section_payload(strategy_id, manuscript_docx, "si_large_content_title", "si_large_content_title", [si["si_large_content_title"]]),
-        "si_large_content_text": section_payload(strategy_id, manuscript_docx, "si_large_content_text", "si_large_content_text", [si["si_large_content_text"]]),
-        "si_small_content_title": section_payload(strategy_id, manuscript_docx, "si_small_content_title", "si_small_content_title", [si["si_small_content_title"]]),
-        "si_small_content_text": section_payload(strategy_id, manuscript_docx, "si_small_content_text", "si_small_content_text", [si["si_small_content_text"]]),
-        "dft_calculation_details": section_payload(strategy_id, manuscript_docx, "dft_calculation_details", "dft_calculation_details", si["dft_calculation_details"]["paragraphs"]),
+        "si_large_content_title": section_payload(manuscript_docx, "si_large_content_title", "si_large_content_title", [si["si_large_content_title"]]),
+        "si_large_content_text": section_payload(manuscript_docx, "si_large_content_text", "si_large_content_text", [si["si_large_content_text"]]),
+        "si_small_content_title": section_payload(manuscript_docx, "si_small_content_title", "si_small_content_title", [si["si_small_content_title"]]),
+        "si_small_content_text": section_payload(manuscript_docx, "si_small_content_text", "si_small_content_text", [si["si_small_content_text"]]),
+        "dft_calculation_details": section_payload(manuscript_docx, "dft_calculation_details", "dft_calculation_details", si["dft_calculation_details"]["paragraphs"]),
     }
     for key, payload in payloads.items():
         write_json(outdir / section_paths[key], payload)
     combined = {
         "schema_version": SCHEMA_VERSION,
-        "strategy_id": strategy_id,
         "source_manuscript_docx": str(manuscript_docx),
         **si,
         "section_json_paths": section_paths,
@@ -207,7 +200,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manuscript-docx", required=True, help="Assembled manuscript DOCX.")
-    parser.add_argument("--strategy-id", default="S1", help="Strategy id used for output naming.")
     parser.add_argument("--outdir", default="", help="Output directory.")
     return parser.parse_args()
 
@@ -215,7 +207,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     payload = run(args)
-    outdir = Path(args.outdir) if args.outdir else default_outdir(Path(args.manuscript_docx), args.strategy_id)
+    outdir = Path(args.outdir) if args.outdir else default_outdir(Path(args.manuscript_docx))
     print(f"Wrote {outdir / 'supporting_information_text.json'}")
     for path in payload["section_json_paths"].values():
         print(f"Wrote {outdir / path}")

@@ -1,4 +1,4 @@
 interface:
   display_name: "Methods Section Writer"
-  short_description: "Write Methods from digest"
-  default_prompt: "Use $write-methods-sections to draft academic Methods sections from a methods_writer_digest.json file."
+  short_description: "Write Methods from calculation files"
+  default_prompt: "Draft Methods from the recorded modeling and calculation settings."

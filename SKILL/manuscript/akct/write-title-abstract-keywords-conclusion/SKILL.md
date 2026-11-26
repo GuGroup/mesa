@@ -25,7 +25,7 @@ figures, or revise the manuscript body.
 Default output:
 
 ```text
-project/<project>/strategy_execution/<strategy_id>_akctitle/text/
+abstract-and-conclusion/
   manuscript_context.json
   manuscript_context.md
   llm_prompt.txt
@@ -44,8 +44,7 @@ Run:
 
 ```bash
 python SKILL/manuscript/akct/write-title-abstract-keywords-conclusion/scripts/write_abstract_keywords_conclusion.py \
-  --manuscript-docx project/<project>/manuscript/<strategy_id>/<manuscript>.docx \
-  --strategy-id <strategy_id>
+  --manuscript-docx project/<project>/manuscript.docx
 ```
 
 Use `--no-llm` only for smoke testing. Normal use requires

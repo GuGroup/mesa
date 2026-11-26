@@ -1,31 +1,22 @@
 # YTK
 # YTK
 from pathlib import Path
-import subprocess
 
 from ase.thermochemistry import IdealGasThermo, HarmonicThermo
 import numpy as np
 from numpy.typing import NDArray
 
-def get_frequencies(zpe_dir: Path):
-    result = subprocess.run(
-        "grep THz OUTCAR",
-        shell=True,
-        cwd=zpe_dir,
-        capture_output=True,
-        text=True,
-    )   
+def get_frequencies(path: Path) -> NDArray:
+    outcar = path / "OUTCAR" if path.is_dir() else path
     frequencies = []
-    for line in result.stdout.splitlines():
-        if "f/i" in line:
-            continue
-        tokens = line.split()
-        thz_index = tokens.index("cm-1")
-        freq = float(tokens[thz_index - 1]) 
-        frequencies.append(freq)
-
-    frequencies = np.array(frequencies)
-    return frequencies
+    with outcar.open(encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            if "THz" not in line or "f/i" in line:
+                continue
+            tokens = line.split()
+            if "cm-1" in tokens:
+                frequencies.append(float(tokens[tokens.index("cm-1") - 1]))
+    return np.array(frequencies)
 
 def get_zpe_ts(frequencies: NDArray, phase: str, T: float = 298.15, **kwargs):
     frequencies = np.asarray(frequencies, dtype=float)

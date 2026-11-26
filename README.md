@@ -5,57 +5,24 @@
   </picture>
 </p>
 
-<p align="center">
-  A Codex agent that proves catalyst claims with computational chemistry,<br>
-  from an experimental paper to DFT evidence and a manuscript draft.
-</p>
+# MESA tool-only baseline
 
-<p align="center">
-  <img src="assets/readme/workflow.gif" width="100%" alt="The MESA robot hops from paper to literature, strategy, calculation, and analysis. Strategy 1 leaves the experimental observation unsupported, so it returns for the next strategy, builds a doped slab, finds the observation supported, and writes the manuscript">
-</p>
+This branch provides Codex skills for computational catalysis modeling, UMA and
+VASP calculations, result analysis, plotting, and manuscript writing.
 
 ## Setup
 
-Open [Codex](https://github.com/openai/codex) and ask it to run `initialize-mesa`, the MESA setup skill:
-
-```text
-Clone https://github.com/GuGroup/mesa.git, link SKILL/init/initialize-mesa
-into my Codex skills, and run initialize-mesa with the core runtimes.
-```
-
-It installs `uv` and the core runtimes, checks API keys, and links the MESA skills into Codex.
-Put your `OPENAI_API_KEY` and `MP_API_KEY` in `DEPENDENCY/.env` when it reports them missing.
+From the checkout, ask Codex to run `initialize-mesa`. The skill checks runtimes,
+helps install missing dependencies, and links the available skills into Codex.
+Use an isolated `CODEX_HOME` when running this checkout alongside full MESA.
+See [dependency setup](DEPENDENCY/README.md) for runtime and API-key details.
 
 ## Run
 
-MESA runs fully autonomously. Start Codex inside `mesa/` with full access:
-
-```bash
-codex --yolo
-```
-
-**1. Create a project.** Point it at your source and pick a backend (`UMA` or `VASP`).
-
-```text
-Use initialize-project. Name: nicop-her. Source: ~/papers/nicop_her.pdf. Backend: UMA.
-```
-
-**2. Start the autonomous run.**
-
-```text
-Use start-research in full autonomous mode. Repeat strategies until the
-experimental claim "Ni doping lowers the HER overpotential of CoP" is
-supported by calculations, then write the manuscript.
-```
-
-It asks once for anything still missing, such as the target reaction, then runs on its own.
-Everything, including the manuscript, is saved under `project/<name>/`.
-
-Skills live in [`SKILL/`](SKILL); the full process contract is [`workflow.md`](workflow.md).
+Give Codex the scientific question, supplied inputs, calculation backend,
+execution limits, and requested output directory. See [workflow.md](workflow.md)
+for basic tool use and [SKILL/](SKILL/) for the available skills.
 
 ## Citation
 
 The MESA paper is in preparation. A citation will be added here on publication.
-
-<!-- TODO(citation): add the BibTeX entry here and a CITATION.cff at the repo root once the paper is published. -->
-<!-- TODO(license): add a LICENSE file (MIT or Apache-2.0, pending PI/KENTECH decision) and a License section. -->
